@@ -1,0 +1,17 @@
+Two great additions. The rotate button is straightforward — I'll add it to the bed detail panel so you can flip width/height with one tap. For weather, I'll use the Open-Meteo API which is free and requires no API key — it just needs coordinates, so I'll hardcode River Ridge (lat 29.95, lon -90.22) in your version and let the blank version prompt for location.
+
+Both updated. Here's what's new:
+
+**Rotate button:**
+Tap any bed on the map → in the detail panel you'll see **⟳ Rotate** alongside Edit and Delete. One tap swaps the width and length, flipping the bed orientation on the canvas. Position is preserved.
+
+**Weather tab (7th tab, cloud icon):**
+- Current conditions with temperature, sky state, wind, humidity, and rainfall
+- **Garden-specific alerts** auto-generated from the forecast — heat stress warnings at 95°F+, frost risk below 35°F, high humidity fungal warnings, wind alerts for staking, rain advisories for skipping irrigation
+- **7-day forecast** with rain amounts and colored alert dots per day
+- **Growing Degree Days** calculated across the 7-day window with context for your crops (tomatoes, cucumbers, peppers)
+- **Watering guidance** based on 3-day rain forecast
+
+Your version is hardcoded to River Ridge (lat 29.95, lon -90.22) using the free Open-Meteo API — no API key needed, works immediately. The blank version asks for location permission from the browser instead.
+
+Have a great Berlin trip — the spinosad timer will be waiting for you when you get back! 🇩🇪🌱
