@@ -201,7 +201,7 @@
   <div class="header">
     <div>
       <div class="header-title">🌱 Garden Log</div>
-      <div class="header-sub">River Ridge · 2026 Season</div>
+      <div class="header-sub">My Garden · 2026 Season</div>
     </div>
     <div style="text-align:right">
       <div style="font-size:10px;color:var(--muted)">Total harvest</div>
@@ -533,7 +533,7 @@
 <!-- ===== WEATHER ===== -->
 <div class="view" id="view-weather">
   <div class="header">
-    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">River Ridge, LA</div></div>
+    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">Detecting location...</div></div>
     <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="refreshWeather()">↻ Refresh</button>
   </div>
   <div id="weather-content" style="padding:0 14px">
@@ -667,9 +667,9 @@ let photoData = { h: null, c: null, p: null };
 // ===================== STORAGE =====================
 async function loadData() {
   try {
-    const h = localStorage.getItem("gl-harvests");
-    const c = localStorage.getItem("gl-care");
-    const p = localStorage.getItem("gl-plants");
+    const h = localStorage.getItem("gl-demo-harvests");
+    const c = localStorage.getItem("gl-demo-care");
+    const p = localStorage.getItem("gl-demo-plants");
     if (h) harvests = JSON.parse(h);
     if (c) careLog = JSON.parse(c);
     if (p) plantLog = JSON.parse(p);
@@ -680,89 +680,22 @@ async function loadData() {
   renderAll();
 }
 
-function saveHarvests() { try { localStorage.setItem("gl-harvests", JSON.stringify(harvests)); } catch(e){} }
-function saveCare() { try { localStorage.setItem("gl-care", JSON.stringify(careLog)); } catch(e){} }
-function savePlants() { try { localStorage.setItem("gl-plants", JSON.stringify(plantLog)); } catch(e){} }
+function saveHarvests() { try { localStorage.setItem("gl-demo-harvests", JSON.stringify(harvests)); } catch(e){} }
+function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){} }
+function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){} }
 
 function seedHarvests() {
-  harvests = [
-    {id:1,date:"2026-02-22",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:21,count:1,notes:"first",photo:null},
-    {id:2,date:"2026-02-22",crop:"pepper",variety:"Serrano",bed:"Green Bed",weight:3,count:1,notes:"from transplanting",photo:null},
-    {id:3,date:"2026-02-25",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"transplants",photo:null},
-    {id:4,date:"2026-03-01",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:1,notes:"",photo:null},
-    {id:5,date:"2026-03-03",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:30,count:1,notes:"",photo:null},
-    {id:6,date:"2026-03-06",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:76,count:5,notes:"",photo:null},
-    {id:7,date:"2026-03-07",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:236,count:16,notes:"",photo:null},
-    {id:8,date:"2026-03-07",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:6,count:2,notes:"",photo:null},
-    {id:9,date:"2026-03-08",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:54,count:5,notes:"",photo:null},
-    {id:10,date:"2026-03-10",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"",photo:null},
-    {id:11,date:"2026-03-11",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:57,count:5,notes:"",photo:null},
-    {id:12,date:"2026-03-13",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:281,count:3,notes:"First harvest",photo:null},
-    {id:13,date:"2026-03-14",crop:"strawberry",variety:"Festival",bed:"Square",weight:2,count:1,notes:"Deformed not quite ripe",photo:null},
-    {id:14,date:"2026-03-14",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:91,count:7,notes:"",photo:null},
-    {id:15,date:"2026-03-15",crop:"strawberry",variety:"Festival",bed:"Square",weight:6,count:1,notes:"Ugly too",photo:null},
-    {id:16,date:"2026-03-16",crop:"strawberry",variety:"Festival",bed:"Oval",weight:16,count:2,notes:"",photo:null},
-    {id:17,date:"2026-03-18",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:3,notes:"",photo:null},
-    {id:18,date:"2026-03-20",crop:"strawberry",variety:"Festival",bed:"Oval",weight:8,count:1,notes:"",photo:null},
-    {id:19,date:"2026-03-21",crop:"strawberry",variety:"Festival",bed:"Oval",weight:5,count:2,notes:"",photo:null},
-    {id:20,date:"2026-03-21",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:3,count:2,notes:"",photo:null},
-    {id:21,date:"2026-03-21",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:150,count:1,notes:"",photo:null},
-    {id:22,date:"2026-03-22",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
-    {id:23,date:"2026-03-22",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:40,count:1,notes:"",photo:null},
-    {id:24,date:"2026-03-23",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
-    {id:25,date:"2026-03-24",crop:"strawberry",variety:"Festival",bed:"Oval",weight:42,count:6,notes:"",photo:null},
-    {id:26,date:"2026-03-24",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
-    {id:27,date:"2026-03-24",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:396,count:4,notes:"",photo:null},
-    {id:28,date:"2026-03-24",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:14,count:1,notes:"",photo:null},
-    {id:29,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:73,count:9,notes:"",photo:null},
-    {id:30,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:49,count:3,notes:"",photo:null},
-    {id:31,date:"2026-03-25",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:202,count:2,notes:"",photo:null},
-    {id:32,date:"2026-03-26",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:5,notes:"",photo:null},
-    {id:33,date:"2026-03-29",crop:"strawberry",variety:"Festival",bed:"Oval",weight:110,count:16,notes:"",photo:null},
-    {id:34,date:"2026-03-29",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
-    {id:35,date:"2026-03-29",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:46,count:1,notes:"",photo:null},
-    {id:36,date:"2026-03-30",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:4,notes:"",photo:null},
-    {id:37,date:"2026-03-30",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:96,count:2,notes:"",photo:null},
-    {id:38,date:"2026-03-30",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:23,count:3,notes:"",photo:null},
-    {id:39,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:41,count:3,notes:"",photo:null},
-    {id:40,date:"2026-03-31",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:4,notes:"",photo:null},
-    {id:41,date:"2026-03-31",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:62,count:1,notes:"",photo:null},
-    {id:42,date:"2026-03-31",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:24,count:4,notes:"",photo:null},
-    {id:43,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:20,count:3,notes:"",photo:null},
-    {id:44,date:"2026-04-01",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:6,notes:"",photo:null},
-  ];
+  harvests = [];
   saveHarvests();
 }
 
 function seedCare() {
-  careLog = [
-    {id:Date.now(),date:"2026-04-01",type:"spray-spinosad",product:"Spinosad",plants:"All tomatoes",notes:"Broad mite treatment on Sungold and all other tomatoes",photo:null,nextDate:"2026-04-08"}
-  ];
+  careLog = [];
   saveCare();
 }
 
 function seedPlants() {
-  plantLog = [
-    {id:1,crop:"tomato",variety:"Sungold",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:2,crop:"tomato",variety:"Super Sweet 100",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:3,crop:"tomato",variety:"Lemon Boy",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:4,crop:"tomato",variety:"Early Girl",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:5,crop:"pepper",variety:"Shishito",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
-    {id:6,crop:"pepper",variety:"Serrano",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
-    {id:7,crop:"strawberry",variety:"Festival",bed:"Oval",count:25,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Oval bed"},
-    {id:8,crop:"strawberry",variety:"Festival",bed:"Square",count:20,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Square bed"},
-    {id:9,crop:"cucumber",variety:"Merlin",bed:"Tomato Bed",count:4,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
-    {id:10,crop:"cucumber",variety:"Beit Alpha",bed:"Tomato Bed",count:2,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:"First fruit April 1"},
-    {id:11,crop:"eggplant",variety:"Camo Camo",bed:"Tomato Bed",count:2,seedDate:"2026-01-20",transplantDate:"2026-02-25",status:"flowering",notes:""},
-    {id:12,crop:"dragon fruit",variety:"Palora",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"flowering",notes:"Bloomed April 1 — self + red pollen applied"},
-    {id:13,crop:"dragon fruit",variety:"Haley's Comet",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:14,crop:"dragon fruit",variety:"Pink Noid",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:15,crop:"mango",variety:"Carrie",bed:"Container",count:1,seedDate:"",transplantDate:"2023-01-01",status:"flowering",notes:"31 panicles — hand pollination underway"},
-    {id:16,crop:"blackberry",variety:"Prime Ark Freedom",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:"~2 weeks from first ripe"},
-    {id:17,crop:"blueberry",variety:"Alapaha",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:""},
-    {id:18,crop:"blueberry",variety:"Ochlockonee",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
-    {id:19,crop:"blueberry",variety:"Legacy",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
-  ];
+  plantLog = [];
   savePlants();
 }
 
@@ -1091,20 +1024,13 @@ let selectedBedId = null;
 let selectedBedColor = "#1e3a10";
 let dragState = null;
 
-function saveBeds() { try { localStorage.setItem("gl-beds", JSON.stringify(beds)); } catch(e){} }
+function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
 function loadBeds() {
   try {
-    const b = localStorage.getItem("gl-beds");
+    const b = localStorage.getItem("gl-demo-beds");
     if (b) { beds = JSON.parse(b); return; }
   } catch(e){}
-  // Default beds seeded from your garden
-  beds = [
-    {id:"oval", name:"Oval Stock Tank", w:4, l:4, shape:"oval", color:"#1e3a10", x:10, y:10, notes:"Strawberries + onions"},
-    {id:"square", name:"Square Raised Bed", w:4, l:4, shape:"rect", color:"#1a3a1a", x:140, y:10, notes:"Strawberries"},
-    {id:"tomato", name:"Tomato Bed", w:8, l:3, shape:"rect", color:"#3a1a1a", x:10, y:140, notes:"Tomatoes, cucumbers, eggplant"},
-    {id:"green", name:"Green Bed", w:6, l:3, shape:"rect", color:"#1a2a3a", x:10, y:250, notes:"Peppers, watermelon radish"},
-    {id:"container", name:"Containers", w:3, l:6, shape:"container", color:"#2a1a3a", x:200, y:130, notes:"Dragon fruit, mango, blueberries, potatoes"},
-  ];
+  beds = [];
   saveBeds();
 }
 
@@ -1190,16 +1116,23 @@ function renderMap() {
   // Scale: 1 ft = ~18px
   const SCALE = 18;
 
+  canvas.style.width  = Math.round(700 * mapZoom) + "px";
+  canvas.style.height = Math.round(600 * mapZoom) + "px";
   canvas.innerHTML = beds.map(b => {
     const pw = Math.max(60, b.w * SCALE), ph = Math.max(44, b.l * SCALE);
     const plants = (bedPlants[b.name]||[]).slice(0,5).map(p=>EMOJI[p.crop]||"🌱").join("");
     const total = bedHarvestTotals[b.name]||0;
     const isOval = b.shape==="oval"||b.shape==="container";
     const br = isOval ? "50%" : b.shape==="container"?"10px":"6px";
+    const zx = Math.round(b.x * mapZoom);
+    const zy = Math.round(b.y * mapZoom);
+    const zpw = Math.round(pw * mapZoom);
+    const zph = Math.round(ph * mapZoom);
+    const zfs = Math.round(9 * mapZoom);
     return `<div class="map-bed ${selectedBedId===b.id?'selected':''}"
       id="mapbed-${b.id}"
       data-id="${b.id}"
-      style="left:${b.x}px;top:${b.y}px;width:${pw}px;height:${ph}px;background:${b.color};border-radius:${br}"
+      style="left:${zx}px;top:${zy}px;width:${zpw}px;height:${zph}px;background:${b.color};border-radius:${br};font-size:${zfs}px"
       ontouchstart="startDrag(event,'${b.id}')"
       onmousedown="startDrag(event,'${b.id}')"
       onclick="selectMapBed('${b.id}')">
@@ -1313,21 +1246,25 @@ function setupDrag(canvas) {
     e.preventDefault();
     const pt = e.touches ? e.touches[0] : e;
     const rect = canvas.getBoundingClientRect();
-    const el = dragState.el;
-    const nx = (pt.clientX - rect.left) / mapZoom - dragState.ox;
-    const ny = (pt.clientY - rect.top) / mapZoom - dragState.oy;
-    const maxX = 700 - el.clientWidth;
-    const maxY = 600 - el.clientHeight;
-    el.style.left = Math.max(0,Math.min(nx,maxX))+"px";
-    el.style.top = Math.max(0,Math.min(ny,maxY))+"px";
-    if (Math.abs(nx - dragState.startX) > 5 || Math.abs(ny - dragState.startY) > 5) dragState.moved = true;
+    // All math in logical (unzoomed) coordinates
+    const logicalX = (pt.clientX - rect.left) / mapZoom;
+    const logicalY = (pt.clientY - rect.top)  / mapZoom;
+    const SCALE = 18;
+    const bed = beds.find(b => b.id === dragState.id);
+    const pw = Math.max(60, bed.w * SCALE);
+    const ph = Math.max(44, bed.l * SCALE);
+    const nx = Math.max(0, Math.min(700 - pw, logicalX - dragState.ox));
+    const ny = Math.max(0, Math.min(600 - ph, logicalY - dragState.oy));
+    // Update logical position in beds array immediately for smooth drag
+    beds = beds.map(b => b.id === dragState.id ? {...b, x: nx, y: ny} : b);
+    // Move the element visually
+    dragState.el.style.left = Math.round(nx * mapZoom) + "px";
+    dragState.el.style.top  = Math.round(ny * mapZoom) + "px";
+    if (Math.abs(nx - dragState.startX) > 3 || Math.abs(ny - dragState.startY) > 3) dragState.moved = true;
   };
   const onEnd = () => {
     if (!dragState) return;
     if (dragState.moved) {
-      const id = dragState.id;
-      const el = dragState.el;
-      beds = beds.map(b=>b.id===id?{...b,x:parseInt(el.style.left),y:parseInt(el.style.top)}:b);
       saveBeds();
     }
     dragState = null;
@@ -1341,32 +1278,50 @@ function setupDrag(canvas) {
 function startDrag(e, id) {
   const el = document.getElementById("mapbed-"+id);
   const canvas = document.getElementById("map-canvas");
-  const viewport = document.getElementById("map-viewport");
   const rect = canvas.getBoundingClientRect();
   const pt = e.touches ? e.touches[0] : e;
+  // Convert screen px to logical canvas px
+  const logicalX = (pt.clientX - rect.left) / mapZoom;
+  const logicalY = (pt.clientY - rect.top)  / mapZoom;
+  const bed = beds.find(b => b.id === id);
   dragState = {
     id, el, moved: false,
-    ox: pt.clientX - rect.left - parseInt(el.style.left),
-    oy: pt.clientY - rect.top - parseInt(el.style.top),
-    startX: parseInt(el.style.left),
-    startY: parseInt(el.style.top),
+    ox: logicalX - bed.x,
+    oy: logicalY - bed.y,
+    startX: bed.x,
+    startY: bed.y,
   };
   e.stopPropagation();
+  e.preventDefault();
 }
 
 let mapZoom = 1;
 function adjustZoom(delta) {
   mapZoom = Math.max(0.4, Math.min(2.0, mapZoom + delta));
-  const canvas = document.getElementById("map-canvas");
-  canvas.style.transform = `scale(${mapZoom})`;
-  canvas.style.transformOrigin = "top left";
-  canvas.style.width = (700 / mapZoom) + "px";
+  applyZoom();
 }
 function resetZoom() {
   mapZoom = 1;
+  applyZoom();
+}
+function applyZoom() {
   const canvas = document.getElementById("map-canvas");
-  canvas.style.transform = "";
-  canvas.style.width = "700px";
+  // Scale the canvas itself — beds keep their logical px positions
+  canvas.style.width = Math.round(700 * mapZoom) + "px";
+  canvas.style.height = Math.round(600 * mapZoom) + "px";
+  // Scale all beds
+  beds.forEach(b => {
+    const el = document.getElementById("mapbed-" + b.id);
+    if (!el) return;
+    const SCALE = 18;
+    const pw = Math.max(60, b.w * SCALE);
+    const ph = Math.max(44, b.l * SCALE);
+    el.style.left = Math.round(b.x * mapZoom) + "px";
+    el.style.top  = Math.round(b.y * mapZoom) + "px";
+    el.style.width  = Math.round(pw * mapZoom) + "px";
+    el.style.height = Math.round(ph * mapZoom) + "px";
+    el.style.fontSize = Math.round(9 * mapZoom) + "px";
+  });
 }
 
 function selectBed(id) { selectedBedId=selectedBedId===id?null:id; renderMap(); }
