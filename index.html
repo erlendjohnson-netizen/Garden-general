@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Garden Log">
 <meta name="theme-color" content="#1a1a12">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://api.open-meteo.com; img-src 'self' data: blob:;">
 <title>Garden Log</title>
 <style>
@@ -658,6 +660,122 @@
 </div>
 
 <!-- NAV -->
+<!-- ===== SETUP WIZARD ===== -->
+<div id="setup-overlay" style="display:none;position:fixed;inset:0;background:#faf8f3;z-index:500;overflow-y:auto;font-family:Georgia,serif">
+  <div style="max-width:480px;margin:0 auto;padding:40px 24px 80px">
+    <!-- Progress dots -->
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:32px" id="setup-dots"></div>
+
+    <!-- Steps -->
+    <div id="setup-step-0">
+      <div style="font-size:40px;text-align:center;margin-bottom:16px">🌱</div>
+      <h2 style="font-size:24px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Welcome to Garden Log</h2>
+      <p style="font-size:14px;color:#7a6e58;text-align:center;line-height:1.6;margin-bottom:32px">Let's set up your garden in just a few steps. You can always change these later.</p>
+      <button class="btn btn-primary btn-full" style="font-size:16px;padding:14px" onclick="nextSetupStep()">Get started →</button>
+    </div>
+
+    <div id="setup-step-1" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">👤</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:24px">What's your name?</h2>
+      <div class="field">
+        <label>Your name</label>
+        <input type="text" id="setup-name" placeholder="e.g. Erlend" style="font-size:16px">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-2" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">🏡</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:24px">What do you call your garden?</h2>
+      <div class="field">
+        <label>Garden name</label>
+        <input type="text" id="setup-garden-name" placeholder="e.g. Backyard Farm, River Ridge Garden" style="font-size:16px">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-3" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">📍</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Where is your garden?</h2>
+      <p style="font-size:13px;color:#7a6e58;text-align:center;margin-bottom:20px">Used for weather, satellite map, and planting calendar</p>
+      <div class="field">
+        <label>Address or city</label>
+        <input type="text" id="setup-address" placeholder="e.g. 123 Main St, New Orleans, LA" style="font-size:15px">
+      </div>
+      <button class="btn btn-secondary btn-full" style="margin-bottom:12px" onclick="detectSetupLocation()">📍 Use my current location</button>
+      <div id="setup-location-result" style="font-size:12px;color:#5a8a3a;text-align:center;min-height:18px"></div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-4" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">🌡</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Your USDA Hardiness Zone</h2>
+      <p style="font-size:13px;color:#7a6e58;text-align:center;margin-bottom:20px">This helps calibrate the planting calendar</p>
+      <div class="field">
+        <label>Zone (auto-detected or enter manually)</label>
+        <select id="setup-zone" style="font-size:15px">
+          <option value="">Select zone...</option>
+          <option value="5a">Zone 5a</option><option value="5b">Zone 5b</option>
+          <option value="6a">Zone 6a</option><option value="6b">Zone 6b</option>
+          <option value="7a">Zone 7a</option><option value="7b">Zone 7b</option>
+          <option value="8a">Zone 8a</option><option value="8b">Zone 8b</option>
+          <option value="9a">Zone 9a</option><option value="9b">Zone 9b</option>
+          <option value="10a">Zone 10a</option><option value="10b">Zone 10b</option>
+          <option value="11">Zone 11+</option>
+        </select>
+      </div>
+      <div id="setup-zone-hint" style="font-size:12px;color:#7a6e58;text-align:center;margin-top:6px"></div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-5" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">⚖️</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Preferred weight unit</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0">
+        <button class="setup-unit-btn" data-unit="g" onclick="selectSetupUnit(this)" style="padding:16px;border:2px solid var(--border2);border-radius:10px;background:#fff;font-size:18px;cursor:pointer;font-family:Georgia,serif">
+          <div style="font-size:24px">g</div>
+          <div style="font-size:12px;color:#7a6e58;margin-top:4px">Grams</div>
+        </button>
+        <button class="setup-unit-btn" data-unit="oz" onclick="selectSetupUnit(this)" style="padding:16px;border:2px solid var(--border2);border-radius:10px;background:#fff;font-size:18px;cursor:pointer;font-family:Georgia,serif">
+          <div style="font-size:24px">oz</div>
+          <div style="font-size:12px;color:#7a6e58;margin-top:4px">Ounces</div>
+        </button>
+        <button class="setup-unit-btn" data-unit="lb" onclick="selectSetupUnit(this)" style="padding:16px;border:2px solid var(--border2);border-radius:10px;background:#fff;font-size:18px;cursor:pointer;font-family:Georgia,serif">
+          <div style="font-size:24px">lb</div>
+          <div style="font-size:12px;color:#7a6e58;margin-top:4px">Pounds</div>
+        </button>
+        <button class="setup-unit-btn" data-unit="kg" onclick="selectSetupUnit(this)" style="padding:16px;border:2px solid var(--border2);border-radius:10px;background:#fff;font-size:18px;cursor:pointer;font-family:Georgia,serif">
+          <div style="font-size:24px">kg</div>
+          <div style="font-size:12px;color:#7a6e58;margin-top:4px">Kilograms</div>
+        </button>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-6" style="display:none">
+      <div style="font-size:40px;text-align:center;margin-bottom:16px">✅</div>
+      <h2 style="font-size:22px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">You're all set!</h2>
+      <div id="setup-summary" style="background:#f0ede4;border-radius:10px;padding:16px;margin:20px 0;font-size:13px;line-height:2;color:#5a5040"></div>
+      <button class="btn btn-primary btn-full" style="font-size:16px;padding:14px" onclick="finishSetup()">Start gardening 🌱</button>
+    </div>
+  </div>
+</div>
+
 <nav class="nav">
   <button class="nav-btn active" onclick="showView('dashboard',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -876,6 +994,7 @@ let photoData = { h: null, c: null, p: null };
 // ===================== STORAGE =====================
 async function loadData() {
   loadCropRegistry();
+  showSetupIfNeeded();
   try {
     const h = localStorage.getItem("gl-demo-harvests");
     const c = localStorage.getItem("gl-demo-care");
@@ -1270,6 +1389,75 @@ function confirmDelete() {
   closeDeleteModal(); toast("Deleted");
 }
 
+// ===================== SATELLITE MAP =====================
+let leafletMap = null;
+let mapTab = "satellite";
+let gardenAddress = localStorage.getItem("gl-demo-garden-address") || "";
+
+function setMapTab(t) {
+  mapTab = t;
+  document.getElementById("maptab-satellite").classList.toggle("active", t==="satellite");
+  document.getElementById("maptab-canvas").classList.toggle("active", t==="canvas");
+  document.getElementById("map-satellite-view").style.display = t==="satellite" ? "block" : "none";
+  document.getElementById("map-canvas-view").style.display = t==="canvas" ? "block" : "none";
+  if (t==="satellite") {
+    setTimeout(() => { if(leafletMap) leafletMap.invalidateSize(); }, 100);
+  }
+}
+
+function initLeafletMap(lat, lon, zoom) {
+  if (leafletMap) {
+    leafletMap.setView([lat, lon], zoom || 19);
+    return;
+  }
+  leafletMap = L.map("leaflet-map", { zoomControl: true, attributionControl: true }).setView([lat, lon], zoom || 19);
+  // Esri World Imagery - free satellite tiles, no API key
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Tiles © Esri — Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP", maxZoom: 21 }
+  ).addTo(leafletMap);
+  // OpenStreetMap labels overlay
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "", maxZoom: 21, opacity: 0.7 }
+  ).addTo(leafletMap);
+}
+
+async function searchMapAddress() {
+  const input = document.getElementById("map-address-input");
+  const addr = input.value.trim();
+  if (!addr) return;
+  try {
+    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(addr);
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const data = await res.json();
+    if (!data || !data.length) { toast("Address not found — try adding city/state"); return; }
+    const lat = parseFloat(data[0].lat);
+    const lon = parseFloat(data[0].lon);
+    localStorage.setItem("gl-demo-garden-address", addr);
+    localStorage.setItem("gl-demo-garden-lat", lat);
+    localStorage.setItem("gl-demo-garden-lon", lon);
+    gardenAddress = addr;
+    document.getElementById("map-location-sub").textContent = data[0].display_name.split(",").slice(0,3).join(",");
+    initLeafletMap(lat, lon, 19);
+    toast("✓ Location loaded!");
+  } catch(e) {
+    toast("Could not load map — check connection");
+  }
+}
+
+function loadSavedMapLocation() {
+  const lat = parseFloat(localStorage.getItem("gl-demo-garden-lat"));
+  const lon = parseFloat(localStorage.getItem("gl-demo-garden-lon"));
+  const addr = localStorage.getItem("gl-demo-garden-address") || "";
+  if (lat && lon) {
+    const addrInput = document.getElementById("map-address-input");
+    if (addrInput && !addrInput.value && addr) addrInput.value = addr;
+    if (addr) document.getElementById("map-location-sub").textContent = addr;
+    initLeafletMap(lat, lon, 19);
+  }
+}
+
 // ===================== GARDEN MAP =====================
 let beds = [];
 let selectedBedId = null;
@@ -1359,6 +1547,7 @@ function rotateBed(id) {
 
 function renderMap() {
   loadBedsIfNeeded();
+  if (mapTab === "satellite") setTimeout(loadSavedMapLocation, 100);
   const canvas = document.getElementById("map-canvas");
   const bedHarvestTotals = {};
   const bedPlants = {};
@@ -1904,6 +2093,125 @@ function renderCare() {
     </div>`).join("");
 }
 
+// ===================== SETUP WIZARD =====================
+let setupStep = 0;
+const SETUP_STEPS = 7;
+let setupData = { name:"", gardenName:"", address:"", lat:null, lon:null, zone:"", unit:"g" };
+
+function showSetupIfNeeded() {
+  const done = localStorage.getItem("gl-demo-setup-done");
+  if (!done) {
+    document.getElementById("setup-overlay").style.display = "block";
+    renderSetupDots();
+    showSetupStep(0);
+  }
+}
+
+function renderSetupDots() {
+  const el = document.getElementById("setup-dots");
+  el.innerHTML = Array.from({length:SETUP_STEPS-1},(_,i)=>
+    `<div style="width:8px;height:8px;border-radius:50%;background:${i<setupStep?"#4a7a32":i===setupStep?"#4a7a32":"#ddd8cc"}"></div>`
+  ).join("");
+}
+
+function showSetupStep(n) {
+  setupStep = n;
+  for(let i=0;i<SETUP_STEPS;i++) {
+    const el = document.getElementById("setup-step-"+i);
+    if(el) el.style.display = i===n?"block":"none";
+  }
+  renderSetupDots();
+  if(n===6) renderSetupSummary();
+}
+
+function nextSetupStep() {
+  // Collect data from current step
+  if(setupStep===1) setupData.name = document.getElementById("setup-name").value.trim();
+  if(setupStep===2) setupData.gardenName = document.getElementById("setup-garden-name").value.trim();
+  if(setupStep===3) setupData.address = document.getElementById("setup-address").value.trim();
+  if(setupStep===4) setupData.zone = document.getElementById("setup-zone").value;
+  showSetupStep(Math.min(setupStep+1, SETUP_STEPS-1));
+}
+
+function prevSetupStep() { showSetupStep(Math.max(0, setupStep-1)); }
+
+function selectSetupUnit(btn) {
+  document.querySelectorAll(".setup-unit-btn").forEach(b=>{
+    b.style.borderColor = "var(--border2)";
+    b.style.background = "#fff";
+  });
+  btn.style.borderColor = "#4a7a32";
+  btn.style.background = "#e8f0df";
+  setupData.unit = btn.dataset.unit;
+}
+
+async function detectSetupLocation() {
+  const el = document.getElementById("setup-location-result");
+  el.textContent = "Detecting...";
+  try {
+    const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+    setupData.lat = pos.coords.latitude;
+    setupData.lon = pos.coords.longitude;
+    const name = await reverseGeocode(setupData.lat, setupData.lon);
+    setupData.address = name;
+    document.getElementById("setup-address").value = name;
+    const zone = getHardinessZone(setupData.lat, setupData.lon);
+    el.textContent = "✓ " + name;
+    // Pre-fill zone on next step
+    setTimeout(()=>{
+      const zsel = document.getElementById("setup-zone");
+      const zkey = zone.split("-")[0];
+      for(let i=0;i<zsel.options.length;i++){
+        if(zsel.options[i].value===zkey){zsel.selectedIndex=i;break;}
+      }
+      document.getElementById("setup-zone-hint").textContent = "Auto-detected: Zone "+zone;
+    }, 300);
+  } catch(e) {
+    el.textContent = "Could not detect location — enter manually above";
+  }
+}
+
+function renderSetupSummary() {
+  const el = document.getElementById("setup-summary");
+  const u = setupData.unit||"g";
+  el.innerHTML = `
+    <div>👤 <b>${setupData.name||"Gardener"}</b></div>
+    <div>🏡 <b>${setupData.gardenName||"My Garden"}</b></div>
+    <div>📍 <b>${setupData.address||"Location not set"}</b></div>
+    <div>🌡 <b>Zone ${setupData.zone||"not set"}</b></div>
+    <div>⚖️ <b>${u}</b></div>
+  `;
+}
+
+function finishSetup() {
+  // Save all setup data
+  const gardenName = setupData.gardenName || "My Garden";
+  const name = setupData.name || "Gardener";
+  const unit = setupData.unit || "g";
+  localStorage.setItem("gl-demo-setup-done", "1");
+  localStorage.setItem("gl-demo-garden-name", gardenName);
+  localStorage.setItem("gl-demo-user-name", name);
+  localStorage.setItem("gl-demo-unit", unit);
+  localStorage.setItem("gl-demo-setup-zone", setupData.zone||"");
+  if(setupData.address) localStorage.setItem("gl-demo-garden-address", setupData.address);
+  if(setupData.lat) { localStorage.setItem("gl-demo-garden-lat", setupData.lat); localStorage.setItem("gl-demo-garden-lon", setupData.lon); }
+  // Apply settings
+  displayUnit = unit;
+  // Update UI
+  document.getElementById("setup-overlay").style.display = "none";
+  // Update header with garden name
+  const headerTitle = document.querySelector("#view-dashboard .header-title");
+  if(headerTitle) headerTitle.textContent = "🌱 "+gardenName;
+  const headerSub = document.querySelector("#view-dashboard .header-sub");
+  if(headerSub) headerSub.textContent = name+"'s Garden · "+new Date().getFullYear()+" Season";
+  // Update unit buttons
+  document.querySelectorAll(".unit-selector button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.unit===unit);
+  });
+  renderAll();
+  toast("Welcome, "+name+"! 🌱");
+}
+
 // ===================== INIT =====================
 // ── CROP MANAGER ──
 function openCropModal() {
@@ -2082,18 +2390,28 @@ async function loadWeather() {
   const el = document.getElementById("weather-content");
   if (!el) return;
   if (!WEATHER_LAT) {
-    el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Getting your location...</div>';
-    try {
-      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000}));
-      WEATHER_LAT = pos.coords.latitude; WEATHER_LON = pos.coords.longitude;
-      const locationName = await reverseGeocode(WEATHER_LAT, WEATHER_LON);
+    const savedLat = parseFloat(localStorage.getItem("gl-demo-garden-lat"));
+    const savedLon = parseFloat(localStorage.getItem("gl-demo-garden-lon"));
+    if (savedLat && savedLon) {
+      WEATHER_LAT = savedLat; WEATHER_LON = savedLon;
+      const savedAddr = localStorage.getItem("gl-demo-garden-address") || "";
       const zone = getHardinessZone(WEATHER_LAT, WEATHER_LON);
       const locationEl = document.getElementById("weather-location-label");
-      if (locationEl) locationEl.textContent = locationName + " · Zone " + zone;
-      const headerSub = document.querySelector("#view-weather .header-sub");
-      if (headerSub) headerSub.textContent = locationName + " · USDA Zone " + zone;
-    } catch(e) {
-      el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>'; return;
+      if (locationEl) locationEl.textContent = (savedAddr||WEATHER_LAT.toFixed(2)+", "+WEATHER_LON.toFixed(2)) + " · Zone " + zone;
+    } else {
+      el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Getting your location...</div>';
+      try {
+        const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000}));
+        WEATHER_LAT = pos.coords.latitude; WEATHER_LON = pos.coords.longitude;
+        const locationName = await reverseGeocode(WEATHER_LAT, WEATHER_LON);
+        const zone = getHardinessZone(WEATHER_LAT, WEATHER_LON);
+        const locationEl = document.getElementById("weather-location-label");
+        if (locationEl) locationEl.textContent = locationName + " · Zone " + zone;
+        const headerSub = document.querySelector("#view-weather .header-sub");
+        if (headerSub) headerSub.textContent = locationName + " · USDA Zone " + zone;
+      } catch(e) {
+        el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>'; return;
+      }
     }
   }
   el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
