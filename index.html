@@ -265,27 +265,15 @@
       <button class="type-tab" onclick="setAddType('care')">💧 Care</button>
       <button class="type-tab" onclick="setAddType('plant')">🌱 Plant</button>
     </div>
+    <div style="text-align:right;margin-bottom:8px">
+      <button onclick="openCropModal()" style="background:none;border:none;color:var(--muted2);font-size:12px;cursor:pointer;text-decoration:underline">✏️ Edit crops & varieties</button>
+    </div>
 
     <!-- HARVEST FORM -->
     <div id="form-harvest">
       <div class="field"><label>Date</label><input type="date" id="h-date"></div>
       <div class="field"><label>Crop</label>
-        <select id="h-crop" onchange="updateVarieties()">
-          <option value="strawberry">🍓 Strawberry</option>
-          <option value="pepper">🌶️ Pepper</option>
-          <option value="raddish">🌿 Radish</option>
-          <option value="cucumber">🥒 Cucumber</option>
-          <option value="tomato">🍅 Tomato</option>
-          <option value="eggplant">🍆 Eggplant</option>
-          <option value="blackberry">🫐 Blackberry</option>
-          <option value="blueberry">🫐 Blueberry</option>
-          <option value="fig">🌿 Fig</option>
-          <option value="mango">🥭 Mango</option>
-          <option value="dragon fruit">🐉 Dragon Fruit</option>
-          <option value="passionfruit">🌺 Passionfruit</option>
-          <option value="long bean">🌿 Long Bean</option>
-          <option value="other">🌱 Other</option>
-        </select>
+        <select id="h-crop" onchange="updateVarieties()"></select>
       </div>
       <div class="field"><label>Variety</label><select id="h-variety"></select></div>
       <div class="field"><label>Bed / Location</label>
@@ -344,22 +332,7 @@
     <!-- PLANT LOG FORM -->
     <div id="form-plant" style="display:none">
       <div class="field"><label>Crop</label>
-        <select id="p-crop" onchange="updatePlantVarieties()">
-          <option value="strawberry">🍓 Strawberry</option>
-          <option value="pepper">🌶️ Pepper</option>
-          <option value="raddish">🌿 Radish</option>
-          <option value="cucumber">🥒 Cucumber</option>
-          <option value="tomato">🍅 Tomato</option>
-          <option value="eggplant">🍆 Eggplant</option>
-          <option value="blackberry">🫐 Blackberry</option>
-          <option value="blueberry">🫐 Blueberry</option>
-          <option value="fig">🌿 Fig</option>
-          <option value="mango">🥭 Mango</option>
-          <option value="dragon fruit">🐉 Dragon Fruit</option>
-          <option value="passionfruit">🌺 Passionfruit</option>
-          <option value="long bean">🌿 Long Bean</option>
-          <option value="other">🌱 Other</option>
-        </select>
+        <select id="p-crop" onchange="updatePlantVarieties()"></select>
       </div>
       <div class="field"><label>Variety</label><select id="p-variety"></select></div>
       <div class="field"><label>Bed / Location</label>
@@ -541,6 +514,46 @@
   </div>
 </div>
 
+<!-- CROP MANAGER MODAL -->
+<div class="modal-bg" id="crop-modal">
+  <div class="modal" style="max-height:88vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="modal-title" style="margin-bottom:0">Crop Manager</div>
+      <button onclick="closeCropModal()" style="background:none;border:none;color:var(--muted2);font-size:22px;cursor:pointer">×</button>
+    </div>
+
+    <!-- Add new crop -->
+    <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Add new crop</div>
+      <div class="field-row" style="margin-bottom:8px">
+        <div class="field" style="flex:0 0 52px;margin-bottom:0"><label>Emoji</label><input type="text" id="new-crop-emoji" placeholder="🌱" style="text-align:center;font-size:18px"></div>
+        <div class="field" style="margin-bottom:0"><label>Crop name</label><input type="text" id="new-crop-name" placeholder="e.g. Okra"></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="addNewCrop()" style="font-size:13px;padding:9px">+ Add Crop</button>
+    </div>
+
+    <!-- Crop list -->
+    <div id="crop-manager-list"></div>
+  </div>
+</div>
+
+<!-- VARIETY EDIT MODAL -->
+<div class="modal-bg" id="variety-modal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div class="modal-title" id="variety-modal-title" style="margin-bottom:0">Edit Varieties</div>
+      <button onclick="closeVarietyModal()" style="background:none;border:none;color:var(--muted2);font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div class="modal-sub" id="variety-modal-sub">Add or remove varieties</div>
+    <div id="variety-list" style="max-height:300px;overflow-y:auto;margin-bottom:12px"></div>
+    <div class="field-row">
+      <input type="text" id="new-variety-input" placeholder="New variety name..." style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:Georgia,serif">
+      <button class="btn btn-primary" onclick="addVariety()" style="padding:10px 14px">Add</button>
+    </div>
+    <input type="hidden" id="variety-crop-key">
+  </div>
+</div>
+
 <!-- DELETE MODAL -->
 <div class="modal-bg" id="delete-modal">
   <div class="modal">
@@ -587,25 +600,125 @@
 
 <script>
 // ===================== DATA =====================
-const VARIETIES = {
-  strawberry:["Festival"],
-  pepper:["Shishito","Serrano","Scotch Bonnet","Thai","Aji Chincha","Fatali","Habanero","Jalapeño","Banana"],
-  raddish:["French B","Watermelon"],
-  cucumber:["Merlin","Beit Alpha"],
-  tomato:["Sungold","Super Sweet 100","Barry's Crazy Cherry","Shelby","Early Girl","Hossinator","Redsnapper","Mushroom Basket","Lemon Boy","Norfolk Purple"],
-  eggplant:["Camo Camo"],
-  blackberry:["Prime Ark Freedom"],
-  blueberry:["Alapaha","Ochlockonee","Legacy"],
-  fig:["LSU Purple","Celeste","LSU Tiger"],
-  mango:["Carrie"],
-  "dragon fruit":["Haley's Comet","Palora","Pink Noid"],
-  passionfruit:["Latino Mora"],
-  "long bean":["Long Bean"],
-  other:["Other"]
-};
+// ── DEFAULT CROP DATABASE ──
+const DEFAULT_CROPS = [
+  // Fruiting vegetables
+  { key:"tomato",      label:"Tomato",       emoji:"🍅", color:"#e74c3c",
+    varieties:["Sungold","Super Sweet 100","Barry's Crazy Cherry","Shelby","Early Girl","Hossinator","Redsnapper","Mushroom Basket","Lemon Boy","Norfolk Purple","Cherokee Purple","Black Krim","Brandywine","Roma","San Marzano","Celebrity","Better Boy","Mortgage Lifter","Green Zebra","Pink Berkeley Tie Dye"] },
+  { key:"pepper",      label:"Pepper",       emoji:"🌶️", color:"#e8a020",
+    varieties:["Shishito","Serrano","Scotch Bonnet","Thai","Aji Chincha","Fatali","Habanero","Jalapeño","Banana","Bell","Cayenne","Anaheim","Poblano","Ghost","Carolina Reaper","Cubanelle","Pimento","Padron","Lemon Drop","Aji Amarillo"] },
+  { key:"eggplant",    label:"Eggplant",     emoji:"🍆", color:"#6c3483",
+    varieties:["Camo Camo","Black Beauty","Ichiban","Rosa Bianca","Ping Tung Long","Fairy Tale","Calliope","Orient Express","Listada de Gandia","White"] },
+  { key:"cucumber",    label:"Cucumber",     emoji:"🥒", color:"#27ae60",
+    varieties:["Merlin","Beit Alpha","Marketmore","Straight Eight","Spacemaster","Muncher","Lemon","Armenian","English","Persian","Calypso","Bush Pickle"] },
+  { key:"okra",        label:"Okra",         emoji:"🌿", color:"#5a8a2a",
+    varieties:["Clemson Spineless","Emerald","Burgundy","Cajun Delight","Annie Oakley","Silver Queen","Jambalaya","Louisiana Green Velvet","Stewart's Zeebest","Hill Country Red"] },
+  { key:"squash",      label:"Squash",       emoji:"🎃", color:"#e8780a",
+    varieties:["Yellow Crookneck","Pattypan","Zucchini","Butternut","Acorn","Spaghetti","Delicata","Hubbard","Black Beauty Zucchini","Costata Romanesco"] },
+  { key:"corn",        label:"Corn",         emoji:"🌽", color:"#f1c40f",
+    varieties:["Silver Queen","Peaches & Cream","Honey Select","Incredible","Kandy Korn","Country Gentleman","Golden Bantam","Blue Hopi","Glass Gem","Stowell's Evergreen"] },
+  { key:"watermelon",  label:"Watermelon",   emoji:"🍉", color:"#e8436a",
+    varieties:["Sugar Baby","Crimson Sweet","Jubilee","Charleston Grey","Moon & Stars","Orangeglo","Yellow Doll","Kleckley Sweet","Black Diamond","Picnic"] },
+  { key:"cantaloupe",  label:"Cantaloupe",   emoji:"🍈", color:"#e8b86d",
+    varieties:["Hale's Best","Ambrosia","Honey Rock","Athena","Edisto 47","Crenshaw","Collective Farm Woman","Banana","Sweet Granite"] },
+  { key:"beans",       label:"Beans",        emoji:"🫘", color:"#4a7a2a",
+    varieties:["Blue Lake","Kentucky Wonder","Provider","Purple Hull","Rattlesnake","Yard Long","Contender","Roma II","Dragon Tongue","Scarlet Runner"] },
+  { key:"long bean",   label:"Long Bean",    emoji:"🌿", color:"#1e8449",
+    varieties:["Long Bean","Red Noodle","White Seeded","Green Podded"] },
+  // Root vegetables
+  { key:"raddish",     label:"Radish",       emoji:"🌿", color:"#9b59b6",
+    varieties:["French B","Watermelon","Cherry Belle","Easter Egg","Daikon","Black Spanish","China Rose","Purple Plum","White Icicle","Champion"] },
+  { key:"sweet potato",label:"Sweet Potato", emoji:"🍠", color:"#c0612a",
+    varieties:["Beauregard","Jewel","Covington","Hernandez","O'Henry","Purple","Japanese","Garnet","Vardaman","Porto Rico"] },
+  { key:"potato",      label:"Potato",       emoji:"🥔", color:"#8a7a4a",
+    varieties:["Red Pontiac","Yukon Gold","Kennebec","Russet Burbank","Purple Majesty","Fingerling","German Butterball","Adirondack Blue","All Blue","Norland"] },
+  { key:"carrot",      label:"Carrot",       emoji:"🥕", color:"#e8720a",
+    varieties:["Danvers","Nantes","Chantenay","Imperator","Rainbow","Cosmic Purple","Atomic Red","Solar Yellow","Scarlet Nantes","Bolero"] },
+  { key:"onion",       label:"Onion",        emoji:"🧅", color:"#c8a040",
+    varieties:["Yellow Granex","Texas 1015","White Lisbon","Red Burgundy","Walla Walla","Candy","Sweet Spanish","Evergreen Bunching","Egyptian Walking","Cipollini"] },
+  { key:"garlic",      label:"Garlic",       emoji:"🧄", color:"#c8c0a0",
+    varieties:["Softneck","Hardneck","Elephant","Creole","German Red","Music","Chesnok Red","Purple Stripe","Porcelain","Artichoke"] },
+  // Brassicas
+  { key:"lettuce",     label:"Lettuce",      emoji:"🥬", color:"#5aba6a",
+    varieties:["Black Seeded Simpson","Buttercrunch","Romaine","Red Sails","Oakleaf","Mesclun Mix","Arugula","Looseleaf","Batavian","Little Gem"] },
+  { key:"kale",        label:"Kale",         emoji:"🥬", color:"#2a7a4a",
+    varieties:["Lacinato/Dinosaur","Curly Scotch","Red Russian","Winterbor","Redbor","Siberian","Premier","Dwarf Blue Curled","Rainbow Lacinato"] },
+  // Herbs
+  { key:"basil",       label:"Basil",        emoji:"🌿", color:"#3a8a3a",
+    varieties:["Genovese","Thai","Holy","Lemon","Purple Ruffles","Spicy Globe","Cinnamon","Lime","African Blue","Napoletano"] },
+  { key:"mint",        label:"Mint",         emoji:"🌿", color:"#4aba8a",
+    varieties:["Spearmint","Peppermint","Chocolate","Apple","Mojito","Corsican","Pennyroyal","Ginger","Watermint","Lemon"] },
+  { key:"thyme",       label:"Thyme",        emoji:"🌿", color:"#6a9a5a",
+    varieties:["Common/French","Lemon","Creeping","English","Orange","Caraway","Woolly","Silver","Mother of Thyme"] },
+  { key:"oregano",     label:"Oregano",      emoji:"🌿", color:"#7a8a3a",
+    varieties:["Italian","Greek","Mexican","Cuban","Hot & Spicy","Compact","Aureum","Syrian","Za'atar"] },
+  { key:"rosemary",    label:"Rosemary",     emoji:"🌿", color:"#4a6a8a",
+    varieties:["Tuscan Blue","Arp","Salem","Spice Islands","Prostrate","Hill Hardy","Blue Boy","Miss Jessup's Upright"] },
+  { key:"sage",        label:"Sage",         emoji:"🌿", color:"#8a9a6a",
+    varieties:["Common","Purple","Tricolor","Golden","Berggarten","Pineapple","Clary","Mexican","Variegated"] },
+  { key:"cilantro",    label:"Cilantro",     emoji:"🌿", color:"#5a9a5a",
+    varieties:["Santo","Calypso","Slow Bolt","Leisure","Vietnamese","Moroccan","Chinese","Delfino"] },
+  { key:"dill",        label:"Dill",         emoji:"🌿", color:"#8ab05a",
+    varieties:["Bouquet","Fernleaf","Mammoth","Dukat","Long Island","Hera","Ella","Superdukat"] },
+  { key:"parsley",     label:"Parsley",      emoji:"🌿", color:"#4a8a4a",
+    varieties:["Curly","Italian Flat Leaf","Hamburg","Japanese","Moss Curled","Giant Italian","Dark Green Italian"] },
+  { key:"chives",      label:"Chives",       emoji:"🌿", color:"#5a9a6a",
+    varieties:["Common","Garlic","Giant Siberian","Staro","Fine Leaf"] },
+  { key:"lemongrass",  label:"Lemongrass",   emoji:"🌿", color:"#9ab05a",
+    varieties:["East Indian","West Indian","Citronella","Palmarosa"] },
+  // Fruits
+  { key:"strawberry",  label:"Strawberry",   emoji:"🍓", color:"#e85d75",
+    varieties:["Festival","Chandler","Camarosa","Seascape","Albion","Portola","San Andreas","Sweet Charlie","Earliglow","Honeoye","Ozark Beauty","Quinault"] },
+  { key:"blackberry",  label:"Blackberry",   emoji:"🫐", color:"#4a235a",
+    varieties:["Prime Ark Freedom","Natchez","Ouachita","Arapaho","Kiowa","Triple Crown","Chester","Apache","Osage","Von"] },
+  { key:"blueberry",   label:"Blueberry",    emoji:"🫐", color:"#2471a3",
+    varieties:["Alapaha","Ochlockonee","Legacy","Rabbiteye","Climax","Premier","Brightwell","Tifblue","Powderblue","O'Neal","Sunshine Blue","Misty"] },
+  { key:"fig",         label:"Fig",          emoji:"🌿", color:"#7d6608",
+    varieties:["LSU Purple","Celeste","LSU Tiger","Brown Turkey","Black Mission","Kadota","Alma","Marseilles","O'Rourke","Violette de Bordeaux"] },
+  { key:"mango",       label:"Mango",        emoji:"🥭", color:"#f39c12",
+    varieties:["Carrie","Cogshall","Glenn","Lancetilla","Nam Doc Mai","Pickering","Fairchild","Haden","Kent","Tommy Atkins","Keitt","Valencia Pride"] },
+  { key:"dragon fruit",label:"Dragon Fruit", emoji:"🐉", color:"#e91e63",
+    varieties:["Haley's Comet","Palora","Pink Noid","American Beauty","Delight","Physical Graffiti","Seoul Kitchen","Vietnam White","Yellow Dragon","Voodoo Child"] },
+  { key:"passionfruit",label:"Passionfruit", emoji:"🌺", color:"#8e44ad",
+    varieties:["Latino Mora","Frederick","Possum Purple","Incense","Maypop","Yellow Giant","Sweet Granadilla","Panama Gold"] },
+  { key:"citrus",      label:"Citrus",       emoji:"🍊", color:"#e8820a",
+    varieties:["Owari Satsuma","Cara Cara Navel","Meyer Lemon","Persian Lime","Clementine","Blood Orange","Hamlin","Valencia","Calamondin","Kumquat"] },
+  { key:"peach",       label:"Peach",        emoji:"🍑", color:"#e8a07a",
+    varieties:["Florida King","Tropic Beauty","Tropic Sweet","Gulf King","UF Gold","Flordacrest","Bonanza","Redhaven","Reliance"] },
+  // Trees
+  { key:"avocado",     label:"Avocado",      emoji:"🥑", color:"#3a6a2a",
+    varieties:["Mexicola","Brogdon","Monroe","Choquette","Donnie","Gainesville","Day","Russell","Lula","Simmonds"] },
+  // Other
+  { key:"sweet corn",  label:"Sweet Corn",   emoji:"🌽", color:"#e8c020", varieties:["Silver Queen","Peaches & Cream","Honey Select"] },
+  { key:"sunflower",   label:"Sunflower",    emoji:"🌻", color:"#f1c40f",
+    varieties:["Mammoth","Autumn Beauty","Teddy Bear","Italian White","Velvet Queen","Lemon Queen","Ring of Fire","Strawberry Blonde"] },
+  { key:"other",       label:"Other",        emoji:"🌱", color:"#7f8c8d", varieties:["Other","Custom"] },
+];
 
-const EMOJI = {strawberry:"🍓",pepper:"🌶️",raddish:"🌿",cucumber:"🥒",tomato:"🍅",eggplant:"🍆",blackberry:"🫐",blueberry:"🫐",fig:"🌿",mango:"🥭","dragon fruit":"🐉",passionfruit:"🌺","long bean":"🌿",other:"🌱"};
-const COLORS = {strawberry:"#e85d75",pepper:"#e8a020",raddish:"#9b59b6",cucumber:"#27ae60",tomato:"#e74c3c",eggplant:"#6c3483",blackberry:"#4a235a",blueberry:"#2471a3",fig:"#7d6608",mango:"#f39c12","dragon fruit":"#e91e63",passionfruit:"#8e44ad","long bean":"#1e8449",other:"#7f8c8d"};
+// ── CROP REGISTRY — loaded from storage or defaults ──
+let cropRegistry = [];
+
+function loadCropRegistry() {
+  try {
+    const saved = localStorage.getItem("gl-demo-crops");
+    if (saved) { cropRegistry = JSON.parse(saved); return; }
+  } catch(e) {}
+  cropRegistry = DEFAULT_CROPS.map(c => ({...c, varieties:[...c.varieties]}));
+  saveCropRegistry();
+}
+
+function saveCropRegistry() {
+  try { localStorage.setItem("gl-demo-crops", JSON.stringify(cropRegistry)); } catch(e) {}
+}
+
+function getCropKeys() { return cropRegistry.map(c=>c.key); }
+function getCropByKey(key) { return cropRegistry.find(c=>c.key===key) || {key,label:key,emoji:"🌱",color:"#7f8c8d",varieties:["Other"]}; }
+
+// Dynamic lookups replacing hardcoded VARIETIES/EMOJI/COLORS
+function getVarieties(key) { return getCropByKey(key).varieties || ["Other"]; }
+const VARIETIES = new Proxy({}, { get: (_,key) => getVarieties(key) });
+const EMOJI = new Proxy({}, { get: (_,key) => getCropByKey(key).emoji || "🌱" });
+const COLORS = new Proxy({}, { get: (_,key) => getCropByKey(key).color || "#7f8c8d" });
 
 // Zone 9a Louisiana calendar [seedStart, transplant, directSow, harvest] each = [startMonth, endMonth] 1-indexed, null if N/A
 const CAL_DATA = {
@@ -666,6 +779,7 @@ let photoData = { h: null, c: null, p: null };
 
 // ===================== STORAGE =====================
 async function loadData() {
+  loadCropRegistry();
   try {
     const h = localStorage.getItem("gl-demo-harvests");
     const c = localStorage.getItem("gl-demo-care");
@@ -837,7 +951,7 @@ function renderLog() {
   const crops = [...new Set(harvests.map(e=>e.crop))];
   const fr = document.getElementById("filter-row");
   fr.innerHTML = `<button class="chip ${filterCrop==='all'?'active':''}" onclick="setFilter('all')">All</button>`;
-  crops.forEach(c => { fr.innerHTML += `<button class="chip ${filterCrop===c?'active':''}" onclick="setFilter('${c}')">${EMOJI[c]||''} ${c}</button>`; });
+  crops.forEach(c => { const cd=getCropByKey(c); fr.innerHTML += `<button class="chip ${filterCrop===c?'active':''}" onclick="setFilter('${c}')">${cd.emoji||''} ${cd.label||c}</button>`; });
 
   const filtered = (filterCrop==="all"?harvests:harvests.filter(e=>e.crop===filterCrop))
     .slice().sort((a,b)=>b.date.localeCompare(a.date));
@@ -901,13 +1015,13 @@ function cancelAdd() { showView("log", document.querySelectorAll(".nav-btn")[1])
 function updateVarieties() {
   const crop = document.getElementById("h-crop").value;
   const sel = document.getElementById("h-variety");
-  sel.innerHTML = (VARIETIES[crop]||["Other"]).map(v=>`<option>${v}</option>`).join("");
+  if(sel) sel.innerHTML = getVarieties(crop).map(v=>`<option>${v}</option>`).join("");
 }
 
 function updatePlantVarieties() {
   const crop = document.getElementById("p-crop").value;
   const sel = document.getElementById("p-variety");
-  sel.innerHTML = (VARIETIES[crop]||["Other"]).map(v=>`<option>${v}</option>`).join("");
+  if(sel) sel.innerHTML = getVarieties(crop).map(v=>`<option>${v}</option>`).join("");
 }
 
 function updateCareTimer() {
@@ -1653,6 +1767,106 @@ function renderCare() {
 }
 
 // ===================== INIT =====================
+// ── CROP MANAGER ──
+function openCropModal() {
+  document.getElementById("crop-modal").classList.add("open");
+  renderCropManagerList();
+}
+function closeCropModal() { document.getElementById("crop-modal").classList.remove("open"); }
+
+function renderCropManagerList() {
+  const el = document.getElementById("crop-manager-list");
+  el.innerHTML = cropRegistry.map((c,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:20px;width:28px;text-align:center">${c.emoji}</span>
+      <div style="flex:1">
+        <div style="font-size:14px">${c.label}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.varieties.length} variet${c.varieties.length===1?"y":"ies"}</div>
+      </div>
+      <button onclick="openVarietyModal('${c.key}')" style="background:var(--bg3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted2);cursor:pointer;font-family:Georgia,serif">Varieties</button>
+      <button onclick="deleteCrop('${c.key}')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:4px">×</button>
+    </div>`).join("");
+}
+
+function addNewCrop() {
+  const emoji = document.getElementById("new-crop-emoji").value.trim() || "🌱";
+  const name = document.getElementById("new-crop-name").value.trim();
+  if (!name) { toast("Enter a crop name"); return; }
+  const key = name.toLowerCase().replace(/\s+/g,"-");
+  if (cropRegistry.find(c=>c.key===key)) { toast("Crop already exists"); return; }
+  cropRegistry.push({ key, label: name, emoji, color: "#7f8c8d", varieties: ["Other"] });
+  saveCropRegistry();
+  document.getElementById("new-crop-emoji").value = "";
+  document.getElementById("new-crop-name").value = "";
+  renderCropManagerList();
+  populateCropDropdowns();
+  toast("✓ "+name+" added!");
+}
+
+function deleteCrop(key) {
+  if (!confirm("Delete this crop and all its varieties?")) return;
+  cropRegistry = cropRegistry.filter(c=>c.key!==key);
+  saveCropRegistry();
+  renderCropManagerList();
+  populateCropDropdowns();
+  toast("Crop deleted");
+}
+
+// ── VARIETY MANAGER ──
+let editingVarietyCrop = null;
+function openVarietyModal(key) {
+  editingVarietyCrop = key;
+  const crop = getCropByKey(key);
+  document.getElementById("variety-modal-title").textContent = crop.emoji+" "+crop.label+" Varieties";
+  document.getElementById("variety-modal-sub").textContent = `${crop.varieties.length} varieties · tap × to remove`;
+  document.getElementById("variety-crop-key").value = key;
+  document.getElementById("new-variety-input").value = "";
+  renderVarietyList();
+  document.getElementById("variety-modal").classList.add("open");
+}
+function closeVarietyModal() { document.getElementById("variety-modal").classList.remove("open"); }
+
+function renderVarietyList() {
+  const crop = getCropByKey(editingVarietyCrop);
+  document.getElementById("variety-list").innerHTML = crop.varieties.map((v,i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${v}</span>
+      <button onclick="removeVariety(${i})" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:4px 6px">×</button>
+    </div>`).join("");
+}
+
+function addVariety() {
+  const val = document.getElementById("new-variety-input").value.trim();
+  if (!val) return;
+  const idx = cropRegistry.findIndex(c=>c.key===editingVarietyCrop);
+  if (idx<0) return;
+  if (cropRegistry[idx].varieties.includes(val)) { toast("Already exists"); return; }
+  cropRegistry[idx].varieties.push(val);
+  saveCropRegistry();
+  document.getElementById("new-variety-input").value = "";
+  renderVarietyList();
+  updateVarieties(); updatePlantVarieties();
+  toast("✓ "+val+" added!");
+}
+
+function removeVariety(varIdx) {
+  const idx = cropRegistry.findIndex(c=>c.key===editingVarietyCrop);
+  if (idx<0) return;
+  cropRegistry[idx].varieties.splice(varIdx,1);
+  saveCropRegistry();
+  renderVarietyList();
+  updateVarieties(); updatePlantVarieties();
+}
+
+// ── POPULATE CROP DROPDOWNS ──
+function populateCropDropdowns() {
+  const opts = cropRegistry.map(c=>`<option value="${c.key}">${c.emoji} ${c.label}</option>`).join("");
+  ["h-crop","p-crop"].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.innerHTML=opts;
+  });
+  updateVarieties(); updatePlantVarieties();
+}
+
 function populateBedDropdowns() {
   loadBedsIfNeeded();
   const opts = beds.map(b=>`<option value="${b.name}">${b.name}</option>`).join("")+"<option value='Other'>Other</option>";
@@ -1663,6 +1877,7 @@ function populateBedDropdowns() {
 }
 
 function renderAll() {
+  populateCropDropdowns();
   populateBedDropdowns();
   updateVarieties(); updatePlantVarieties(); updateCareTimer();
   document.getElementById("h-date").value = new Date().toISOString().split("T")[0];
