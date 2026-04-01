@@ -1,17 +1,1394 @@
-Two great additions. The rotate button is straightforward — I'll add it to the bed detail panel so you can flip width/height with one tap. For weather, I'll use the Open-Meteo API which is free and requires no API key — it just needs coordinates, so I'll hardcode River Ridge (lat 29.95, lon -90.22) in your version and let the blank version prompt for location.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Garden Log">
+<meta name="theme-color" content="#1a1a12">
+<title>Garden Log</title>
+<style>
+  :root {
+    --bg: #1a1a12; --bg2: #22221a; --bg3: #2a2a1e;
+    --border: #2e2e1e; --border2: #3a3a2a;
+    --text: #e8e0cc; --muted: #6b6b4a; --muted2: #a0a080;
+    --green: #c8d98a; --green2: #8fba6a; --green3: #2d4a1a;
+    --red: #e85d75; --orange: #e8a020; --blue: #4a9aba;
+    --purple: #9b59b6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: Georgia, serif; min-height: 100vh; max-width: 480px; margin: 0 auto; overflow-x: hidden; }
+  input, select, textarea, button { font-family: Georgia, serif; }
+  input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 
-Both updated. Here's what's new:
+  /* NAV */
+  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #0e0e08; border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  .nav-btn { flex: 1; padding: 10px 0 14px; background: none; border: none; color: var(--muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; }
+  .nav-btn.active { color: var(--green); }
+  .nav-btn svg { width: 20px; height: 20px; }
 
-**Rotate button:**
-Tap any bed on the map → in the detail panel you'll see **⟳ Rotate** alongside Edit and Delete. One tap swaps the width and length, flipping the bed orientation on the canvas. Position is preserved.
+  /* VIEWS */
+  .view { display: none; padding-bottom: 80px; }
+  .view.active { display: block; }
 
-**Weather tab (7th tab, cloud icon):**
-- Current conditions with temperature, sky state, wind, humidity, and rainfall
-- **Garden-specific alerts** auto-generated from the forecast — heat stress warnings at 95°F+, frost risk below 35°F, high humidity fungal warnings, wind alerts for staking, rain advisories for skipping irrigation
-- **7-day forecast** with rain amounts and colored alert dots per day
-- **Growing Degree Days** calculated across the 7-day window with context for your crops (tomatoes, cucumbers, peppers)
-- **Watering guidance** based on 3-day rain forecast
+  /* HEADER */
+  .header { padding: 20px 16px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+  .header-title { font-size: 20px; font-weight: normal; color: var(--green); letter-spacing: 1px; }
+  .header-sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 3px; }
 
-Your version is hardcoded to River Ridge (lat 29.95, lon -90.22) using the free Open-Meteo API — no API key needed, works immediately. The blank version asks for location permission from the browser instead.
+  /* CARDS */
+  .card { background: var(--bg2); border-radius: 12px; padding: 16px; margin: 10px 14px; border: 1px solid var(--border); }
+  .card-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
 
-Have a great Berlin trip — the spinosad timer will be waiting for you when you get back! 🇩🇪🌱
+  /* STATS */
+  .stat-row { display: flex; gap: 8px; margin: 10px 14px; }
+  .stat { flex: 1; background: var(--bg2); border-radius: 10px; padding: 12px 8px; border: 1px solid var(--border); text-align: center; }
+  .stat-val { font-size: 22px; color: var(--green); font-weight: bold; }
+  .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
+
+  /* SECTION TITLE */
+  .section-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; padding: 14px 16px 6px; }
+
+  /* INPUTS */
+  .field { margin-bottom: 14px; }
+  .field label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px 12px; color: var(--text); font-size: 15px; font-family: Georgia, serif;
+  }
+  .field textarea { min-height: 70px; resize: vertical; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--green2); }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+
+  /* BUTTONS */
+  .btn { border: none; border-radius: 8px; padding: 12px 18px; font-size: 14px; cursor: pointer; font-family: Georgia, serif; transition: opacity 0.15s; }
+  .btn:active { opacity: 0.75; }
+  .btn-primary { background: var(--green2); color: #0e0e08; font-weight: bold; }
+  .btn-secondary { background: var(--bg3); color: var(--muted2); }
+  .btn-danger { background: #4a1a20; color: var(--red); }
+  .btn-full { width: 100%; text-align: center; }
+  .btn-row { display: flex; gap: 10px; }
+
+  /* PILLS */
+  .pill { border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: bold; display: inline-block; }
+
+  /* ALERTS */
+  .alert { padding: 10px 14px; font-size: 12px; border-radius: 8px; margin: 8px 14px; }
+  .alert-success { background: var(--green3); color: var(--green2); border: 1px solid var(--green2)33; }
+  .alert-warn { background: #3a2a0a; color: var(--orange); border: 1px solid var(--orange)33; }
+  .alert-danger { background: #3a0a12; color: var(--red); border: 1px solid var(--red)33; }
+
+  /* ENTRY ROWS */
+  .entry-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-bottom: 1px solid #25251a; }
+  .entry-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+  .entry-body { flex: 1; min-width: 0; }
+  .entry-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .entry-name { font-size: 14px; }
+  .entry-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .entry-weight { font-size: 15px; color: var(--green); font-weight: bold; text-align: right; }
+  .entry-count { font-size: 11px; color: var(--muted); text-align: right; }
+  .entry-note { font-size: 12px; color: var(--muted2); margin-top: 4px; font-style: italic; }
+  .entry-photo { width: 100%; border-radius: 8px; margin-top: 8px; max-height: 180px; object-fit: cover; }
+  .entry-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .entry-actions button { background: var(--bg3); border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: var(--muted2); cursor: pointer; font-family: Georgia, serif; }
+  .entry-actions button.del { color: var(--red); }
+
+  /* FILTER CHIPS */
+  .filter-row { padding: 10px 14px; overflow-x: auto; display: flex; gap: 7px; scrollbar-width: none; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .chip { border: 1px solid var(--border2); border-radius: 20px; padding: 4px 12px; font-size: 12px; white-space: nowrap; background: var(--bg2); color: var(--muted2); cursor: pointer; font-family: Georgia, serif; }
+  .chip.active { border-color: var(--green); color: var(--green); background: #c8d98a11; }
+
+  /* CROP BARS */
+  .crop-bar-bg { height: 4px; border-radius: 2px; background: var(--border); margin-top: 5px; overflow: hidden; }
+  .crop-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+  .crop-row { margin-bottom: 14px; }
+  .crop-row-top { display: flex; justify-content: space-between; align-items: center; }
+
+  /* SPARKLINE */
+  .sparkline-wrap { overflow: hidden; }
+
+  /* TIMER CARDS */
+  .timer-card { background: var(--bg2); border-radius: 10px; padding: 13px 14px; margin-bottom: 10px; border-left: 3px solid var(--green2); }
+  .timer-card.warn { border-left-color: var(--orange); }
+  .timer-card.danger { border-left-color: var(--red); }
+  .timer-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .timer-name { font-size: 14px; }
+  .timer-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .timer-badge { font-size: 12px; font-weight: bold; border-radius: 6px; padding: 3px 8px; }
+  .timer-badge.ok { background: #2d4a1a; color: var(--green2); }
+  .timer-badge.warn { background: #3a2a0a; color: var(--orange); }
+  .timer-badge.danger { background: #3a0a12; color: var(--red); }
+
+  /* CALENDAR */
+  .cal-month { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; }
+  .cal-month-name { font-size: 16px; color: var(--green); }
+  .cal-month button { background: none; border: none; color: var(--muted2); font-size: 20px; cursor: pointer; padding: 4px 10px; }
+  .cal-today-box { background: var(--bg2); border-radius: 10px; margin: 0 14px 10px; padding: 12px 14px; border: 1px solid var(--border); }
+  .cal-today-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+  .cal-crop-timeline { margin-bottom: 8px; }
+  .cal-crop-label { font-size: 12px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .cal-bar-row { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--border); position: relative; width: 100%; }
+  .cal-segment { height: 100%; }
+  .cal-legend { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 14px; }
+  .cal-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
+  .cal-legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* GARDEN MAP */
+  .map-wrap { padding: 14px; }
+  .map-canvas { background: #141410; border-radius: 12px; border: 1px solid var(--border); padding: 16px; position: relative; min-height: 420px; }
+  .bed { position: absolute; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.15s; border: 2px solid transparent; }
+  .bed:active { transform: scale(0.96); }
+  .bed.selected { border-color: var(--green); }
+  .bed-label { font-size: 9px; color: var(--text); text-align: center; font-weight: bold; letter-spacing: 0.5px; line-height: 1.3; }
+  .bed-crops { font-size: 9px; color: var(--muted2); text-align: center; margin-top: 2px; }
+  .bed-detail { background: var(--bg2); border-radius: 10px; border: 1px solid var(--border); padding: 14px; margin-top: 14px; }
+  .bed-detail-title { font-size: 14px; color: var(--green); margin-bottom: 8px; }
+  .bed-stat-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .bed-stat { flex: 1; background: var(--bg3); border-radius: 8px; padding: 8px; text-align: center; }
+  .bed-stat-val { font-size: 16px; color: var(--green); font-weight: bold; }
+  .bed-stat-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+
+  /* PLANT LOG */
+  .plant-row { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid #25251a; }
+  .plant-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .plant-name { font-size: 14px; }
+  .plant-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .plant-status { font-size: 11px; padding: 2px 8px; border-radius: 12px; white-space: nowrap; }
+
+  /* MODAL */
+  .modal-bg { display: none; position: fixed; inset: 0; background: #000000bb; z-index: 200; align-items: center; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg2); border-radius: 16px; padding: 22px; margin: 20px; width: 100%; max-width: 440px; border: 1px solid var(--border2); }
+  .modal-title { font-size: 16px; color: var(--green); margin-bottom: 6px; }
+  .modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+
+  /* TOAST */
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--green3); color: var(--green2); border: 1px solid var(--green2)44; border-radius: 8px; padding: 10px 18px; font-size: 13px; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  /* ADD TYPE SELECTOR */
+  .type-tabs { display: flex; background: var(--bg3); border-radius: 10px; padding: 3px; margin-bottom: 18px; }
+  .type-tab { flex: 1; padding: 8px; text-align: center; font-size: 12px; border-radius: 8px; cursor: pointer; border: none; background: none; color: var(--muted2); font-family: Georgia, serif; }
+  .type-tab.active { background: var(--bg2); color: var(--green); }
+
+  /* COLOR SWATCHES */
+  .color-swatch { width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid transparent;transition:border-color 0.15s; }
+  .color-swatch.selected { border-color:var(--green); }
+  /* DRAGGABLE BEDS */
+  .map-bed { position:absolute;border-radius:8px;cursor:grab;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid transparent;user-select:none;transition:border-color 0.2s,box-shadow 0.2s; }
+  .map-bed.selected { border-color:var(--green);box-shadow:0 0 0 2px #c8d98a33; }
+  .map-bed:active { cursor:grabbing; }
+  .map-bed-label { font-size:9px;color:#fff;text-align:center;font-weight:bold;letter-spacing:0.5px;line-height:1.3;padding:2px;text-shadow:0 1px 2px #000; }
+  .map-bed-crops { font-size:10px;text-align:center;margin-top:1px; }
+  .map-bed-weight { font-size:8px;color:var(--green);margin-top:1px; }
+  /* BED TABLE */
+  .bed-table-row { display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border); }
+  .bed-table-swatch { width:12px;height:12px;border-radius:3px;flex-shrink:0; }
+  /* PHOTO BTN */
+  .photo-btn { width: 100%; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 8px; padding: 14px; color: var(--muted2); font-size: 13px; cursor: pointer; text-align: center; font-family: Georgia, serif; }
+  .photo-preview { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 200px; object-fit: cover; display: none; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="view active" id="view-dashboard">
+  <div class="header">
+    <div>
+      <div class="header-title">🌱 Garden Log</div>
+      <div class="header-sub">My Garden · 2026 Season</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:10px;color:var(--muted)">Total harvest</div>
+      <div style="font-size:20px;color:var(--green);font-weight:bold" id="hdr-total">0 kg</div>
+    </div>
+  </div>
+
+  <div id="dash-alerts"></div>
+
+  <div class="stat-row">
+    <div class="stat"><div class="stat-val" id="stat-kg">0</div><div class="stat-label">kg total</div></div>
+    <div class="stat"><div class="stat-val" id="stat-items">0</div><div class="stat-label">items</div></div>
+    <div class="stat"><div class="stat-val" id="stat-sessions">0</div><div class="stat-label">sessions</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Daily harvest (g)</div>
+    <canvas id="sparkline-canvas" height="50" style="width:100%"></canvas>
+  </div>
+
+  <div class="card" id="straw-trend-card" style="display:none">
+    <div class="card-title">🍓 Avg berry weight trend</div>
+    <canvas id="straw-canvas" height="50" style="width:100%"></canvas>
+    <div style="font-size:12px;color:var(--muted2);margin-top:8px">Latest avg: <span id="straw-latest" style="color:var(--red)">0g</span> per berry</div>
+  </div>
+
+  <div class="section-title">By crop</div>
+  <div class="card" id="crop-breakdown"></div>
+
+  <div class="card" id="best-harvest-card">
+    <div class="card-title">🏆 Best single harvest</div>
+    <div id="best-harvest"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📅 Most productive day</div>
+    <div id="best-day"></div>
+  </div>
+
+  <div class="card" id="due-timers-card" style="display:none">
+    <div class="card-title">⏱ Upcoming care tasks</div>
+    <div id="due-timers-list"></div>
+  </div>
+</div>
+
+<!-- ===== HARVEST LOG ===== -->
+<div class="view" id="view-log">
+  <div class="header">
+    <div><div class="header-title">Harvest Log</div></div>
+  </div>
+  <div class="filter-row" id="filter-row"></div>
+  <div style="padding:0 14px" id="log-entries"></div>
+</div>
+
+<!-- ===== ADD ===== -->
+<div class="view" id="view-add">
+  <div class="header"><div class="header-title" id="add-header-title">Log Entry</div></div>
+  <div style="padding:14px">
+    <div class="type-tabs">
+      <button class="type-tab active" onclick="setAddType('harvest')">🌿 Harvest</button>
+      <button class="type-tab" onclick="setAddType('care')">💧 Care</button>
+      <button class="type-tab" onclick="setAddType('plant')">🌱 Plant</button>
+    </div>
+
+    <!-- HARVEST FORM -->
+    <div id="form-harvest">
+      <div class="field"><label>Date</label><input type="date" id="h-date"></div>
+      <div class="field"><label>Crop</label>
+        <select id="h-crop" onchange="updateVarieties()">
+          <option value="strawberry">🍓 Strawberry</option>
+          <option value="pepper">🌶️ Pepper</option>
+          <option value="raddish">🌿 Radish</option>
+          <option value="cucumber">🥒 Cucumber</option>
+          <option value="tomato">🍅 Tomato</option>
+          <option value="eggplant">🍆 Eggplant</option>
+          <option value="blackberry">🫐 Blackberry</option>
+          <option value="blueberry">🫐 Blueberry</option>
+          <option value="fig">🌿 Fig</option>
+          <option value="mango">🥭 Mango</option>
+          <option value="dragon fruit">🐉 Dragon Fruit</option>
+          <option value="passionfruit">🌺 Passionfruit</option>
+          <option value="long bean">🌿 Long Bean</option>
+          <option value="other">🌱 Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Variety</label><select id="h-variety"></select></div>
+      <div class="field"><label>Bed / Location</label>
+        <select id="h-bed"></select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Weight (g)</label><input type="number" id="h-weight" placeholder="0"></div>
+        <div class="field"><label>Count</label><input type="number" id="h-count" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Notes</label><input type="text" id="h-notes" placeholder="Anything notable..."></div>
+      <div class="field">
+        <label>Photo</label>
+        <input type="file" id="h-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('h')">
+        <button class="photo-btn" onclick="document.getElementById('h-photo-input').click()">📷 Add photo</button>
+        <img id="h-photo-preview" class="photo-preview">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="cancelAdd()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" onclick="submitHarvest()">Log Harvest</button>
+      </div>
+    </div>
+
+    <!-- CARE FORM -->
+    <div id="form-care" style="display:none">
+      <div class="field"><label>Date</label><input type="date" id="c-date"></div>
+      <div class="field"><label>Care Type</label>
+        <select id="c-type" onchange="updateCareTimer()">
+          <option value="spray-spinosad">Spray — Spinosad</option>
+          <option value="spray-neem">Spray — Neem Oil</option>
+          <option value="spray-sulfur">Spray — Sulfur</option>
+          <option value="spray-insecticidal">Spray — Insecticidal Soap</option>
+          <option value="spray-other">Spray — Other</option>
+          <option value="fert-soluble">Fertilizer — Soluble (14-day repeat)</option>
+          <option value="fert-granular">Fertilizer — Granular (30-day repeat)</option>
+          <option value="water">Watering / Irrigation check</option>
+          <option value="prune">Pruning / Training</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Product / Detail</label><input type="text" id="c-product" placeholder="e.g. Spinosad, 20-20-20, etc."></div>
+      <div class="field"><label>Plants / Beds treated</label><input type="text" id="c-plants" placeholder="e.g. All tomatoes, Oval bed..."></div>
+      <div id="c-next-preview" style="font-size:12px;color:var(--muted2);margin-bottom:14px;padding:10px;background:var(--bg3);border-radius:8px;display:none"></div>
+      <div class="field"><label>Notes</label><textarea id="c-notes" placeholder="Any observations..."></textarea></div>
+      <div class="field">
+        <label>Photo</label>
+        <input type="file" id="c-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('c')">
+        <button class="photo-btn" onclick="document.getElementById('c-photo-input').click()">📷 Add photo</button>
+        <img id="c-photo-preview" class="photo-preview">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="cancelAdd()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" onclick="submitCare()">Log Care</button>
+      </div>
+    </div>
+
+    <!-- PLANT LOG FORM -->
+    <div id="form-plant" style="display:none">
+      <div class="field"><label>Crop</label>
+        <select id="p-crop" onchange="updatePlantVarieties()">
+          <option value="strawberry">🍓 Strawberry</option>
+          <option value="pepper">🌶️ Pepper</option>
+          <option value="raddish">🌿 Radish</option>
+          <option value="cucumber">🥒 Cucumber</option>
+          <option value="tomato">🍅 Tomato</option>
+          <option value="eggplant">🍆 Eggplant</option>
+          <option value="blackberry">🫐 Blackberry</option>
+          <option value="blueberry">🫐 Blueberry</option>
+          <option value="fig">🌿 Fig</option>
+          <option value="mango">🥭 Mango</option>
+          <option value="dragon fruit">🐉 Dragon Fruit</option>
+          <option value="passionfruit">🌺 Passionfruit</option>
+          <option value="long bean">🌿 Long Bean</option>
+          <option value="other">🌱 Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Variety</label><select id="p-variety"></select></div>
+      <div class="field"><label>Bed / Location</label>
+        <select id="p-bed"></select>
+      </div>
+      <div class="field"><label>Count / Plants</label><input type="number" id="p-count" placeholder="1"></div>
+      <div class="field-row">
+        <div class="field"><label>Seed Start Date</label><input type="date" id="p-seed-date"></div>
+        <div class="field"><label>Transplant Date</label><input type="date" id="p-transplant-date"></div>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="p-status">
+          <option value="planned">Planned</option>
+          <option value="seeds-started">Seeds Started</option>
+          <option value="seedling">Seedling</option>
+          <option value="transplanted">Transplanted</option>
+          <option value="flowering">Flowering</option>
+          <option value="fruiting">Fruiting</option>
+          <option value="harvesting">Harvesting</option>
+          <option value="dormant">Dormant/Done</option>
+        </select>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="p-notes" placeholder="Source, observations..."></textarea></div>
+      <div class="field">
+        <label>Photo</label>
+        <input type="file" id="p-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('p')">
+        <button class="photo-btn" onclick="document.getElementById('p-photo-input').click()">📷 Add photo</button>
+        <img id="p-photo-preview" class="photo-preview">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="cancelAdd()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" onclick="submitPlant()">Add Plant</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GARDEN MAP ===== -->
+<div class="view" id="view-map">
+  <div class="header">
+    <div><div class="header-title">Garden Map</div><div class="header-sub">Drag beds to arrange · Tap for details</div></div>
+    <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="showBedSetup()">+ Add Bed</button>
+  </div>
+
+  <!-- MAP CANVAS -->
+  <div class="map-wrap">
+    <div id="map-canvas" style="background:#141410;border-radius:12px;border:1px solid var(--border);margin:0 14px;position:relative;height:380px;overflow:hidden;touch-action:none"></div>
+    <div id="bed-detail-panel" style="margin:10px 14px 0"></div>
+  </div>
+
+  <!-- BED TABLE -->
+  <div class="section-title">Beds & Locations</div>
+  <div style="padding:0 14px 10px" id="bed-table"></div>
+
+  <!-- PLANT TRACKER -->
+  <div class="section-title">Plant Tracker</div>
+  <div style="padding:0 14px" id="plant-log-list"></div>
+</div>
+
+<!-- BED SETUP MODAL -->
+<div class="modal-bg" id="bed-modal">
+  <div class="modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="bed-modal-title">Add Bed</div>
+    <div class="modal-sub">Define a growing space</div>
+    <div class="field"><label>Nickname</label><input type="text" id="bed-name" placeholder="e.g. Oval Stock Tank"></div>
+    <div class="field-row">
+      <div class="field"><label>Width (ft)</label><input type="number" id="bed-w" placeholder="4" step="0.5"></div>
+      <div class="field"><label>Length (ft)</label><input type="number" id="bed-l" placeholder="8" step="0.5"></div>
+    </div>
+    <div class="field"><label>Shape</label>
+      <select id="bed-shape">
+        <option value="rect">Rectangle / Square</option>
+        <option value="oval">Oval / Round</option>
+        <option value="container">Container / Pot</option>
+        <option value="row">Row / In-ground</option>
+      </select>
+    </div>
+    <div class="field"><label>Color tag</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="bed-color-picker">
+        <div class="color-swatch" data-color="#1e3a10" style="background:#1e3a10" onclick="selectBedColor(this)">🌿</div>
+        <div class="color-swatch" data-color="#1a3a1a" style="background:#1a3a1a" onclick="selectBedColor(this)">🥬</div>
+        <div class="color-swatch" data-color="#3a1a1a" style="background:#3a1a1a" onclick="selectBedColor(this)">🍅</div>
+        <div class="color-swatch" data-color="#1a2a3a" style="background:#1a2a3a" onclick="selectBedColor(this)">💧</div>
+        <div class="color-swatch" data-color="#2a1a3a" style="background:#2a1a3a" onclick="selectBedColor(this)">🌸</div>
+        <div class="color-swatch" data-color="#3a2a1a" style="background:#3a2a1a" onclick="selectBedColor(this)">🌻</div>
+      </div>
+    </div>
+    <div class="field"><label>Notes</label><input type="text" id="bed-notes" placeholder="Soil mix, sun exposure..."></div>
+    <input type="hidden" id="bed-edit-id">
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-secondary" onclick="closeBedModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveBed()">Save Bed</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CALENDAR ===== -->
+<div class="view" id="view-calendar">
+  <div class="header"><div class="header-title">Planting Calendar</div><div class="header-sub">Zone 9a · Louisiana</div></div>
+
+  <div class="cal-month">
+    <button onclick="changeMonth(-1)">‹</button>
+    <div class="cal-month-name" id="cal-month-name"></div>
+    <button onclick="changeMonth(1)">›</button>
+  </div>
+
+  <div class="cal-today-box">
+    <div class="cal-today-title" id="cal-today-title">This month</div>
+    <div id="cal-today-tasks" style="font-size:13px;line-height:1.7;color:var(--muted2)"></div>
+  </div>
+
+  <div class="cal-legend">
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#4a9aba"></div>Seed indoors</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#8fba6a"></div>Transplant</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e8a020"></div>Direct sow</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e85d75"></div>Harvest window</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#9b59b6"></div>Plant (bulb/crown)</div>
+  </div>
+
+  <div class="card" id="cal-crop-list"></div>
+</div>
+
+<!-- ===== CARE LOG ===== -->
+<div class="view" id="view-care">
+  <div class="header"><div class="header-title">Care Log</div></div>
+  <div class="section-title">Active Timers</div>
+  <div style="padding:0 14px" id="care-timers"></div>
+  <div class="section-title">Recent Care Events</div>
+  <div style="padding:0 14px" id="care-log-list"></div>
+</div>
+
+<!-- ===== WEATHER ===== -->
+<div class="view" id="view-weather">
+  <div class="header">
+    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">Detecting location...</div></div>
+    <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="refreshWeather()">↻ Refresh</button>
+  </div>
+  <div id="weather-content" style="padding:0 14px">
+    <div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-bg" id="delete-modal">
+  <div class="modal">
+    <div class="modal-title">Delete entry?</div>
+    <div class="modal-sub">This cannot be undone.</div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" style="flex:1" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="showView('dashboard',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dash
+  </button>
+  <button class="nav-btn" onclick="showView('log',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+    Log
+  </button>
+  <button class="nav-btn" onclick="showView('add',this);resetAddForm()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Add
+  </button>
+  <button class="nav-btn" onclick="showView('map',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+    Map
+  </button>
+  <button class="nav-btn" onclick="showView('calendar',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Cal
+  </button>
+  <button class="nav-btn" onclick="showView('care',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Care
+  </button>
+  <button class="nav-btn" onclick="showView('weather',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+    Weather
+  </button>
+</nav>
+
+<script>
+// ===================== DATA =====================
+const VARIETIES = {
+  strawberry:["Festival"],
+  pepper:["Shishito","Serrano","Scotch Bonnet","Thai","Aji Chincha","Fatali","Habanero","Jalapeño","Banana"],
+  raddish:["French B","Watermelon"],
+  cucumber:["Merlin","Beit Alpha"],
+  tomato:["Sungold","Super Sweet 100","Barry's Crazy Cherry","Shelby","Early Girl","Hossinator","Redsnapper","Mushroom Basket","Lemon Boy","Norfolk Purple"],
+  eggplant:["Camo Camo"],
+  blackberry:["Prime Ark Freedom"],
+  blueberry:["Alapaha","Ochlockonee","Legacy"],
+  fig:["LSU Purple","Celeste","LSU Tiger"],
+  mango:["Carrie"],
+  "dragon fruit":["Haley's Comet","Palora","Pink Noid"],
+  passionfruit:["Latino Mora"],
+  "long bean":["Long Bean"],
+  other:["Other"]
+};
+
+const EMOJI = {strawberry:"🍓",pepper:"🌶️",raddish:"🌿",cucumber:"🥒",tomato:"🍅",eggplant:"🍆",blackberry:"🫐",blueberry:"🫐",fig:"🌿",mango:"🥭","dragon fruit":"🐉",passionfruit:"🌺","long bean":"🌿",other:"🌱"};
+const COLORS = {strawberry:"#e85d75",pepper:"#e8a020",raddish:"#9b59b6",cucumber:"#27ae60",tomato:"#e74c3c",eggplant:"#6c3483",blackberry:"#4a235a",blueberry:"#2471a3",fig:"#7d6608",mango:"#f39c12","dragon fruit":"#e91e63",passionfruit:"#8e44ad","long bean":"#1e8449",other:"#7f8c8d"};
+
+// Zone 9a Louisiana calendar [seedStart, transplant, directSow, harvest] each = [startMonth, endMonth] 1-indexed, null if N/A
+const CAL_DATA = {
+  tomato:     { label:"Tomato",       seedIndoor:[1,2], transplant:[2,3], direct:null,  harvest:[4,7],  emoji:"🍅" },
+  pepper:     { label:"Pepper",       seedIndoor:[12,1],transplant:[2,3], direct:null,  harvest:[4,8],  emoji:"🌶️" },
+  eggplant:   { label:"Eggplant",     seedIndoor:[1,2], transplant:[2,3], direct:null,  harvest:[5,9],  emoji:"🍆" },
+  cucumber:   { label:"Cucumber",     seedIndoor:null,  transplant:null,  direct:[3,4], harvest:[5,7],  emoji:"🥒" },
+  "long bean":{ label:"Long Bean",    seedIndoor:null,  transplant:null,  direct:[3,5], harvest:[5,8],  emoji:"🌿" },
+  strawberry: { label:"Strawberry",   seedIndoor:null,  transplant:[10,11],direct:null, harvest:[3,5],  emoji:"🍓" },
+  raddish:    { label:"Radish",       seedIndoor:null,  transplant:null,  direct:[2,4], harvest:[3,5],  emoji:"🌿" },
+  blackberry: { label:"Blackberry",   seedIndoor:null,  transplant:[1,3], direct:null,  harvest:[5,7],  emoji:"🫐" },
+  blueberry:  { label:"Blueberry",    seedIndoor:null,  transplant:[1,3], direct:null,  harvest:[4,6],  emoji:"🫐" },
+  fig:        { label:"Fig",          seedIndoor:null,  transplant:[2,4], direct:null,  harvest:[6,10], emoji:"🌿" },
+  mango:      { label:"Mango",        seedIndoor:null,  transplant:[3,5], direct:null,  harvest:[6,8],  emoji:"🥭" },
+  "dragon fruit":{ label:"Dragon Fruit", seedIndoor:null, transplant:[4,6], direct:null, harvest:[7,11], emoji:"🐉" },
+  passionfruit:{ label:"Passionfruit",seedIndoor:null,  transplant:[3,5], direct:null,  harvest:[6,10], emoji:"🌺" },
+};
+
+const MONTH_TASKS = {
+  1:["Start tomato & pepper seeds indoors","Plan garden layout","Order seeds"],
+  2:["Start eggplant seeds indoors","Transplant early tomatoes if hardened","Direct sow radishes","Prepare beds"],
+  3:["Transplant tomatoes & peppers","Direct sow cucumbers & long beans","Harvest strawberries beginning","Watch for late frost"],
+  4:["Main tomato/pepper harvest season begins","Cucumber harvest starts","Watch heat forecasts","Fertilize fruiting crops"],
+  5:["Peak tomato harvest","Blackberry & blueberry harvest","Monitor heat stress on strawberries","Shade cloth if needed"],
+  6:["Fig harvest begins","Mango ripening","Dragon fruit blooms","Reduce cool-season crops"],
+  7:["Peak heat management","Dragon fruit harvest begins","Maintain irrigation","Prune spent tomatoes"],
+  8:["Fall planning — start pepper & tomato seeds for fall crop","Dragon fruit continues","Heat stress management"],
+  9:["Start fall tomatoes & peppers indoors","Passionfruit harvest","Fig second flush"],
+  10:["Plant strawberry crowns for spring","Transplant fall tomatoes","Cool season begins"],
+  11:["Finish strawberry planting","Plant blueberry & blackberry","Garlic, onions, brassicas"],
+  12:["Start pepper seeds indoors for spring","Plan next season","Mulch perennials","Rest & reflection 🌿"],
+};
+
+const CARE_INTERVALS = {
+  "spray-spinosad":7,"spray-neem":7,"spray-sulfur":7,"spray-insecticidal":7,"spray-other":7,
+  "fert-soluble":14,"fert-granular":30
+};
+const CARE_LABELS = {
+  "spray-spinosad":"Spinosad Spray","spray-neem":"Neem Oil Spray","spray-sulfur":"Sulfur Spray",
+  "spray-insecticidal":"Insecticidal Soap","spray-other":"Spray","fert-soluble":"Soluble Fertilizer",
+  "fert-granular":"Granular Fertilizer","water":"Watering","prune":"Pruning","other":"Care"
+};
+
+// Bed definitions for map
+const BEDS_DEF = [
+  { id:"oval", label:"Oval\nStock Tank", color:"#2d4a1a", style:"left:10px;top:10px;width:90px;height:90px;border-radius:50%;background:#1e3a10;" },
+  { id:"square", label:"Square\nRaised Bed", color:"#1a3a2a", style:"left:120px;top:10px;width:100px;height:80px;background:#1a3a1a;" },
+  { id:"tomato", label:"Tomato\nBed", color:"#3a1a1a", style:"left:10px;top:130px;width:200px;height:70px;background:#3a1a1a;" },
+  { id:"green", label:"Green\nBed", color:"#1a2a3a", style:"left:10px;top:230px;width:140px;height:70px;background:#1a2a3a;" },
+  { id:"container", label:"Containers\n& Pots", color:"#2a1a3a", style:"left:165px;top:120px;width:80px;height:180px;background:#2a1a3a;border-radius:10px;" },
+];
+
+// ===================== STATE =====================
+let harvests = [], careLog = [], plantLog = [], selectedBed = null;
+let filterCrop = "all", deleteTarget = null, deleteType = null;
+let editId = null, editType = null, addType = "harvest", calMonth = new Date().getMonth() + 1;
+let photoData = { h: null, c: null, p: null };
+
+// ===================== STORAGE =====================
+async function loadData() {
+  try {
+    const h = localStorage.getItem("gl-demo-harvests");
+    const c = localStorage.getItem("gl-demo-care");
+    const p = localStorage.getItem("gl-demo-plants");
+    if (h) harvests = JSON.parse(h);
+    if (c) careLog = JSON.parse(c);
+    if (p) plantLog = JSON.parse(p);
+    if (!h) seedHarvests();
+    if (!c) seedCare();
+    if (!p) seedPlants();
+  } catch(e) { seedHarvests(); seedCare(); seedPlants(); }
+  renderAll();
+}
+
+function saveHarvests() { try { localStorage.setItem("gl-demo-harvests", JSON.stringify(harvests)); } catch(e){} }
+function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){} }
+function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){} }
+
+function seedHarvests() {
+  harvests = [];
+  saveHarvests();
+}
+
+function seedCare() {
+  careLog = [];
+  saveCare();
+}
+
+function seedPlants() {
+  plantLog = [];
+  savePlants();
+}
+
+// ===================== VIEWS =====================
+function showView(v, btn) {
+  document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("active"));
+  document.getElementById("view-"+v).classList.add("active");
+  if (btn) btn.classList.add("active");
+  if (v === "dashboard") renderDashboard();
+  if (v === "log") renderLog();
+  if (v === "map") { renderMap(); }
+  if (v === "add") { populateBedDropdowns(); }
+  if (v === "calendar") renderCalendar();
+  if (v === "care") renderCare();
+  if (v === "weather") { if(!weatherData) loadWeather(); else renderWeather(); }
+}
+
+// ===================== TOAST =====================
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+  const totalW = harvests.reduce((s,e) => s+e.weight, 0);
+  const totalC = harvests.reduce((s,e) => s+e.count, 0);
+  document.getElementById("hdr-total").textContent = (totalW/1000).toFixed(2)+" kg";
+  document.getElementById("stat-kg").textContent = (totalW/1000).toFixed(2);
+  document.getElementById("stat-items").textContent = totalC;
+  document.getElementById("stat-sessions").textContent = harvests.length;
+
+  // Alerts
+  const alerts = document.getElementById("dash-alerts");
+  alerts.innerHTML = "";
+  const today = new Date(); today.setHours(0,0,0,0);
+  careLog.forEach(e => {
+    if (!e.nextDate) return;
+    const nd = new Date(e.nextDate); nd.setHours(0,0,0,0);
+    const diff = Math.round((nd-today)/(1000*60*60*24));
+    if (diff < 0) alerts.innerHTML += `<div class="alert alert-danger">⚠️ ${CARE_LABELS[e.type]||"Care"} (${e.plants}) is <b>${Math.abs(diff)} day${Math.abs(diff)!==1?"s":""} overdue</b></div>`;
+    else if (diff <= 2) alerts.innerHTML += `<div class="alert alert-warn">⏱ ${CARE_LABELS[e.type]||"Care"} (${e.plants}) due in <b>${diff} day${diff!==1?"s":""}</b></div>`;
+  });
+
+  // Daily sparkline
+  const dateMap = {};
+  harvests.forEach(e => { dateMap[e.date]=(dateMap[e.date]||0)+e.weight; });
+  const dates = Object.keys(dateMap).sort();
+  const vals = dates.map(d => dateMap[d]);
+  drawSparkline("sparkline-canvas", vals, "#c8d98a");
+
+  // Strawberry trend
+  const straw = harvests.filter(e=>e.crop==="strawberry").sort((a,b)=>a.date.localeCompare(b.date));
+  if (straw.length > 3) {
+    document.getElementById("straw-trend-card").style.display="block";
+    let weeks = [], ww=0, wc=0;
+    straw.forEach((e,i)=>{ ww+=e.weight; wc+=e.count; if((i+1)%3===0||i===straw.length-1){weeks.push(wc>0?ww/wc:0);ww=0;wc=0;} });
+    drawSparkline("straw-canvas", weeks, "#e85d75");
+    document.getElementById("straw-latest").textContent = weeks.at(-1).toFixed(1)+"g";
+  }
+
+  // By crop
+  const byCrop = {};
+  harvests.forEach(e => {
+    if (!byCrop[e.crop]) byCrop[e.crop]={weight:0,count:0};
+    byCrop[e.crop].weight+=e.weight; byCrop[e.crop].count+=e.count;
+  });
+  const sorted = Object.entries(byCrop).sort((a,b)=>b[1].weight-a[1].weight);
+  const breakdown = document.getElementById("crop-breakdown");
+  breakdown.innerHTML = '<div class="card-title">By crop</div>';
+  sorted.forEach(([crop,stats]) => {
+    const pct = Math.round((stats.weight/totalW)*100);
+    const avg = stats.count>0?(stats.weight/stats.count).toFixed(1):0;
+    const color = COLORS[crop]||"#8fba6a";
+    breakdown.innerHTML += `<div class="crop-row">
+      <div class="crop-row-top">
+        <span>${EMOJI[crop]||"🌱"} <span style="text-transform:capitalize">${crop}</span></span>
+        <span style="color:var(--green)">${stats.weight}g <span style="color:var(--muted);font-size:11px">${stats.count} items</span></span>
+      </div>
+      <div class="crop-bar-bg"><div class="crop-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">avg ${avg}g · ${pct}% of total</div>
+    </div>`;
+  });
+
+  // Best harvest
+  const best = harvests.slice().sort((a,b)=>b.weight-a.weight)[0];
+  if (best) document.getElementById("best-harvest").innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:15px">${EMOJI[best.crop]||"🌱"} ${best.variety}</div><div style="font-size:11px;color:var(--muted)">${best.date} · ${best.bed}</div></div>
+      <div style="text-align:right"><div style="font-size:20px;color:var(--green);font-weight:bold">${best.weight}g</div><div style="font-size:11px;color:var(--muted)">${best.count} items</div></div>
+    </div>`;
+
+  // Best day
+  if (dates.length) {
+    const bestDate = dates.reduce((b,d)=>dateMap[d]>dateMap[b]?d:b, dates[0]);
+    document.getElementById("best-day").innerHTML = `<div style="display:flex;justify-content:space-between"><span style="font-size:14px">${bestDate}</span><span style="font-size:20px;color:var(--green);font-weight:bold">${dateMap[bestDate]}g</span></div>`;
+  }
+
+  // Due timers on dash
+  const dueList = getDueTimers();
+  const dueCard = document.getElementById("due-timers-card");
+  if (dueList.length) {
+    dueCard.style.display="block";
+    document.getElementById("due-timers-list").innerHTML = dueList.map(t => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-size:13px">${t.name}</div><div style="font-size:11px;color:var(--muted)">${t.plants}</div></div>
+        <div class="timer-badge ${t.cls}">${t.label}</div>
+      </div>`).join("");
+  } else dueCard.style.display="none";
+}
+
+function drawSparkline(id, data, color) {
+  const canvas = document.getElementById(id);
+  if (!canvas || data.length < 2) return;
+  const dpr = window.devicePixelRatio||1;
+  const w = canvas.parentElement.clientWidth - 32;
+  canvas.width = w * dpr; canvas.height = 50 * dpr;
+  canvas.style.width = w+"px"; canvas.style.height = "50px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  const max = Math.max(...data), min = Math.min(...data), range = max-min||1;
+  ctx.beginPath();
+  data.forEach((v,i) => {
+    const x = (i/(data.length-1))*w;
+    const y = 46 - ((v-min)/range)*40;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+  const lx = w, ly = 46-((data.at(-1)-min)/range)*40;
+  ctx.beginPath(); ctx.arc(lx,ly,3,0,Math.PI*2);
+  ctx.fillStyle = color; ctx.fill();
+}
+
+// ===================== LOG =====================
+function renderLog() {
+  // Filter chips
+  const crops = [...new Set(harvests.map(e=>e.crop))];
+  const fr = document.getElementById("filter-row");
+  fr.innerHTML = `<button class="chip ${filterCrop==='all'?'active':''}" onclick="setFilter('all')">All</button>`;
+  crops.forEach(c => { fr.innerHTML += `<button class="chip ${filterCrop===c?'active':''}" onclick="setFilter('${c}')">${EMOJI[c]||''} ${c}</button>`; });
+
+  const filtered = (filterCrop==="all"?harvests:harvests.filter(e=>e.crop===filterCrop))
+    .slice().sort((a,b)=>b.date.localeCompare(a.date));
+
+  const el = document.getElementById("log-entries");
+  if (!filtered.length) { el.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">No entries yet</div>'; return; }
+  el.innerHTML = filtered.map(e => `
+    <div class="entry-row">
+      <div class="entry-emoji">${EMOJI[e.crop]||"🌱"}</div>
+      <div class="entry-body">
+        <div class="entry-top">
+          <div><div class="entry-name">${e.variety} <span style="font-size:11px;color:var(--muted)">${e.bed}</span></div></div>
+          <div><div class="entry-weight">${e.weight}g</div><div class="entry-count">${e.count} items · ${(e.weight/e.count).toFixed(1)}g avg</div></div>
+        </div>
+        <div class="entry-sub">${e.date}</div>
+        ${e.notes?`<div class="entry-note">${e.notes}</div>`:""}
+        ${e.photo?`<img src="${e.photo}" class="entry-photo">`:""}
+        <div class="entry-actions">
+          <button onclick="startEdit(${e.id},'harvest')">Edit</button>
+          <button class="del" onclick="openDelete(${e.id},'harvest')">Delete</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+function setFilter(c) { filterCrop=c; renderLog(); }
+
+// ===================== ADD =====================
+function setAddType(t) {
+  addType=t;
+  document.querySelectorAll(".type-tab").forEach((b,i)=>{
+    b.classList.toggle("active",["harvest","care","plant"][i]===t);
+  });
+  document.getElementById("form-harvest").style.display = t==="harvest"?"block":"none";
+  document.getElementById("form-care").style.display = t==="care"?"block":"none";
+  document.getElementById("form-plant").style.display = t==="plant"?"block":"none";
+}
+
+function resetAddForm() {
+  editId=null; editType=null;
+  document.getElementById("add-header-title").textContent="Log Entry";
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("h-date").value=today;
+  document.getElementById("h-crop").value="strawberry";
+  document.getElementById("h-weight").value="";
+  document.getElementById("h-count").value="";
+  document.getElementById("h-notes").value="";
+  document.getElementById("h-photo-preview").style.display="none";
+  photoData={h:null,c:null,p:null};
+  document.getElementById("c-date").value=today;
+  document.getElementById("c-type").value="spray-spinosad";
+  document.getElementById("c-product").value="";
+  document.getElementById("c-plants").value="";
+  document.getElementById("c-notes").value="";
+  updateVarieties(); updatePlantVarieties(); updateCareTimer();
+  setAddType("harvest");
+}
+
+function cancelAdd() { showView("log", document.querySelectorAll(".nav-btn")[1]); }
+
+function updateVarieties() {
+  const crop = document.getElementById("h-crop").value;
+  const sel = document.getElementById("h-variety");
+  sel.innerHTML = (VARIETIES[crop]||["Other"]).map(v=>`<option>${v}</option>`).join("");
+}
+
+function updatePlantVarieties() {
+  const crop = document.getElementById("p-crop").value;
+  const sel = document.getElementById("p-variety");
+  sel.innerHTML = (VARIETIES[crop]||["Other"]).map(v=>`<option>${v}</option>`).join("");
+}
+
+function updateCareTimer() {
+  const t = document.getElementById("c-type").value;
+  const days = CARE_INTERVALS[t];
+  const prev = document.getElementById("c-next-preview");
+  if (days) {
+    const d = new Date(document.getElementById("c-date").value||new Date());
+    d.setDate(d.getDate()+days);
+    prev.style.display="block";
+    prev.textContent = `⏱ Next recommended: ${d.toISOString().split("T")[0]} (${days} days)`;
+  } else prev.style.display="none";
+}
+
+function handlePhoto(prefix) {
+  const input = document.getElementById(prefix+"-photo-input");
+  const preview = document.getElementById(prefix+"-photo-preview");
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    photoData[prefix]=ev.target.result;
+    preview.src=ev.target.result; preview.style.display="block";
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitHarvest() {
+  const w = parseFloat(document.getElementById("h-weight").value);
+  const c = parseInt(document.getElementById("h-count").value);
+  if (!w||!c) { toast("Enter weight and count"); return; }
+  const entry = {
+    id: editId||Date.now(),
+    date: document.getElementById("h-date").value,
+    crop: document.getElementById("h-crop").value,
+    variety: document.getElementById("h-variety").value,
+    bed: document.getElementById("h-bed").value,
+    weight: w, count: c,
+    notes: document.getElementById("h-notes").value,
+    photo: photoData.h
+  };
+  if (editId) { harvests = harvests.map(e=>e.id===editId?entry:e); }
+  else { harvests.push(entry); }
+  saveHarvests(); toast("✓ Harvest logged!"); cancelAdd(); renderLog();
+}
+
+function submitCare() {
+  const type = document.getElementById("c-type").value;
+  const days = CARE_INTERVALS[type];
+  const date = document.getElementById("c-date").value;
+  let nextDate = null;
+  if (days) { const d=new Date(date); d.setDate(d.getDate()+days); nextDate=d.toISOString().split("T")[0]; }
+  const entry = {
+    id: Date.now(), date,
+    type, product: document.getElementById("c-product").value,
+    plants: document.getElementById("c-plants").value,
+    notes: document.getElementById("c-notes").value,
+    photo: photoData.c, nextDate
+  };
+  careLog.unshift(entry); saveCare(); toast("✓ Care logged!"); cancelAdd(); renderCare();
+}
+
+function submitPlant() {
+  const entry = {
+    id: editId||Date.now(),
+    crop: document.getElementById("p-crop").value,
+    variety: document.getElementById("p-variety").value,
+    bed: document.getElementById("p-bed").value,
+    count: parseInt(document.getElementById("p-count").value)||1,
+    seedDate: document.getElementById("p-seed-date").value,
+    transplantDate: document.getElementById("p-transplant-date").value,
+    status: document.getElementById("p-status").value,
+    notes: document.getElementById("p-notes").value,
+    photo: photoData.p
+  };
+  if (editId) { plantLog=plantLog.map(e=>e.id===editId?entry:e); }
+  else { plantLog.push(entry); }
+  savePlants(); toast("✓ Plant added!"); cancelAdd(); renderMap();
+}
+
+// ===================== EDIT / DELETE =====================
+function startEdit(id, type) {
+  editId=id; editType=type;
+  if (type==="harvest") {
+    const e=harvests.find(h=>h.id===id);
+    if(!e)return;
+    showView("add",document.querySelectorAll(".nav-btn")[2]);
+    setAddType("harvest");
+    document.getElementById("add-header-title").textContent="Edit Harvest";
+    document.getElementById("h-date").value=e.date;
+    document.getElementById("h-crop").value=e.crop;
+    updateVarieties();
+    document.getElementById("h-variety").value=e.variety;
+    document.getElementById("h-bed").value=e.bed;
+    document.getElementById("h-weight").value=e.weight;
+    document.getElementById("h-count").value=e.count;
+    document.getElementById("h-notes").value=e.notes||"";
+    if(e.photo){photoData.h=e.photo;document.getElementById("h-photo-preview").src=e.photo;document.getElementById("h-photo-preview").style.display="block";}
+  }
+}
+
+function openDelete(id, type) { deleteTarget=id; deleteType=type; document.getElementById("delete-modal").classList.add("open"); }
+function closeDeleteModal() { document.getElementById("delete-modal").classList.remove("open"); }
+function confirmDelete() {
+  if (deleteType==="harvest") { harvests=harvests.filter(e=>e.id!==deleteTarget); saveHarvests(); renderLog(); }
+  if (deleteType==="care") { careLog=careLog.filter(e=>e.id!==deleteTarget); saveCare(); renderCare(); }
+  if (deleteType==="plant") { plantLog=plantLog.filter(e=>e.id!==deleteTarget); savePlants(); renderMap(); }
+  closeDeleteModal(); toast("Deleted");
+}
+
+// ===================== GARDEN MAP =====================
+let beds = [];
+let selectedBedId = null;
+let selectedBedColor = "#1e3a10";
+let dragState = null;
+
+function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
+function loadBeds() {
+  try {
+    const b = localStorage.getItem("gl-demo-beds");
+    if (b) { beds = JSON.parse(b); return; }
+  } catch(e){}
+  beds = [];
+  saveBeds();
+}
+
+function showBedSetup(editId) {
+  document.getElementById("bed-modal").classList.add("open");
+  document.getElementById("bed-modal-title").textContent = editId ? "Edit Bed" : "Add Bed";
+  document.getElementById("bed-edit-id").value = editId||"";
+  if (editId) {
+    const b = beds.find(b=>b.id===editId);
+    if (!b) return;
+    document.getElementById("bed-name").value = b.name;
+    document.getElementById("bed-w").value = b.w;
+    document.getElementById("bed-l").value = b.l;
+    document.getElementById("bed-shape").value = b.shape||"rect";
+    document.getElementById("bed-notes").value = b.notes||"";
+    selectedBedColor = b.color||"#1e3a10";
+  } else {
+    document.getElementById("bed-name").value="";
+    document.getElementById("bed-w").value="";
+    document.getElementById("bed-l").value="";
+    document.getElementById("bed-shape").value="rect";
+    document.getElementById("bed-notes").value="";
+    selectedBedColor="#1e3a10";
+  }
+  document.querySelectorAll(".color-swatch").forEach(s=>{
+    s.classList.toggle("selected", s.dataset.color===selectedBedColor);
+  });
+}
+
+function closeBedModal() { document.getElementById("bed-modal").classList.remove("open"); }
+
+function selectBedColor(el) {
+  selectedBedColor = el.dataset.color;
+  document.querySelectorAll(".color-swatch").forEach(s=>s.classList.remove("selected"));
+  el.classList.add("selected");
+}
+
+function saveBed() {
+  const name = document.getElementById("bed-name").value.trim();
+  if (!name) { toast("Enter a bed name"); return; }
+  const editId = document.getElementById("bed-edit-id").value;
+  const canvas = document.getElementById("map-canvas");
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  const entry = {
+    id: editId || ("bed-"+Date.now()),
+    name, 
+    w: parseFloat(document.getElementById("bed-w").value)||4,
+    l: parseFloat(document.getElementById("bed-l").value)||4,
+    shape: document.getElementById("bed-shape").value,
+    color: selectedBedColor,
+    notes: document.getElementById("bed-notes").value,
+    x: editId ? beds.find(b=>b.id===editId)?.x||20 : Math.round(cw/2-40),
+    y: editId ? beds.find(b=>b.id===editId)?.y||20 : Math.round(ch/2-40),
+  };
+  if (editId) beds = beds.map(b=>b.id===editId?entry:b);
+  else beds.push(entry);
+  saveBeds(); closeBedModal(); renderMap(); toast("✓ Bed saved!");
+}
+
+function deleteBed(id) {
+  if (!confirm("Delete this bed?")) return;
+  beds = beds.filter(b=>b.id!==id);
+  if (selectedBedId===id) selectedBedId=null;
+  saveBeds(); renderMap();
+}
+
+function rotateBed(id) {
+  beds = beds.map(b => {
+    if (b.id !== id) return b;
+    return { ...b, w: b.l, l: b.w };
+  });
+  saveBeds(); renderMap(); toast("⟳ Bed rotated");
+}
+
+function renderMap() {
+  loadBedsIfNeeded();
+  const canvas = document.getElementById("map-canvas");
+  const bedHarvestTotals = {};
+  const bedPlants = {};
+  harvests.forEach(e => { bedHarvestTotals[e.bed]=(bedHarvestTotals[e.bed]||0)+e.weight; });
+  plantLog.forEach(p => { if(!bedPlants[p.bed])bedPlants[p.bed]=[]; bedPlants[p.bed].push(p); });
+
+  // Scale: 1 ft = ~18px
+  const SCALE = 18;
+
+  canvas.innerHTML = beds.map(b => {
+    const pw = Math.max(60, b.w * SCALE), ph = Math.max(44, b.l * SCALE);
+    const plants = (bedPlants[b.name]||[]).slice(0,5).map(p=>EMOJI[p.crop]||"🌱").join("");
+    const total = bedHarvestTotals[b.name]||0;
+    const isOval = b.shape==="oval"||b.shape==="container";
+    const br = isOval ? "50%" : b.shape==="container"?"10px":"6px";
+    return `<div class="map-bed ${selectedBedId===b.id?'selected':''}"
+      id="mapbed-${b.id}"
+      data-id="${b.id}"
+      style="left:${b.x}px;top:${b.y}px;width:${pw}px;height:${ph}px;background:${b.color};border-radius:${br}"
+      ontouchstart="startDrag(event,'${b.id}')"
+      onmousedown="startDrag(event,'${b.id}')"
+      onclick="selectMapBed('${b.id}')">
+      <div class="map-bed-label">${b.name}</div>
+      <div class="map-bed-crops">${plants}</div>
+      ${total?`<div class="map-bed-weight">${total}g</div>`:""}
+    </div>`;
+  }).join("");
+
+  // Setup drag
+  setupDrag(canvas);
+
+  // Bed detail panel
+  const detail = document.getElementById("bed-detail-panel");
+  if (selectedBedId) {
+    const b = beds.find(b=>b.id===selectedBedId);
+    if (!b) { detail.innerHTML=""; }
+    else {
+      const plants = bedPlants[b.name]||[];
+      const totalW = bedHarvestTotals[b.name]||0;
+      const totalC = harvests.filter(e=>e.bed===b.name).reduce((s,e)=>s+e.count,0);
+      detail.innerHTML = `<div class="bed-detail">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="bed-detail-title">${b.name}</div>
+          <div style="display:flex;gap:8px">
+            <button onclick="rotateBed('${b.id}')" title="Rotate 90°" style="background:var(--bg3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted2);cursor:pointer;font-family:Georgia,serif">⟳ Rotate</button>
+            <button onclick="showBedSetup('${b.id}')" style="background:var(--bg3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted2);cursor:pointer;font-family:Georgia,serif">Edit</button>
+            <button onclick="deleteBed('${b.id}')" style="background:var(--bg3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--red);cursor:pointer;font-family:Georgia,serif">Delete</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${b.w} × ${b.l} ft${b.notes?" · "+b.notes:""}</div>
+        <div class="bed-stat-row">
+          <div class="bed-stat"><div class="bed-stat-val">${totalW}g</div><div class="bed-stat-lbl">Harvested</div></div>
+          <div class="bed-stat"><div class="bed-stat-val">${totalC}</div><div class="bed-stat-lbl">Items</div></div>
+          <div class="bed-stat"><div class="bed-stat-val">${plants.length}</div><div class="bed-stat-lbl">Crops</div></div>
+        </div>
+        ${plants.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div><span style="font-size:13px">${EMOJI[p.crop]||"🌱"} ${p.variety}</span><div style="font-size:10px;color:var(--muted)">${p.status} · ${p.count} plant${p.count!==1?"s":""}</div></div>
+          <span class="plant-status" style="background:${statusColor(p.status)}22;color:${statusColor(p.status)}">${p.status}</span>
+        </div>`).join("")}
+      </div>`;
+    }
+  } else detail.innerHTML="";
+
+  // Bed table
+  const bt = document.getElementById("bed-table");
+  if (!beds.length) { bt.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">No beds yet — tap "+ Add Bed" to start</div>'; }
+  else {
+    bt.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px">
+        <th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--border)">Bed</th>
+        <th style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--border)">Size</th>
+        <th style="text-align:left;padding:6px 4px;border-bottom:1px solid var(--border)">Current crops</th>
+        <th style="border-bottom:1px solid var(--border)"></th>
+      </tr>
+      ${beds.map(b=>{
+        const crops = (bedPlants[b.name]||[]).map(p=>EMOJI[p.crop]).join(" ")||"—";
+        return `<tr class="bed-table-row" style="display:table-row">
+          <td style="padding:8px 0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="bed-table-swatch" style="background:${b.color}"></div>
+              <span>${b.name}</span>
+            </div>
+          </td>
+          <td style="text-align:center;padding:8px 4px;color:var(--muted)">${b.w}×${b.l}ft</td>
+          <td style="padding:8px 4px">${crops}</td>
+          <td style="padding:8px 0;text-align:right">
+            <button onclick="showBedSetup('${b.id}')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:12px;font-family:Georgia,serif">Edit</button>
+          </td>
+        </tr>`;
+      }).join("")}
+    </table></div>`;
+  }
+
+  // Plant log
+  const pl = document.getElementById("plant-log-list");
+  if (!plantLog.length) { pl.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0 20px">No plants logged yet</div>'; return; }
+  pl.innerHTML = plantLog.map(p=>`<div class="plant-row">
+    <div class="plant-dot" style="background:${COLORS[p.crop]||'#8fba6a'}"></div>
+    <div style="flex:1">
+      <div class="plant-name">${EMOJI[p.crop]||"🌱"} ${p.variety} <span style="font-size:11px;color:var(--muted)">${p.bed}</span></div>
+      <div class="plant-sub">${p.count} plant${p.count!==1?"s":""}${p.seedDate?" · Seed: "+p.seedDate:""}${p.transplantDate?" · Transplant: "+p.transplantDate:""}</div>
+      ${p.notes?`<div style="font-size:11px;color:var(--muted2);font-style:italic">${p.notes}</div>`:""}
+    </div>
+    <span class="plant-status" style="background:${statusColor(p.status)}22;color:${statusColor(p.status)};font-size:10px">${p.status}</span>
+  </div>`).join("");
+}
+
+function selectMapBed(id) {
+  if (dragState && dragState.moved) return;
+  selectedBedId = selectedBedId===id ? null : id;
+  renderMap();
+}
+
+function statusColor(s) {
+  return {planned:"#6b6b4a","seeds-started":"#4a9aba",seedling:"#27ae60",transplanted:"#8fba6a",
+    flowering:"#e8a020",fruiting:"#e85d75",harvesting:"#c8d98a",dormant:"#6b6b4a"}[s]||"#8fba6a";
+}
+
+let bedsLoaded = false;
+function loadBedsIfNeeded() {
+  if (bedsLoaded) return;
+  loadBeds();
+  bedsLoaded = true;
+}
+
+// ── DRAG & DROP ──
+function setupDrag(canvas) {
+  const onMove = (e) => {
+    if (!dragState) return;
+    e.preventDefault();
+    const pt = e.touches ? e.touches[0] : e;
+    const rect = canvas.getBoundingClientRect();
+    const el = dragState.el;
+    const nx = pt.clientX - rect.left - dragState.ox;
+    const ny = pt.clientY - rect.top - dragState.oy;
+    const maxX = canvas.clientWidth - el.clientWidth;
+    const maxY = canvas.clientHeight - el.clientHeight;
+    el.style.left = Math.max(0,Math.min(nx,maxX))+"px";
+    el.style.top = Math.max(0,Math.min(ny,maxY))+"px";
+    if (Math.abs(nx - dragState.startX) > 5 || Math.abs(ny - dragState.startY) > 5) dragState.moved = true;
+  };
+  const onEnd = () => {
+    if (!dragState) return;
+    if (dragState.moved) {
+      const id = dragState.id;
+      const el = dragState.el;
+      beds = beds.map(b=>b.id===id?{...b,x:parseInt(el.style.left),y:parseInt(el.style.top)}:b);
+      saveBeds();
+    }
+    dragState = null;
+  };
+  canvas.addEventListener("mousemove", onMove);
+  canvas.addEventListener("touchmove", onMove, {passive:false});
+  window.addEventListener("mouseup", onEnd);
+  window.addEventListener("touchend", onEnd);
+}
+
+function startDrag(e, id) {
+  const el = document.getElementById("mapbed-"+id);
+  const canvas = document.getElementById("map-canvas");
+  const rect = canvas.getBoundingClientRect();
+  const pt = e.touches ? e.touches[0] : e;
+  dragState = {
+    id, el, moved: false,
+    ox: pt.clientX - rect.left - parseInt(el.style.left),
+    oy: pt.clientY - rect.top - parseInt(el.style.top),
+    startX: parseInt(el.style.left),
+    startY: parseInt(el.style.top),
+  };
+}
+
+function selectBed(id) { selectedBedId=selectedBedId===id?null:id; renderMap(); }
+
+// ===================== CALENDAR =====================
+function changeMonth(d) { calMonth=((calMonth-1+d+12)%12)+1; renderCalendar(); }
+
+function renderCalendar() {
+  const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  document.getElementById("cal-month-name").textContent = MONTHS[calMonth-1]+" 2026";
+  document.getElementById("cal-today-title").textContent = "What to do in "+MONTHS[calMonth-1];
+  document.getElementById("cal-today-tasks").innerHTML = (MONTH_TASKS[calMonth]||[]).map(t=>`• ${t}`).join("<br>");
+
+  const list = document.getElementById("cal-crop-list");
+  list.innerHTML = '<div class="card-title">Planting windows</div>';
+
+  // Merge planned plants into CAL_DATA display
+  const plannedCrops = [...new Set(plantLog.map(p=>p.crop))];
+
+  Object.entries(CAL_DATA).forEach(([key,data]) => {
+    const isPlanted = plantLog.some(p=>p.crop===key);
+    const segments = [];
+    const addSeg = (range, color, label) => {
+      if (!range) return;
+      let [s,e]=range;
+      if(s>e){if(calMonth>=s||calMonth<=e)segments.push({color,label});}
+      else if(calMonth>=s&&calMonth<=e) segments.push({color,label});
+    };
+    const inRange = (range) => {
+      if(!range)return false;
+      let[s,e]=range;
+      if(s>e)return calMonth>=s||calMonth<=e;
+      return calMonth>=s&&calMonth<=e;
+    };
+    const active = inRange(data.seedIndoor)||inRange(data.transplant)||inRange(data.direct)||inRange(data.harvest);
+    const opacity = active?"1":"0.4";
+
+    // Build 12-month bar
+    const months = Array.from({length:12},(_,i)=>i+1);
+    const barCells = months.map(m => {
+      let bg="transparent";
+      const inR=(range)=>{if(!range)return false;let[s,e]=range;if(s>e)return m>=s||m<=e;return m>=s&&m<=e;};
+      if(inR(data.harvest))bg="#e85d7588";
+      if(inR(data.direct))bg="#e8a02088";
+      if(inR(data.transplant))bg="#8fba6a88";
+      if(inR(data.seedIndoor))bg="#4a9aba88";
+      const isCurrentMonth = m===calMonth;
+      return `<div style="flex:1;height:8px;background:${bg};${isCurrentMonth?"box-shadow:0 0 0 1px var(--green)":""}"></div>`;
+    }).join("");
+
+    list.innerHTML += `<div class="cal-crop-timeline" style="opacity:${opacity}">
+      <div class="cal-crop-label">
+        <span>${data.emoji} ${data.label}${isPlanted?` <span style="color:var(--green);font-size:10px">✓ planted</span>`:""}</span>
+      </div>
+      <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">${barCells}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">
+        ${data.seedIndoor?`Seed: ${MONTHS[data.seedIndoor[0]-1].slice(0,3)}–${MONTHS[data.seedIndoor[1]-1].slice(0,3)} · `:""}
+        ${data.transplant?`Plant: ${MONTHS[data.transplant[0]-1].slice(0,3)}–${MONTHS[data.transplant[1]-1].slice(0,3)} · `:""}
+        ${data.direct?`Sow: ${MONTHS[data.direct[0]-1].slice(0,3)}–${MONTHS[data.direct[1]-1].slice(0,3)} · `:""}
+        ${data.harvest?`Harvest: ${MONTHS[data.harvest[0]-1].slice(0,3)}–${MONTHS[data.harvest[1]-1].slice(0,3)}`:""}
+      </div>
+    </div>`;
+  });
+
+  // Add seed start dates from plant log
+  const seedPlants = plantLog.filter(p=>p.seedDate);
+  if (seedPlants.length) {
+    list.innerHTML += `<div style="margin-top:14px"><div class="card-title">Your seed start dates</div>`;
+    seedPlants.forEach(p=>{
+      list.innerHTML += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span>${EMOJI[p.crop]||"🌱"} ${p.variety}</span>
+        <span style="color:var(--muted)">${p.seedDate}</span>
+      </div>`;
+    });
+    list.innerHTML += "</div>";
+  }
+}
+
+// ===================== CARE =====================
+function getDueTimers() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const results = [];
+  careLog.forEach(e => {
+    if (!e.nextDate) return;
+    const nd=new Date(e.nextDate); nd.setHours(0,0,0,0);
+    const diff=Math.round((nd-today)/(1000*60*60*24));
+    if (diff<=7) {
+      let cls="ok",label=`In ${diff}d`;
+      if(diff<0){cls="danger";label=`${Math.abs(diff)}d overdue`;}
+      else if(diff<=2){cls="warn";label=`In ${diff}d`;}
+      results.push({name:CARE_LABELS[e.type]||"Care",plants:e.plants,cls,label,diff,id:e.id});
+    }
+  });
+  return results.sort((a,b)=>a.diff-b.diff);
+}
+
+function renderCare() {
+  // Timers
+  const timers = document.getElementById("care-timers");
+  const due = getDueTimers();
+  if (!due.length) { timers.innerHTML='<div style="padding:10px 0;color:var(--muted);font-size:13px">No upcoming care tasks</div>'; }
+  else {
+    timers.innerHTML = due.map(t=>`<div class="timer-card ${t.cls}">
+      <div class="timer-top">
+        <div><div class="timer-name">${t.name}</div><div class="timer-sub">${t.plants}</div></div>
+        <div class="timer-badge ${t.cls}">${t.label}</div>
+      </div>
+    </div>`).join("");
+  }
+
+  // Care log
+  const cl = document.getElementById("care-log-list");
+  if (!careLog.length) { cl.innerHTML='<div style="padding:20px 0;color:var(--muted);font-size:13px;text-align:center">No care events logged yet</div>'; return; }
+  cl.innerHTML = careLog.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
+    <div class="entry-row">
+      <div class="entry-emoji">${e.type.startsWith("spray")?"💧":e.type.startsWith("fert")?"🌿":"🔧"}</div>
+      <div class="entry-body">
+        <div class="entry-top">
+          <div><div class="entry-name">${CARE_LABELS[e.type]||"Care"}</div></div>
+          ${e.nextDate?`<div style="font-size:11px;color:var(--muted2)">Next: ${e.nextDate}</div>`:""}
+        </div>
+        <div class="entry-sub">${e.date} · ${e.plants||""}</div>
+        ${e.product?`<div style="font-size:12px;color:var(--muted2);margin-top:2px">${e.product}</div>`:""}
+        ${e.notes?`<div class="entry-note">${e.notes}</div>`:""}
+        ${e.photo?`<img src="${e.photo}" class="entry-photo">`:""}
+        <div class="entry-actions">
+          <button class="del" onclick="openDelete(${e.id},'care')">Delete</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+// ===================== INIT =====================
+function populateBedDropdowns() {
+  loadBedsIfNeeded();
+  const opts = beds.map(b=>`<option value="${b.name}">${b.name}</option>`).join("")+"<option value='Other'>Other</option>";
+  ["h-bed","p-bed"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = opts;
+  });
+}
+
+function renderAll() {
+  populateBedDropdowns();
+  updateVarieties(); updatePlantVarieties(); updateCareTimer();
+  document.getElementById("h-date").value = new Date().toISOString().split("T")[0];
+  document.getElementById("c-date").value = new Date().toISOString().split("T")[0];
+  calMonth = new Date().getMonth()+1;
+  renderDashboard(); renderLog(); renderMap(); renderCalendar(); renderCare();
+}
+
+loadData();
+</script>
+</body>
+</html>
