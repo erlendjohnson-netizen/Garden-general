@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Garden Log">
 <meta name="theme-color" content="#1a1a12">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://api.open-meteo.com; img-src 'self' data: blob:;">
 <title>Garden Log</title>
 <style>
@@ -1401,8 +1401,49 @@ function setMapTab(t) {
   document.getElementById("map-satellite-view").style.display = t==="satellite" ? "block" : "none";
   document.getElementById("map-canvas-view").style.display = t==="canvas" ? "block" : "none";
   if (t==="satellite") {
-    setTimeout(() => { if(leafletMap) leafletMap.invalidateSize(); }, 100);
+    setTimeout(() => { if(leafletMap) { leafletMap.invalidateSize(); } }, 150);
   }
+  if (t==="canvas") {
+    setTimeout(() => fitCanvasToBeds(), 100);
+  }
+}
+
+function fitCanvasToBeds() {
+  if (!beds.length) return;
+  const SCALE = 18;
+  const padding = 20;
+  // Find extents
+  let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+  beds.forEach(b => {
+    const pw = Math.max(60, b.w * SCALE);
+    const ph = Math.max(44, b.l * SCALE);
+    minX = Math.min(minX, b.x);
+    minY = Math.min(minY, b.y);
+    maxX = Math.max(maxX, b.x + pw);
+    maxY = Math.max(maxY, b.y + ph);
+  });
+  // Calc zoom to fit viewport
+  const viewport = document.getElementById("map-viewport");
+  if (!viewport) return;
+  const vw = viewport.clientWidth - padding * 2;
+  const vh = viewport.clientHeight - padding * 2;
+  const contentW = maxX - minX + padding * 2;
+  const contentH = maxY - minY + padding * 2;
+  const zoomFit = Math.min(1.0, Math.min(vw / contentW, vh / contentH));
+  mapZoom = Math.max(0.4, Math.min(1.0, zoomFit));
+  // Scroll to center on beds
+  const canvas = document.getElementById("map-canvas");
+  if (canvas) {
+    canvas.style.width = Math.round(700 * mapZoom) + "px";
+    canvas.style.height = Math.round(600 * mapZoom) + "px";
+  }
+  // Re-render beds at new zoom
+  renderMap();
+  // Scroll viewport to show beds
+  setTimeout(() => {
+    viewport.scrollLeft = Math.max(0, minX * mapZoom - padding);
+    viewport.scrollTop = Math.max(0, minY * mapZoom - padding);
+  }, 50);
 }
 
 function initLeafletMap(lat, lon, zoom) {
@@ -1411,15 +1452,35 @@ function initLeafletMap(lat, lon, zoom) {
     return;
   }
   leafletMap = L.map("leaflet-map", { zoomControl: true, attributionControl: true }).setView([lat, lon], zoom || 19);
-  // Esri World Imagery - free satellite tiles, no API key
-  L.tileLayer(
+  
+  // Primary: Esri World Imagery satellite
+  const esriSat = L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "Tiles © Esri — Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP", maxZoom: 21 }
-  ).addTo(leafletMap);
-  // OpenStreetMap labels overlay
+    { attribution: "Tiles &copy; Esri", maxZoom: 21, crossOrigin: true }
+  );
+  
+  // Fallback: OpenStreetMap if Esri fails
+  const osmFallback = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { attribution: "&copy; OpenStreetMap contributors", maxZoom: 19, crossOrigin: true }
+  );
+
+  esriSat.addTo(leafletMap);
+  
+  // If Esri tiles fail to load, switch to OSM
+  esriSat.on("tileerror", function() {
+    if (leafletMap.hasLayer(esriSat)) {
+      leafletMap.removeLayer(esriSat);
+      osmFallback.addTo(leafletMap);
+      const sub = document.getElementById("map-location-sub");
+      if(sub) sub.textContent += " (map view — satellite unavailable)";
+    }
+  });
+
+  // Labels overlay
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "", maxZoom: 21, opacity: 0.7 }
+    { attribution: "", maxZoom: 21, opacity: 0.8, crossOrigin: true }
   ).addTo(leafletMap);
 }
 
@@ -1447,15 +1508,14 @@ async function searchMapAddress() {
 }
 
 function loadSavedMapLocation() {
-  const lat = parseFloat(localStorage.getItem("gl-demo-garden-lat"));
-  const lon = parseFloat(localStorage.getItem("gl-demo-garden-lon"));
-  const addr = localStorage.getItem("gl-demo-garden-address") || "";
-  if (lat && lon) {
-    const addrInput = document.getElementById("map-address-input");
-    if (addrInput && !addrInput.value && addr) addrInput.value = addr;
-    if (addr) document.getElementById("map-location-sub").textContent = addr;
-    initLeafletMap(lat, lon, 19);
-  }
+  const lat = parseFloat(localStorage.getItem("gl-demo-garden-lat")) || 0;
+  const lon = parseFloat(localStorage.getItem("gl-demo-garden-lon")) || 0;
+  if (!lat || !lon) return;
+  const addr = localStorage.getItem("gl-demo-garden-address") || "236 Tullulah Ave, Detecting location...";
+  const addrInput = document.getElementById("map-address-input");
+  if (addrInput && !addrInput.value) addrInput.value = addr;
+  document.getElementById("map-location-sub").textContent = addr;
+  initLeafletMap(lat, lon, 19);
 }
 
 // ===================== GARDEN MAP =====================
@@ -1547,7 +1607,7 @@ function rotateBed(id) {
 
 function renderMap() {
   loadBedsIfNeeded();
-  if (mapTab === "satellite") setTimeout(loadSavedMapLocation, 100);
+  setTimeout(loadSavedMapLocation, 150);
   const canvas = document.getElementById("map-canvas");
   const bedHarvestTotals = {};
   const bedPlants = {};
@@ -2407,8 +2467,6 @@ async function loadWeather() {
         const zone = getHardinessZone(WEATHER_LAT, WEATHER_LON);
         const locationEl = document.getElementById("weather-location-label");
         if (locationEl) locationEl.textContent = locationName + " · Zone " + zone;
-        const headerSub = document.querySelector("#view-weather .header-sub");
-        if (headerSub) headerSub.textContent = locationName + " · USDA Zone " + zone;
       } catch(e) {
         el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>'; return;
       }
