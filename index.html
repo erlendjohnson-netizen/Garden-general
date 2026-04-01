@@ -224,7 +224,7 @@
   <div class="header">
     <div>
       <div class="header-title">🌱 Garden Log</div>
-      <div class="header-sub">My Garden · 2026 Season</div>
+      <div class="header-sub">River Ridge · 2026 Season</div>
     </div>
     <div style="text-align:right">
       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Total harvest</div>
@@ -599,7 +599,7 @@
 <!-- ===== WEATHER ===== -->
 <div class="view" id="view-weather">
   <div class="header">
-    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">Detecting location...</div></div>
+    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">River Ridge, LA</div></div>
     <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="refreshWeather()">↻ Refresh</button>
   </div>
   <div id="weather-content" style="padding:0 14px">
@@ -913,7 +913,7 @@ let cropRegistry = [];
 
 function loadCropRegistry() {
   try {
-    const saved = localStorage.getItem("gl-demo-crops");
+    const saved = localStorage.getItem("gl-crops");
     if (saved) { cropRegistry = JSON.parse(saved); return; }
   } catch(e) {}
   cropRegistry = DEFAULT_CROPS.map(c => ({...c, varieties:[...c.varieties]}));
@@ -921,7 +921,7 @@ function loadCropRegistry() {
 }
 
 function saveCropRegistry() {
-  try { localStorage.setItem("gl-demo-crops", JSON.stringify(cropRegistry)); } catch(e) {}
+  try { localStorage.setItem("gl-crops", JSON.stringify(cropRegistry)); } catch(e) {}
 }
 
 function getCropKeys() { return cropRegistry.map(c=>c.key); }
@@ -987,18 +987,17 @@ const BEDS_DEF = [
 // ===================== STATE =====================
 let harvests = [], careLog = [], plantLog = [], selectedBed = null;
 let filterCrop = "all", deleteTarget = null, deleteType = null;
-let displayUnit = localStorage.getItem("gl-demo-unit") || "g";
+let displayUnit = localStorage.getItem("gl-unit") || "g";
 let editId = null, editType = null, addType = "harvest", calMonth = new Date().getMonth() + 1;
 let photoData = { h: null, c: null, p: null };
 
 // ===================== STORAGE =====================
 async function loadData() {
   loadCropRegistry();
-  showSetupIfNeeded();
   try {
-    const h = localStorage.getItem("gl-demo-harvests");
-    const c = localStorage.getItem("gl-demo-care");
-    const p = localStorage.getItem("gl-demo-plants");
+    const h = localStorage.getItem("gl-harvests");
+    const c = localStorage.getItem("gl-care");
+    const p = localStorage.getItem("gl-plants");
     if (h) harvests = JSON.parse(h);
     if (c) careLog = JSON.parse(c);
     if (p) plantLog = JSON.parse(p);
@@ -1009,22 +1008,89 @@ async function loadData() {
   renderAll();
 }
 
-function saveHarvests() { try { localStorage.setItem("gl-demo-harvests", JSON.stringify(harvests)); } catch(e){} }
-function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){} }
-function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){} }
+function saveHarvests() { try { localStorage.setItem("gl-harvests", JSON.stringify(harvests)); } catch(e){} }
+function saveCare() { try { localStorage.setItem("gl-care", JSON.stringify(careLog)); } catch(e){} }
+function savePlants() { try { localStorage.setItem("gl-plants", JSON.stringify(plantLog)); } catch(e){} }
 
 function seedHarvests() {
-  harvests = [];
+  harvests = [
+    {id:1,date:"2026-02-22",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:21,count:1,notes:"first",photo:null},
+    {id:2,date:"2026-02-22",crop:"pepper",variety:"Serrano",bed:"Green Bed",weight:3,count:1,notes:"from transplanting",photo:null},
+    {id:3,date:"2026-02-25",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"transplants",photo:null},
+    {id:4,date:"2026-03-01",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:1,notes:"",photo:null},
+    {id:5,date:"2026-03-03",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:30,count:1,notes:"",photo:null},
+    {id:6,date:"2026-03-06",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:76,count:5,notes:"",photo:null},
+    {id:7,date:"2026-03-07",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:236,count:16,notes:"",photo:null},
+    {id:8,date:"2026-03-07",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:6,count:2,notes:"",photo:null},
+    {id:9,date:"2026-03-08",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:54,count:5,notes:"",photo:null},
+    {id:10,date:"2026-03-10",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"",photo:null},
+    {id:11,date:"2026-03-11",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:57,count:5,notes:"",photo:null},
+    {id:12,date:"2026-03-13",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:281,count:3,notes:"First harvest",photo:null},
+    {id:13,date:"2026-03-14",crop:"strawberry",variety:"Festival",bed:"Square",weight:2,count:1,notes:"Deformed not quite ripe",photo:null},
+    {id:14,date:"2026-03-14",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:91,count:7,notes:"",photo:null},
+    {id:15,date:"2026-03-15",crop:"strawberry",variety:"Festival",bed:"Square",weight:6,count:1,notes:"Ugly too",photo:null},
+    {id:16,date:"2026-03-16",crop:"strawberry",variety:"Festival",bed:"Oval",weight:16,count:2,notes:"",photo:null},
+    {id:17,date:"2026-03-18",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:3,notes:"",photo:null},
+    {id:18,date:"2026-03-20",crop:"strawberry",variety:"Festival",bed:"Oval",weight:8,count:1,notes:"",photo:null},
+    {id:19,date:"2026-03-21",crop:"strawberry",variety:"Festival",bed:"Oval",weight:5,count:2,notes:"",photo:null},
+    {id:20,date:"2026-03-21",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:3,count:2,notes:"",photo:null},
+    {id:21,date:"2026-03-21",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:150,count:1,notes:"",photo:null},
+    {id:22,date:"2026-03-22",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
+    {id:23,date:"2026-03-22",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:40,count:1,notes:"",photo:null},
+    {id:24,date:"2026-03-23",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
+    {id:25,date:"2026-03-24",crop:"strawberry",variety:"Festival",bed:"Oval",weight:42,count:6,notes:"",photo:null},
+    {id:26,date:"2026-03-24",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
+    {id:27,date:"2026-03-24",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:396,count:4,notes:"",photo:null},
+    {id:28,date:"2026-03-24",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:14,count:1,notes:"",photo:null},
+    {id:29,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:73,count:9,notes:"",photo:null},
+    {id:30,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:49,count:3,notes:"",photo:null},
+    {id:31,date:"2026-03-25",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:202,count:2,notes:"",photo:null},
+    {id:32,date:"2026-03-26",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:5,notes:"",photo:null},
+    {id:33,date:"2026-03-29",crop:"strawberry",variety:"Festival",bed:"Oval",weight:110,count:16,notes:"",photo:null},
+    {id:34,date:"2026-03-29",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
+    {id:35,date:"2026-03-29",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:46,count:1,notes:"",photo:null},
+    {id:36,date:"2026-03-30",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:4,notes:"",photo:null},
+    {id:37,date:"2026-03-30",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:96,count:2,notes:"",photo:null},
+    {id:38,date:"2026-03-30",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:23,count:3,notes:"",photo:null},
+    {id:39,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:41,count:3,notes:"",photo:null},
+    {id:40,date:"2026-03-31",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:4,notes:"",photo:null},
+    {id:41,date:"2026-03-31",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:62,count:1,notes:"",photo:null},
+    {id:42,date:"2026-03-31",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:24,count:4,notes:"",photo:null},
+    {id:43,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:20,count:3,notes:"",photo:null},
+    {id:44,date:"2026-04-01",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:6,notes:"",photo:null},
+  ];
   saveHarvests();
 }
 
 function seedCare() {
-  careLog = [];
+  careLog = [
+    {id:Date.now(),date:"2026-04-01",type:"spray-spinosad",product:"Spinosad",plants:"All tomatoes",notes:"Broad mite treatment on Sungold and all other tomatoes",photo:null,nextDate:"2026-04-08"}
+  ];
   saveCare();
 }
 
 function seedPlants() {
-  plantLog = [];
+  plantLog = [
+    {id:1,crop:"tomato",variety:"Sungold",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:2,crop:"tomato",variety:"Super Sweet 100",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:3,crop:"tomato",variety:"Lemon Boy",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:4,crop:"tomato",variety:"Early Girl",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:5,crop:"pepper",variety:"Shishito",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
+    {id:6,crop:"pepper",variety:"Serrano",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
+    {id:7,crop:"strawberry",variety:"Festival",bed:"Oval",count:25,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Oval bed"},
+    {id:8,crop:"strawberry",variety:"Festival",bed:"Square",count:20,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Square bed"},
+    {id:9,crop:"cucumber",variety:"Merlin",bed:"Tomato Bed",count:4,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
+    {id:10,crop:"cucumber",variety:"Beit Alpha",bed:"Tomato Bed",count:2,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:"First fruit April 1"},
+    {id:11,crop:"eggplant",variety:"Camo Camo",bed:"Tomato Bed",count:2,seedDate:"2026-01-20",transplantDate:"2026-02-25",status:"flowering",notes:""},
+    {id:12,crop:"dragon fruit",variety:"Palora",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"flowering",notes:"Bloomed April 1 — self + red pollen applied"},
+    {id:13,crop:"dragon fruit",variety:"Haley's Comet",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
+    {id:14,crop:"dragon fruit",variety:"Pink Noid",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
+    {id:15,crop:"mango",variety:"Carrie",bed:"Container",count:1,seedDate:"",transplantDate:"2023-01-01",status:"flowering",notes:"31 panicles — hand pollination underway"},
+    {id:16,crop:"blackberry",variety:"Prime Ark Freedom",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:"~2 weeks from first ripe"},
+    {id:17,crop:"blueberry",variety:"Alapaha",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:""},
+    {id:18,crop:"blueberry",variety:"Ochlockonee",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
+    {id:19,crop:"blueberry",variety:"Legacy",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
+  ];
   savePlants();
 }
 
@@ -1050,7 +1116,7 @@ const UNIT_LABELS  = { g: "g", oz: "oz", lb: "lb", kg: "kg" };
 
 function setUnit(u) {
   displayUnit = u;
-  localStorage.setItem("gl-demo-unit", u);
+  localStorage.setItem("gl-unit", u);
   document.querySelectorAll(".unit-selector button").forEach(b => {
     b.classList.toggle("active", b.dataset.unit === u);
   });
@@ -1391,8 +1457,8 @@ function confirmDelete() {
 
 // ===================== SATELLITE MAP =====================
 let leafletMap = null;
-let mapTab = "satellite";
-let gardenAddress = localStorage.getItem("gl-demo-garden-address") || "";
+let mapTab = "canvas";
+let gardenAddress = localStorage.getItem("gl-garden-address") || "236 Tullulah Ave, River Ridge, LA";
 
 function setMapTab(t) {
   mapTab = t;
@@ -1451,36 +1517,42 @@ function initLeafletMap(lat, lon, zoom) {
     leafletMap.setView([lat, lon], zoom || 19);
     return;
   }
-  leafletMap = L.map("leaflet-map", { zoomControl: true, attributionControl: true }).setView([lat, lon], zoom || 19);
-  
-  // Primary: Esri World Imagery satellite
+  leafletMap = L.map("leaflet-map", {
+    zoomControl: true,
+    attributionControl: true,
+    preferCanvas: true
+  }).setView([lat, lon], zoom || 19);
+
+  let tilesLoaded = false;
+
+  // Try Esri World Imagery first (best satellite quality)
   const esriSat = L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "Tiles &copy; Esri", maxZoom: 21, crossOrigin: true }
-  );
-  
-  // Fallback: OpenStreetMap if Esri fails
-  const osmFallback = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    { attribution: "&copy; OpenStreetMap contributors", maxZoom: 19, crossOrigin: true }
-  );
+    { attribution: "Tiles &copy; Esri &mdash; Source: Esri, USGS", maxZoom: 20 }
+  ).addTo(leafletMap);
 
-  esriSat.addTo(leafletMap);
-  
-  // If Esri tiles fail to load, switch to OSM
-  esriSat.on("tileerror", function() {
-    if (leafletMap.hasLayer(esriSat)) {
-      leafletMap.removeLayer(esriSat);
-      osmFallback.addTo(leafletMap);
-      const sub = document.getElementById("map-location-sub");
-      if(sub) sub.textContent += " (map view — satellite unavailable)";
-    }
+  esriSat.on("tileload", function() {
+    tilesLoaded = true;
+    const msg = document.getElementById("map-loading-msg");
+    if (msg) msg.style.display = "none";
   });
 
-  // Labels overlay
+  // After 4 seconds, if no tiles loaded switch to OSM
+  setTimeout(function() {
+    if (!tilesLoaded && leafletMap) {
+      leafletMap.removeLayer(esriSat);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors", maxZoom: 19
+      }).addTo(leafletMap);
+      const sub = document.getElementById("map-location-sub");
+      if (sub) sub.textContent = (sub.textContent || "") + " · Street map (satellite blocked)";
+    }
+  }, 4000);
+
+  // Esri labels overlay
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "", maxZoom: 21, opacity: 0.8, crossOrigin: true }
+    { attribution: "", maxZoom: 20, opacity: 0.7 }
   ).addTo(leafletMap);
 }
 
@@ -1495,9 +1567,9 @@ async function searchMapAddress() {
     if (!data || !data.length) { toast("Address not found — try adding city/state"); return; }
     const lat = parseFloat(data[0].lat);
     const lon = parseFloat(data[0].lon);
-    localStorage.setItem("gl-demo-garden-address", addr);
-    localStorage.setItem("gl-demo-garden-lat", lat);
-    localStorage.setItem("gl-demo-garden-lon", lon);
+    localStorage.setItem("gl-garden-address", addr);
+    localStorage.setItem("gl-garden-lat", lat);
+    localStorage.setItem("gl-garden-lon", lon);
     gardenAddress = addr;
     document.getElementById("map-location-sub").textContent = data[0].display_name.split(",").slice(0,3).join(",");
     initLeafletMap(lat, lon, 19);
@@ -1508,10 +1580,9 @@ async function searchMapAddress() {
 }
 
 function loadSavedMapLocation() {
-  const lat = parseFloat(localStorage.getItem("gl-demo-garden-lat")) || 0;
-  const lon = parseFloat(localStorage.getItem("gl-demo-garden-lon")) || 0;
-  if (!lat || !lon) return;
-  const addr = localStorage.getItem("gl-demo-garden-address") || "236 Tullulah Ave, Detecting location...";
+  const lat = parseFloat(localStorage.getItem("gl-garden-lat")) || 29.9608;
+  const lon = parseFloat(localStorage.getItem("gl-garden-lon")) || -90.2154;
+  const addr = localStorage.getItem("gl-garden-address") || "236 Tullulah Ave, River Ridge, LA";
   const addrInput = document.getElementById("map-address-input");
   if (addrInput && !addrInput.value) addrInput.value = addr;
   document.getElementById("map-location-sub").textContent = addr;
@@ -1524,13 +1595,20 @@ let selectedBedId = null;
 let selectedBedColor = "#1e3a10";
 let dragState = null;
 
-function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
+function saveBeds() { try { localStorage.setItem("gl-beds", JSON.stringify(beds)); } catch(e){} }
 function loadBeds() {
   try {
-    const b = localStorage.getItem("gl-demo-beds");
+    const b = localStorage.getItem("gl-beds");
     if (b) { beds = JSON.parse(b); return; }
   } catch(e){}
-  beds = [];
+  // Default beds seeded from your garden
+  beds = [
+    {id:"oval", name:"Oval Stock Tank", w:4, l:4, shape:"oval", color:"#1e3a10", x:10, y:10, notes:"Strawberries + onions"},
+    {id:"square", name:"Square Raised Bed", w:4, l:4, shape:"rect", color:"#1a3a1a", x:140, y:10, notes:"Strawberries"},
+    {id:"tomato", name:"Tomato Bed", w:8, l:3, shape:"rect", color:"#3a1a1a", x:10, y:140, notes:"Tomatoes, cucumbers, eggplant"},
+    {id:"green", name:"Green Bed", w:6, l:3, shape:"rect", color:"#1a2a3a", x:10, y:250, notes:"Peppers, watermelon radish"},
+    {id:"container", name:"Containers", w:3, l:6, shape:"container", color:"#2a1a3a", x:200, y:130, notes:"Dragon fruit, mango, blueberries, potatoes"},
+  ];
   saveBeds();
 }
 
@@ -1607,7 +1685,7 @@ function rotateBed(id) {
 
 function renderMap() {
   loadBedsIfNeeded();
-  setTimeout(loadSavedMapLocation, 150);
+  if (mapTab === "satellite") setTimeout(loadSavedMapLocation, 150);
   const canvas = document.getElementById("map-canvas");
   const bedHarvestTotals = {};
   const bedPlants = {};
@@ -1645,6 +1723,8 @@ function renderMap() {
 
   // Setup drag
   setupDrag(canvas);
+  // Auto-fit on first render
+  if (mapTab === "canvas") setTimeout(fitCanvasToBeds, 50);
 
   // Bed detail panel
   const detail = document.getElementById("bed-detail-panel");
@@ -2441,37 +2521,14 @@ const GARDEN_ALERTS = [
 ];
 
 let weatherData = null;
-let WEATHER_LAT = null;
-let WEATHER_LON = null;
+const WEATHER_LAT = 29.9499;
+const WEATHER_LON = -90.2178;
 
 function refreshWeather() { weatherData = null; loadWeather(); }
 
 async function loadWeather() {
   const el = document.getElementById("weather-content");
   if (!el) return;
-  if (!WEATHER_LAT) {
-    const savedLat = parseFloat(localStorage.getItem("gl-demo-garden-lat"));
-    const savedLon = parseFloat(localStorage.getItem("gl-demo-garden-lon"));
-    if (savedLat && savedLon) {
-      WEATHER_LAT = savedLat; WEATHER_LON = savedLon;
-      const savedAddr = localStorage.getItem("gl-demo-garden-address") || "";
-      const zone = getHardinessZone(WEATHER_LAT, WEATHER_LON);
-      const locationEl = document.getElementById("weather-location-label");
-      if (locationEl) locationEl.textContent = (savedAddr||WEATHER_LAT.toFixed(2)+", "+WEATHER_LON.toFixed(2)) + " · Zone " + zone;
-    } else {
-      el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Getting your location...</div>';
-      try {
-        const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000}));
-        WEATHER_LAT = pos.coords.latitude; WEATHER_LON = pos.coords.longitude;
-        const locationName = await reverseGeocode(WEATHER_LAT, WEATHER_LON);
-        const zone = getHardinessZone(WEATHER_LAT, WEATHER_LON);
-        const locationEl = document.getElementById("weather-location-label");
-        if (locationEl) locationEl.textContent = locationName + " · Zone " + zone;
-      } catch(e) {
-        el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>'; return;
-      }
-    }
-  }
   el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
   try {
     const url = "https://api.open-meteo.com/v1/forecast" +
