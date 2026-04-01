@@ -201,7 +201,7 @@
   <div class="header">
     <div>
       <div class="header-title">🌱 Garden Log</div>
-      <div class="header-sub">My Garden · 2026 Season</div>
+      <div class="header-sub">River Ridge · 2026 Season</div>
     </div>
     <div style="text-align:right">
       <div style="font-size:10px;color:var(--muted)">Total harvest</div>
@@ -406,7 +406,16 @@
 
   <!-- MAP CANVAS -->
   <div class="map-wrap">
-    <div id="map-canvas" style="background:#141410;border-radius:12px;border:1px solid var(--border);margin:0 14px;position:relative;height:380px;overflow:hidden;touch-action:none"></div>
+    <div id="map-scroll-wrap" style="margin:0 14px;border-radius:12px;border:1px solid var(--border);overflow:hidden;position:relative">
+      <div id="map-zoom-controls" style="position:absolute;top:8px;right:8px;z-index:10;display:flex;flex-direction:column;gap:4px">
+        <button onclick="adjustZoom(0.2)" style="background:#22221aee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+        <button onclick="adjustZoom(-0.2)" style="background:#22221aee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+        <button onclick="resetZoom()" style="background:#22221aee;border:1px solid var(--border2);color:var(--muted);border-radius:6px;width:32px;height:28px;font-size:9px;cursor:pointer;letter-spacing:0.5px">FIT</button>
+      </div>
+      <div id="map-viewport" style="overflow:auto;height:420px;touch-action:pan-x pan-y">
+        <div id="map-canvas" style="background:#141410;position:relative;height:600px;width:700px;touch-action:none"></div>
+      </div>
+    </div>
     <div id="bed-detail-panel" style="margin:10px 14px 0"></div>
   </div>
 
@@ -460,26 +469,56 @@
 <div class="view" id="view-calendar">
   <div class="header"><div class="header-title">Planting Calendar</div><div class="header-sub">Zone 9a · Louisiana</div></div>
 
-  <div class="cal-month">
-    <button onclick="changeMonth(-1)">‹</button>
-    <div class="cal-month-name" id="cal-month-name"></div>
-    <button onclick="changeMonth(1)">›</button>
+  <!-- View toggle -->
+  <div style="padding:8px 14px 0">
+    <div class="type-tabs">
+      <button class="type-tab active" id="cal-tab-day" onclick="setCalView('day')">📅 Day</button>
+      <button class="type-tab" id="cal-tab-week" onclick="setCalView('week')">📆 Week</button>
+      <button class="type-tab" id="cal-tab-month" onclick="setCalView('month')">🗓 Season</button>
+    </div>
   </div>
 
-  <div class="cal-today-box">
-    <div class="cal-today-title" id="cal-today-title">This month</div>
-    <div id="cal-today-tasks" style="font-size:13px;line-height:1.7;color:var(--muted2)"></div>
+  <!-- DAY VIEW -->
+  <div id="cal-day-view">
+    <div style="padding:10px 16px 0;display:flex;align-items:center;justify-content:space-between">
+      <button onclick="changeDay(-1)" style="background:none;border:none;color:var(--muted2);font-size:20px;cursor:pointer;padding:4px 10px">‹</button>
+      <div id="cal-day-name" style="font-size:16px;color:var(--green);text-align:center"></div>
+      <button onclick="changeDay(1)" style="background:none;border:none;color:var(--muted2);font-size:20px;cursor:pointer;padding:4px 10px">›</button>
+    </div>
+    <div id="cal-day-content" style="padding:0 14px"></div>
   </div>
 
-  <div class="cal-legend">
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#4a9aba"></div>Seed indoors</div>
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#8fba6a"></div>Transplant</div>
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e8a020"></div>Direct sow</div>
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e85d75"></div>Harvest window</div>
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#9b59b6"></div>Plant (bulb/crown)</div>
+  <!-- WEEK VIEW -->
+  <div id="cal-week-view" style="display:none">
+    <div style="padding:10px 16px 0;display:flex;align-items:center;justify-content:space-between">
+      <button onclick="changeWeek(-1)" style="background:none;border:none;color:var(--muted2);font-size:20px;cursor:pointer;padding:4px 10px">‹</button>
+      <div id="cal-week-name" style="font-size:14px;color:var(--green)"></div>
+      <button onclick="changeWeek(1)" style="background:none;border:none;color:var(--muted2);font-size:20px;cursor:pointer;padding:4px 10px">›</button>
+    </div>
+    <!-- 7-day strip -->
+    <div id="cal-week-strip" style="display:flex;gap:4px;padding:10px 14px;overflow-x:auto"></div>
+    <div id="cal-week-content" style="padding:0 14px"></div>
   </div>
 
-  <div class="card" id="cal-crop-list"></div>
+  <!-- SEASON/MONTH VIEW -->
+  <div id="cal-month-view" style="display:none">
+    <div class="cal-month">
+      <button onclick="changeMonth(-1)">‹</button>
+      <div class="cal-month-name" id="cal-month-name"></div>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-today-box">
+      <div class="cal-today-title" id="cal-today-title">This month</div>
+      <div id="cal-today-tasks" style="font-size:13px;line-height:1.7;color:var(--muted2)"></div>
+    </div>
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#4a9aba"></div>Seed indoors</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#8fba6a"></div>Transplant</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e8a020"></div>Direct sow</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e85d75"></div>Harvest window</div>
+    </div>
+    <div class="card" id="cal-crop-list"></div>
+  </div>
 </div>
 
 <!-- ===== CARE LOG ===== -->
@@ -494,7 +533,7 @@
 <!-- ===== WEATHER ===== -->
 <div class="view" id="view-weather">
   <div class="header">
-    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">Detecting location...</div></div>
+    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">River Ridge, LA</div></div>
     <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="refreshWeather()">↻ Refresh</button>
   </div>
   <div id="weather-content" style="padding:0 14px">
@@ -628,9 +667,9 @@ let photoData = { h: null, c: null, p: null };
 // ===================== STORAGE =====================
 async function loadData() {
   try {
-    const h = localStorage.getItem("gl-demo-harvests");
-    const c = localStorage.getItem("gl-demo-care");
-    const p = localStorage.getItem("gl-demo-plants");
+    const h = localStorage.getItem("gl-harvests");
+    const c = localStorage.getItem("gl-care");
+    const p = localStorage.getItem("gl-plants");
     if (h) harvests = JSON.parse(h);
     if (c) careLog = JSON.parse(c);
     if (p) plantLog = JSON.parse(p);
@@ -641,22 +680,89 @@ async function loadData() {
   renderAll();
 }
 
-function saveHarvests() { try { localStorage.setItem("gl-demo-harvests", JSON.stringify(harvests)); } catch(e){} }
-function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){} }
-function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){} }
+function saveHarvests() { try { localStorage.setItem("gl-harvests", JSON.stringify(harvests)); } catch(e){} }
+function saveCare() { try { localStorage.setItem("gl-care", JSON.stringify(careLog)); } catch(e){} }
+function savePlants() { try { localStorage.setItem("gl-plants", JSON.stringify(plantLog)); } catch(e){} }
 
 function seedHarvests() {
-  harvests = [];
+  harvests = [
+    {id:1,date:"2026-02-22",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:21,count:1,notes:"first",photo:null},
+    {id:2,date:"2026-02-22",crop:"pepper",variety:"Serrano",bed:"Green Bed",weight:3,count:1,notes:"from transplanting",photo:null},
+    {id:3,date:"2026-02-25",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"transplants",photo:null},
+    {id:4,date:"2026-03-01",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:1,notes:"",photo:null},
+    {id:5,date:"2026-03-03",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:30,count:1,notes:"",photo:null},
+    {id:6,date:"2026-03-06",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:76,count:5,notes:"",photo:null},
+    {id:7,date:"2026-03-07",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:236,count:16,notes:"",photo:null},
+    {id:8,date:"2026-03-07",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:6,count:2,notes:"",photo:null},
+    {id:9,date:"2026-03-08",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:54,count:5,notes:"",photo:null},
+    {id:10,date:"2026-03-10",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"",photo:null},
+    {id:11,date:"2026-03-11",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:57,count:5,notes:"",photo:null},
+    {id:12,date:"2026-03-13",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:281,count:3,notes:"First harvest",photo:null},
+    {id:13,date:"2026-03-14",crop:"strawberry",variety:"Festival",bed:"Square",weight:2,count:1,notes:"Deformed not quite ripe",photo:null},
+    {id:14,date:"2026-03-14",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:91,count:7,notes:"",photo:null},
+    {id:15,date:"2026-03-15",crop:"strawberry",variety:"Festival",bed:"Square",weight:6,count:1,notes:"Ugly too",photo:null},
+    {id:16,date:"2026-03-16",crop:"strawberry",variety:"Festival",bed:"Oval",weight:16,count:2,notes:"",photo:null},
+    {id:17,date:"2026-03-18",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:3,notes:"",photo:null},
+    {id:18,date:"2026-03-20",crop:"strawberry",variety:"Festival",bed:"Oval",weight:8,count:1,notes:"",photo:null},
+    {id:19,date:"2026-03-21",crop:"strawberry",variety:"Festival",bed:"Oval",weight:5,count:2,notes:"",photo:null},
+    {id:20,date:"2026-03-21",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:3,count:2,notes:"",photo:null},
+    {id:21,date:"2026-03-21",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:150,count:1,notes:"",photo:null},
+    {id:22,date:"2026-03-22",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
+    {id:23,date:"2026-03-22",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:40,count:1,notes:"",photo:null},
+    {id:24,date:"2026-03-23",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
+    {id:25,date:"2026-03-24",crop:"strawberry",variety:"Festival",bed:"Oval",weight:42,count:6,notes:"",photo:null},
+    {id:26,date:"2026-03-24",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
+    {id:27,date:"2026-03-24",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:396,count:4,notes:"",photo:null},
+    {id:28,date:"2026-03-24",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:14,count:1,notes:"",photo:null},
+    {id:29,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:73,count:9,notes:"",photo:null},
+    {id:30,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:49,count:3,notes:"",photo:null},
+    {id:31,date:"2026-03-25",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:202,count:2,notes:"",photo:null},
+    {id:32,date:"2026-03-26",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:5,notes:"",photo:null},
+    {id:33,date:"2026-03-29",crop:"strawberry",variety:"Festival",bed:"Oval",weight:110,count:16,notes:"",photo:null},
+    {id:34,date:"2026-03-29",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
+    {id:35,date:"2026-03-29",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:46,count:1,notes:"",photo:null},
+    {id:36,date:"2026-03-30",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:4,notes:"",photo:null},
+    {id:37,date:"2026-03-30",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:96,count:2,notes:"",photo:null},
+    {id:38,date:"2026-03-30",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:23,count:3,notes:"",photo:null},
+    {id:39,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:41,count:3,notes:"",photo:null},
+    {id:40,date:"2026-03-31",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:4,notes:"",photo:null},
+    {id:41,date:"2026-03-31",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:62,count:1,notes:"",photo:null},
+    {id:42,date:"2026-03-31",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:24,count:4,notes:"",photo:null},
+    {id:43,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:20,count:3,notes:"",photo:null},
+    {id:44,date:"2026-04-01",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:6,notes:"",photo:null},
+  ];
   saveHarvests();
 }
 
 function seedCare() {
-  careLog = [];
+  careLog = [
+    {id:Date.now(),date:"2026-04-01",type:"spray-spinosad",product:"Spinosad",plants:"All tomatoes",notes:"Broad mite treatment on Sungold and all other tomatoes",photo:null,nextDate:"2026-04-08"}
+  ];
   saveCare();
 }
 
 function seedPlants() {
-  plantLog = [];
+  plantLog = [
+    {id:1,crop:"tomato",variety:"Sungold",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:2,crop:"tomato",variety:"Super Sweet 100",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:3,crop:"tomato",variety:"Lemon Boy",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:4,crop:"tomato",variety:"Early Girl",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
+    {id:5,crop:"pepper",variety:"Shishito",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
+    {id:6,crop:"pepper",variety:"Serrano",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
+    {id:7,crop:"strawberry",variety:"Festival",bed:"Oval",count:25,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Oval bed"},
+    {id:8,crop:"strawberry",variety:"Festival",bed:"Square",count:20,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Square bed"},
+    {id:9,crop:"cucumber",variety:"Merlin",bed:"Tomato Bed",count:4,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
+    {id:10,crop:"cucumber",variety:"Beit Alpha",bed:"Tomato Bed",count:2,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:"First fruit April 1"},
+    {id:11,crop:"eggplant",variety:"Camo Camo",bed:"Tomato Bed",count:2,seedDate:"2026-01-20",transplantDate:"2026-02-25",status:"flowering",notes:""},
+    {id:12,crop:"dragon fruit",variety:"Palora",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"flowering",notes:"Bloomed April 1 — self + red pollen applied"},
+    {id:13,crop:"dragon fruit",variety:"Haley's Comet",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
+    {id:14,crop:"dragon fruit",variety:"Pink Noid",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
+    {id:15,crop:"mango",variety:"Carrie",bed:"Container",count:1,seedDate:"",transplantDate:"2023-01-01",status:"flowering",notes:"31 panicles — hand pollination underway"},
+    {id:16,crop:"blackberry",variety:"Prime Ark Freedom",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:"~2 weeks from first ripe"},
+    {id:17,crop:"blueberry",variety:"Alapaha",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:""},
+    {id:18,crop:"blueberry",variety:"Ochlockonee",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
+    {id:19,crop:"blueberry",variety:"Legacy",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
+  ];
   savePlants();
 }
 
@@ -985,13 +1091,20 @@ let selectedBedId = null;
 let selectedBedColor = "#1e3a10";
 let dragState = null;
 
-function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
+function saveBeds() { try { localStorage.setItem("gl-beds", JSON.stringify(beds)); } catch(e){} }
 function loadBeds() {
   try {
-    const b = localStorage.getItem("gl-demo-beds");
+    const b = localStorage.getItem("gl-beds");
     if (b) { beds = JSON.parse(b); return; }
   } catch(e){}
-  beds = [];
+  // Default beds seeded from your garden
+  beds = [
+    {id:"oval", name:"Oval Stock Tank", w:4, l:4, shape:"oval", color:"#1e3a10", x:10, y:10, notes:"Strawberries + onions"},
+    {id:"square", name:"Square Raised Bed", w:4, l:4, shape:"rect", color:"#1a3a1a", x:140, y:10, notes:"Strawberries"},
+    {id:"tomato", name:"Tomato Bed", w:8, l:3, shape:"rect", color:"#3a1a1a", x:10, y:140, notes:"Tomatoes, cucumbers, eggplant"},
+    {id:"green", name:"Green Bed", w:6, l:3, shape:"rect", color:"#1a2a3a", x:10, y:250, notes:"Peppers, watermelon radish"},
+    {id:"container", name:"Containers", w:3, l:6, shape:"container", color:"#2a1a3a", x:200, y:130, notes:"Dragon fruit, mango, blueberries, potatoes"},
+  ];
   saveBeds();
 }
 
@@ -1201,10 +1314,10 @@ function setupDrag(canvas) {
     const pt = e.touches ? e.touches[0] : e;
     const rect = canvas.getBoundingClientRect();
     const el = dragState.el;
-    const nx = pt.clientX - rect.left - dragState.ox;
-    const ny = pt.clientY - rect.top - dragState.oy;
-    const maxX = canvas.clientWidth - el.clientWidth;
-    const maxY = canvas.clientHeight - el.clientHeight;
+    const nx = (pt.clientX - rect.left) / mapZoom - dragState.ox;
+    const ny = (pt.clientY - rect.top) / mapZoom - dragState.oy;
+    const maxX = 700 - el.clientWidth;
+    const maxY = 600 - el.clientHeight;
     el.style.left = Math.max(0,Math.min(nx,maxX))+"px";
     el.style.top = Math.max(0,Math.min(ny,maxY))+"px";
     if (Math.abs(nx - dragState.startX) > 5 || Math.abs(ny - dragState.startY) > 5) dragState.moved = true;
@@ -1228,6 +1341,7 @@ function setupDrag(canvas) {
 function startDrag(e, id) {
   const el = document.getElementById("mapbed-"+id);
   const canvas = document.getElementById("map-canvas");
+  const viewport = document.getElementById("map-viewport");
   const rect = canvas.getBoundingClientRect();
   const pt = e.touches ? e.touches[0] : e;
   dragState = {
@@ -1237,14 +1351,228 @@ function startDrag(e, id) {
     startX: parseInt(el.style.left),
     startY: parseInt(el.style.top),
   };
+  e.stopPropagation();
+}
+
+let mapZoom = 1;
+function adjustZoom(delta) {
+  mapZoom = Math.max(0.4, Math.min(2.0, mapZoom + delta));
+  const canvas = document.getElementById("map-canvas");
+  canvas.style.transform = `scale(${mapZoom})`;
+  canvas.style.transformOrigin = "top left";
+  canvas.style.width = (700 / mapZoom) + "px";
+}
+function resetZoom() {
+  mapZoom = 1;
+  const canvas = document.getElementById("map-canvas");
+  canvas.style.transform = "";
+  canvas.style.width = "700px";
 }
 
 function selectBed(id) { selectedBedId=selectedBedId===id?null:id; renderMap(); }
 
 // ===================== CALENDAR =====================
+let calViewMode = "day";
+let calDayOffset = 0;  // days from today
+let calWeekOffset = 0; // weeks from current week
+
+const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAY_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function setCalView(v) {
+  calViewMode = v;
+  ["day","week","month"].forEach(m => {
+    document.getElementById("cal-"+m+"-view").style.display = m===v ? "block" : "none";
+    document.getElementById("cal-tab-"+m).classList.toggle("active", m===v);
+  });
+  renderCalendar();
+}
+
+function changeDay(d) { calDayOffset += d; renderCalendar(); }
+function changeWeek(d) { calWeekOffset += d; renderCalendar(); }
+function changeMonth(d) { calMonth=((calMonth-1+d+12)%12)+1; renderCalendar(); }
+
+function getDayTasks(date) {
+  const m = date.getMonth() + 1;
+  const tasks = [];
+
+  // Monthly garden tasks
+  const monthTasks = MONTH_TASKS[m] || [];
+  
+  // Day of week specific
+  const dow = date.getDay();
+  
+  // Care events due on this date
+  const dateStr = date.toISOString().split("T")[0];
+  careLog.forEach(e => {
+    if (e.nextDate === dateStr) {
+      tasks.push({ type: "care-due", text: `⏱ ${CARE_LABELS[e.type]||"Care"} due — ${e.plants}`, level: "warn" });
+    }
+    if (e.date === dateStr) {
+      tasks.push({ type: "care-done", text: `✓ ${CARE_LABELS[e.type]||"Care"} applied — ${e.plants}`, level: "ok" });
+    }
+  });
+
+  // Harvests on this date
+  const dayHarvests = harvests.filter(h => h.date === dateStr);
+  if (dayHarvests.length) {
+    const total = dayHarvests.reduce((s,h)=>s+h.weight,0);
+    const crops = [...new Set(dayHarvests.map(h=>EMOJI[h.crop]))].join("");
+    tasks.push({ type: "harvest", text: `${crops} Harvested ${total}g`, level: "harvest" });
+  }
+
+  // Crop window tasks for this month
+  Object.entries(CAL_DATA).forEach(([key, data]) => {
+    const inR = (range) => { if(!range)return false; let[s,e]=range; if(s>e)return m>=s||m<=e; return m>=s&&m<=e; };
+    if (inR(data.seedIndoor)) tasks.push({ type:"seed", text:`🌱 Good time to start ${data.label} seeds indoors`, level:"info" });
+    if (inR(data.transplant)) tasks.push({ type:"transplant", text:`🌿 ${data.label} transplant window`, level:"info" });
+    if (inR(data.direct)) tasks.push({ type:"sow", text:`🌾 Direct sow ${data.label}`, level:"info" });
+    if (inR(data.harvest)) tasks.push({ type:"harvest-window", text:`${data.emoji} ${data.label} harvest window active`, level:"ok" });
+  });
+
+  return { monthTasks, tasks };
+}
+
+function renderDayView() {
+  const today = new Date();
+  const target = new Date(today);
+  target.setDate(today.getDate() + calDayOffset);
+  target.setHours(0,0,0,0);
+
+  const isToday = calDayOffset === 0;
+  const isTomorrow = calDayOffset === 1;
+  const dayLabel = isToday ? "Today" : isTomorrow ? "Tomorrow" : `${DAY_NAMES[target.getDay()]}, ${MONTH_SHORT[target.getMonth()]} ${target.getDate()}`;
+  document.getElementById("cal-day-name").textContent = dayLabel;
+
+  const { monthTasks, tasks } = getDayTasks(target);
+  const el = document.getElementById("cal-day-content");
+  let html = "";
+
+  // Date display
+  html += `<div style="text-align:center;padding:6px 0 12px">
+    <div style="font-size:13px;color:var(--muted)">${MONTH_NAMES[target.getMonth()]} ${target.getDate()}, ${target.getFullYear()}</div>
+  </div>`;
+
+  // Care events due
+  const careDue = tasks.filter(t=>t.type==="care-due");
+  if (careDue.length) {
+    html += '<div style="margin-bottom:12px">';
+    careDue.forEach(t => html += `<div class="alert alert-warn" style="margin:4px 0">${t.text}</div>`);
+    html += '</div>';
+  }
+
+  // Harvests logged
+  const harvestTasks = tasks.filter(t=>t.type==="harvest");
+  if (harvestTasks.length) {
+    html += '<div style="margin-bottom:12px">';
+    harvestTasks.forEach(t => html += `<div class="alert alert-success" style="margin:4px 0">${t.text}</div>`);
+    html += '</div>';
+  }
+
+  // Care done
+  const careDone = tasks.filter(t=>t.type==="care-done");
+  if (careDone.length) {
+    html += '<div style="margin-bottom:12px">';
+    careDone.forEach(t => html += `<div class="alert alert-success" style="margin:4px 0">${t.text}</div>`);
+    html += '</div>';
+  }
+
+  // Monthly action items
+  if (monthTasks.length) {
+    html += `<div class="card" style="margin:0 0 12px">
+      <div class="card-title">This month's tasks</div>
+      ${monthTasks.map(t=>`<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted2)">• ${t}</div>`).join("")}
+    </div>`;
+  }
+
+  // Active windows
+  const windows = tasks.filter(t=>["seed","transplant","sow","harvest-window"].includes(t.type));
+  if (windows.length) {
+    html += `<div class="card" style="margin:0 0 12px">
+      <div class="card-title">Active windows</div>
+      ${windows.slice(0,8).map(t=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted2)">${t.text}</div>`).join("")}
+    </div>`;
+  }
+
+  if (!html) html = '<div style="padding:20px 0;text-align:center;color:var(--muted)">Nothing specific logged for this day</div>';
+  el.innerHTML = html;
+}
+
+function renderWeekView() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay() + calWeekOffset * 7);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+  document.getElementById("cal-week-name").textContent = 
+    `${MONTH_SHORT[startOfWeek.getMonth()]} ${startOfWeek.getDate()} – ${MONTH_SHORT[endOfWeek.getMonth()]} ${endOfWeek.getDate()}`;
+
+  // 7-day strip
+  const strip = document.getElementById("cal-week-strip");
+  let stripHtml = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate() + i);
+    const isToday = d.toDateString() === today.toDateString();
+    const dateStr = d.toISOString().split("T")[0];
+    const hasCare = careLog.some(e => e.nextDate === dateStr || e.date === dateStr);
+    const hasHarvest = harvests.some(h => h.date === dateStr);
+    const dot = hasCare ? "🟡" : hasHarvest ? "🟢" : "";
+    stripHtml += `<div onclick="calDayOffset=${Math.round((d-today)/(1000*60*60*24))};setCalView('day')"
+      style="flex:1;min-width:38px;background:${isToday?"#c8d98a22":"var(--bg2)"};border:1px solid ${isToday?"var(--green)":"var(--border)"};
+      border-radius:8px;padding:6px 4px;text-align:center;cursor:pointer">
+      <div style="font-size:9px;color:var(--muted)">${DAY_SHORT[d.getDay()]}</div>
+      <div style="font-size:14px;font-weight:bold;color:${isToday?"var(--green)":"var(--text)"}">${d.getDate()}</div>
+      <div style="font-size:10px;min-height:14px">${dot}</div>
+    </div>`;
+  }
+  strip.innerHTML = stripHtml;
+
+  // Week summary
+  const el = document.getElementById("cal-week-content");
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate() + i);
+    const isToday = d.toDateString() === today.toDateString();
+    const dateStr = d.toISOString().split("T")[0];
+    const dayHarvests = harvests.filter(h=>h.date===dateStr);
+    const careDue = careLog.filter(e=>e.nextDate===dateStr);
+    const careDone = careLog.filter(e=>e.date===dateStr);
+    if (!dayHarvests.length && !careDue.length && !careDone.length) continue;
+
+    html += `<div style="margin-bottom:10px">
+      <div style="font-size:11px;color:${isToday?"var(--green)":"var(--muted)"};text-transform:uppercase;letter-spacing:1px;padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:6px">
+        ${isToday?"TODAY — ":""}${DAY_NAMES[d.getDay()]}, ${MONTH_SHORT[d.getMonth()]} ${d.getDate()}
+      </div>
+      ${careDue.map(e=>`<div style="font-size:12px;color:var(--orange);padding:3px 0">⏱ ${CARE_LABELS[e.type]||"Care"} due — ${e.plants}</div>`).join("")}
+      ${careDone.map(e=>`<div style="font-size:12px;color:var(--green2);padding:3px 0">✓ ${CARE_LABELS[e.type]||"Care"} — ${e.plants}</div>`).join("")}
+      ${dayHarvests.map(h=>`<div style="font-size:12px;color:var(--muted2);padding:3px 0">${EMOJI[h.crop]||"🌱"} ${h.variety} — ${h.weight}g · ${h.count} items</div>`).join("")}
+    </div>`;
+  }
+  if (!html) html = `<div style="padding:16px 0;text-align:center;color:var(--muted);font-size:13px">No logged events this week</div>`;
+
+  // Add month tasks summary
+  const m = today.getMonth() + 1;
+  const monthTasks = MONTH_TASKS[m]||[];
+  if (monthTasks.length) {
+    html += `<div class="card" style="margin-top:4px">
+      <div class="card-title">${MONTH_NAMES[m-1]} tasks</div>
+      ${monthTasks.map(t=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted2)">• ${t}</div>`).join("")}
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
 function changeMonth(d) { calMonth=((calMonth-1+d+12)%12)+1; renderCalendar(); }
 
 function renderCalendar() {
+  if (calViewMode === "day") { renderDayView(); return; }
+  if (calViewMode === "week") { renderWeekView(); return; }
+  // Season/month view
   const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   document.getElementById("cal-month-name").textContent = MONTHS[calMonth-1]+" 2026";
   document.getElementById("cal-today-title").textContent = "What to do in "+MONTHS[calMonth-1];
@@ -1385,6 +1713,10 @@ function renderAll() {
   document.getElementById("h-date").value = new Date().toISOString().split("T")[0];
   document.getElementById("c-date").value = new Date().toISOString().split("T")[0];
   calMonth = new Date().getMonth()+1;
+  // init cal sub-views
+  document.getElementById("cal-week-view").style.display="none";
+  document.getElementById("cal-month-view").style.display="none";
+  document.getElementById("cal-day-view").style.display="block";
   renderDashboard(); renderLog(); renderMap(); renderCalendar(); renderCare();
 }
 
