@@ -11,12 +11,12 @@
 <title>Garden Log</title>
 <style>
   :root {
-    --bg: #1a1a12; --bg2: #22221a; --bg3: #2a2a1e;
-    --border: #2e2e1e; --border2: #3a3a2a;
-    --text: #e8e0cc; --muted: #6b6b4a; --muted2: #a0a080;
-    --green: #c8d98a; --green2: #8fba6a; --green3: #2d4a1a;
-    --red: #e85d75; --orange: #e8a020; --blue: #4a9aba;
-    --purple: #9b59b6;
+    --bg: #faf8f3; --bg2: #ffffff; --bg3: #f0ede4;
+    --border: #ddd8cc; --border2: #c8c0b0;
+    --text: #1a1a0e; --muted: #7a6e58; --muted2: #5a5040;
+    --green: #4a7a32; --green2: #5a8a3a; --green3: #e8f0df;
+    --red: #c4622d; --orange: #d4920a; --blue: #2a6a9a;
+    --purple: #7a4a9a;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { background: var(--bg); color: var(--text); font-family: Georgia, serif; min-height: 100vh; max-width: 480px; margin: 0 auto; overflow-x: hidden; }
@@ -24,7 +24,7 @@
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
 
   /* NAV */
-  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #0e0e08; border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #ffffff; border-top: 2px solid var(--border); display: flex; z-index: 100; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
   .nav-btn { flex: 1; padding: 10px 0 14px; background: none; border: none; color: var(--muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; }
   .nav-btn.active { color: var(--green); }
   .nav-btn svg { width: 20px; height: 20px; }
@@ -34,17 +34,17 @@
   .view.active { display: block; }
 
   /* HEADER */
-  .header { padding: 20px 16px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+  .header { padding: 20px 16px 12px; border-bottom: 2px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: #ffffff; }
   .header-title { font-size: 20px; font-weight: normal; color: var(--green); letter-spacing: 1px; }
   .header-sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 3px; }
 
   /* CARDS */
-  .card { background: var(--bg2); border-radius: 12px; padding: 16px; margin: 10px 14px; border: 1px solid var(--border); }
+  .card { background: #ffffff; border-radius: 12px; padding: 16px; margin: 10px 14px; border: 1px solid var(--border); box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
   .card-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
 
   /* STATS */
   .stat-row { display: flex; gap: 8px; margin: 10px 14px; }
-  .stat { flex: 1; background: var(--bg2); border-radius: 10px; padding: 12px 8px; border: 1px solid var(--border); text-align: center; }
+  .stat { flex: 1; background: #ffffff; border-radius: 10px; padding: 12px 8px; border: 1px solid var(--border); text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   .stat-val { font-size: 22px; color: var(--green); font-weight: bold; }
   .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
 
@@ -55,8 +55,9 @@
   .field { margin-bottom: 14px; }
   .field label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
   .field input, .field select, .field textarea {
-    width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+    width: 100%; background: #ffffff; border: 1px solid var(--border2); border-radius: 8px;
     padding: 10px 12px; color: var(--text); font-size: 15px; font-family: Georgia, serif;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
   }
   .field textarea { min-height: 70px; resize: vertical; }
   .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--green2); }
@@ -66,8 +67,8 @@
   /* BUTTONS */
   .btn { border: none; border-radius: 8px; padding: 12px 18px; font-size: 14px; cursor: pointer; font-family: Georgia, serif; transition: opacity 0.15s; }
   .btn:active { opacity: 0.75; }
-  .btn-primary { background: var(--green2); color: #0e0e08; font-weight: bold; }
-  .btn-secondary { background: var(--bg3); color: var(--muted2); }
+  .btn-primary { background: var(--green2); color: #ffffff; font-weight: bold; }
+  .btn-secondary { background: #f0ede4; color: var(--muted2); border: 1px solid var(--border); }
   .btn-danger { background: #4a1a20; color: var(--red); }
   .btn-full { width: 100%; text-align: center; }
   .btn-row { display: flex; gap: 10px; }
@@ -77,9 +78,9 @@
 
   /* ALERTS */
   .alert { padding: 10px 14px; font-size: 12px; border-radius: 8px; margin: 8px 14px; }
-  .alert-success { background: var(--green3); color: var(--green2); border: 1px solid var(--green2)33; }
-  .alert-warn { background: #3a2a0a; color: var(--orange); border: 1px solid var(--orange)33; }
-  .alert-danger { background: #3a0a12; color: var(--red); border: 1px solid var(--red)33; }
+  .alert-success { background: #e8f0df; color: #3a6a22; border: 1px solid #b0d090; }
+  .alert-warn { background: #fdf3dc; color: #9a6a08; border: 1px solid #e8c870; }
+  .alert-danger { background: #fdeee8; color: #a04020; border: 1px solid #e8a080; }
 
   /* ENTRY ROWS */
   .entry-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-bottom: 1px solid #25251a; }
@@ -100,7 +101,7 @@
   .filter-row { padding: 10px 14px; overflow-x: auto; display: flex; gap: 7px; scrollbar-width: none; }
   .filter-row::-webkit-scrollbar { display: none; }
   .chip { border: 1px solid var(--border2); border-radius: 20px; padding: 4px 12px; font-size: 12px; white-space: nowrap; background: var(--bg2); color: var(--muted2); cursor: pointer; font-family: Georgia, serif; }
-  .chip.active { border-color: var(--green); color: var(--green); background: #c8d98a11; }
+  .chip.active { border-color: var(--green); color: var(--green); background: #e8f0df; font-weight: bold; }
 
   /* CROP BARS */
   .crop-bar-bg { height: 4px; border-radius: 2px; background: var(--border); margin-top: 5px; overflow: hidden; }
@@ -112,22 +113,22 @@
   .sparkline-wrap { overflow: hidden; }
 
   /* TIMER CARDS */
-  .timer-card { background: var(--bg2); border-radius: 10px; padding: 13px 14px; margin-bottom: 10px; border-left: 3px solid var(--green2); }
+  .timer-card { background: #ffffff; border-radius: 10px; padding: 13px 14px; margin-bottom: 10px; border-left: 3px solid var(--green2); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   .timer-card.warn { border-left-color: var(--orange); }
   .timer-card.danger { border-left-color: var(--red); }
   .timer-top { display: flex; justify-content: space-between; align-items: flex-start; }
   .timer-name { font-size: 14px; }
   .timer-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
   .timer-badge { font-size: 12px; font-weight: bold; border-radius: 6px; padding: 3px 8px; }
-  .timer-badge.ok { background: #2d4a1a; color: var(--green2); }
-  .timer-badge.warn { background: #3a2a0a; color: var(--orange); }
-  .timer-badge.danger { background: #3a0a12; color: var(--red); }
+  .timer-badge.ok { background: #e8f0df; color: #3a6a22; }
+  .timer-badge.warn { background: #fdf3dc; color: #9a6a08; }
+  .timer-badge.danger { background: #fdeee8; color: #a04020; }
 
   /* CALENDAR */
   .cal-month { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; }
   .cal-month-name { font-size: 16px; color: var(--green); }
   .cal-month button { background: none; border: none; color: var(--muted2); font-size: 20px; cursor: pointer; padding: 4px 10px; }
-  .cal-today-box { background: var(--bg2); border-radius: 10px; margin: 0 14px 10px; padding: 12px 14px; border: 1px solid var(--border); }
+  .cal-today-box { background: #ffffff; border-radius: 10px; margin: 0 14px 10px; padding: 12px 14px; border: 1px solid var(--border); box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
   .cal-today-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
   .cal-crop-timeline { margin-bottom: 8px; }
   .cal-crop-label { font-size: 12px; margin-bottom: 4px; display: flex; justify-content: space-between; }
@@ -145,10 +146,10 @@
   .bed.selected { border-color: var(--green); }
   .bed-label { font-size: 9px; color: var(--text); text-align: center; font-weight: bold; letter-spacing: 0.5px; line-height: 1.3; }
   .bed-crops { font-size: 9px; color: var(--muted2); text-align: center; margin-top: 2px; }
-  .bed-detail { background: var(--bg2); border-radius: 10px; border: 1px solid var(--border); padding: 14px; margin-top: 14px; }
+  .bed-detail { background: #ffffff; border-radius: 10px; border: 1px solid var(--border); padding: 14px; margin-top: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
   .bed-detail-title { font-size: 14px; color: var(--green); margin-bottom: 8px; }
   .bed-stat-row { display: flex; gap: 10px; margin-bottom: 10px; }
-  .bed-stat { flex: 1; background: var(--bg3); border-radius: 8px; padding: 8px; text-align: center; }
+  .bed-stat { flex: 1; background: #f0ede4; border-radius: 8px; padding: 8px; text-align: center; }
   .bed-stat-val { font-size: 16px; color: var(--green); font-weight: bold; }
   .bed-stat-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; }
 
@@ -162,18 +163,18 @@
   /* MODAL */
   .modal-bg { display: none; position: fixed; inset: 0; background: #000000bb; z-index: 200; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
-  .modal { background: var(--bg2); border-radius: 16px; padding: 22px; margin: 20px; width: 100%; max-width: 440px; border: 1px solid var(--border2); }
+  .modal { background: #ffffff; border-radius: 16px; padding: 22px; margin: 20px; width: 100%; max-width: 440px; border: 1px solid var(--border2); box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
   .modal-title { font-size: 16px; color: var(--green); margin-bottom: 6px; }
   .modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
 
   /* TOAST */
-  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--green3); color: var(--green2); border: 1px solid var(--green2)44; border-radius: 8px; padding: 10px 18px; font-size: 13px; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #4a7a32; color: #ffffff; border-radius: 8px; padding: 10px 18px; font-size: 13px; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
   .toast.show { opacity: 1; }
 
   /* ADD TYPE SELECTOR */
-  .type-tabs { display: flex; background: var(--bg3); border-radius: 10px; padding: 3px; margin-bottom: 18px; }
+  .type-tabs { display: flex; background: #f0ede4; border-radius: 10px; padding: 3px; margin-bottom: 18px; border: 1px solid var(--border); }
   .type-tab { flex: 1; padding: 8px; text-align: center; font-size: 12px; border-radius: 8px; cursor: pointer; border: none; background: none; color: var(--muted2); font-family: Georgia, serif; }
-  .type-tab.active { background: var(--bg2); color: var(--green); }
+  .type-tab.active { background: #ffffff; color: var(--green); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
 
   /* COLOR SWATCHES */
   .color-swatch { width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid transparent;transition:border-color 0.15s; }
@@ -188,8 +189,27 @@
   /* BED TABLE */
   .bed-table-row { display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border); }
   .bed-table-swatch { width:12px;height:12px;border-radius:3px;flex-shrink:0; }
+  /* UNIT SELECTOR */
+  .unit-selector button.active { background: var(--green) !important; color: #fff !important; border-color: var(--green) !important; font-weight: bold; }
+  /* ANALYTICS */
+  .a-table { width:100%;border-collapse:collapse;font-size:13px; }
+  .a-table th { text-align:left;padding:8px 6px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid var(--border);font-weight:normal; }
+  .a-table td { padding:8px 6px;border-bottom:1px solid var(--border); }
+  .a-table tr:last-child td { border-bottom:none; }
+  .a-table .num { text-align:right;font-variant-numeric:tabular-nums; }
+  .a-bar { height:6px;border-radius:3px;background:var(--border);margin-top:4px;overflow:hidden; }
+  .a-bar-fill { height:100%;border-radius:3px; }
+  .mini-chart { width:100%;height:80px; }
   /* PHOTO BTN */
-  .photo-btn { width: 100%; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 8px; padding: 14px; color: var(--muted2); font-size: 13px; cursor: pointer; text-align: center; font-family: Georgia, serif; }
+  .photo-btn { width: 100%; background: #f8f5ee; border: 2px dashed var(--border2); border-radius: 8px; padding: 14px; color: var(--muted2); font-size: 13px; cursor: pointer; text-align: center; font-family: Georgia, serif; display: block; box-sizing: border-box; }
+  .photo-input-styled {
+    width: 100%; background: #f8f5ee; border: 2px dashed var(--border2); border-radius: 8px;
+    padding: 12px; color: var(--muted2); font-size: 13px; cursor: pointer;
+    font-family: Georgia, serif; display: block; box-sizing: border-box;
+    text-align: center; opacity: 0; position: absolute; top: 0; left: 0; height: 100%;
+  }
+  .photo-btn-wrap { position: relative; width: 100%; }
+  .photo-btn-face { width: 100%; background: #f8f5ee; border: 2px dashed var(--border2); border-radius: 8px; padding: 14px; color: var(--muted2); font-size: 13px; text-align: center; box-sizing: border-box; pointer-events: none; }
   .photo-preview { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 200px; object-fit: cover; display: none; }
 </style>
 </head>
@@ -205,15 +225,21 @@
       <div class="header-sub">My Garden · 2026 Season</div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:10px;color:var(--muted)">Total harvest</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Total harvest</div>
       <div style="font-size:20px;color:var(--green);font-weight:bold" id="hdr-total">0 kg</div>
+      <div class="unit-selector" style="display:flex;gap:3px;margin-top:6px;justify-content:flex-end">
+        <button data-unit="g"  onclick="setUnit('g')"  class="active" style="border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer;font-family:Georgia,serif;background:#fff;color:var(--text)">g</button>
+        <button data-unit="oz" onclick="setUnit('oz')" style="border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer;font-family:Georgia,serif;background:#fff;color:var(--text)">oz</button>
+        <button data-unit="lb" onclick="setUnit('lb')" style="border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer;font-family:Georgia,serif;background:#fff;color:var(--text)">lb</button>
+        <button data-unit="kg" onclick="setUnit('kg')" style="border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer;font-family:Georgia,serif;background:#fff;color:var(--text)">kg</button>
+      </div>
     </div>
   </div>
 
   <div id="dash-alerts"></div>
 
   <div class="stat-row">
-    <div class="stat"><div class="stat-val" id="stat-kg">0</div><div class="stat-label">kg total</div></div>
+    <div class="stat"><div class="stat-val" id="stat-kg">0</div><div class="stat-label" id="stat-unit-label">g total</div></div>
     <div class="stat"><div class="stat-val" id="stat-items">0</div><div class="stat-label">items</div></div>
     <div class="stat"><div class="stat-val" id="stat-sessions">0</div><div class="stat-label">sessions</div></div>
   </div>
@@ -287,8 +313,12 @@
       <div class="field"><label>Notes</label><input type="text" id="h-notes" placeholder="Anything notable..."></div>
       <div class="field">
         <label>Photo</label>
-        <input type="file" id="h-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('h')">
-        <button class="photo-btn" onclick="document.getElementById('h-photo-input').click()">📷 Add photo</button>
+        <div class="photo-btn-wrap">
+          <div class="photo-btn-face" id="h-photo-face">📷 Add photo</div>
+          <input type="file" id="h-photo-input" accept="image/*"
+            style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"
+            onchange="handlePhoto('h')">
+        </div>
         <img id="h-photo-preview" class="photo-preview">
       </div>
       <div class="btn-row">
@@ -320,8 +350,12 @@
       <div class="field"><label>Notes</label><textarea id="c-notes" placeholder="Any observations..."></textarea></div>
       <div class="field">
         <label>Photo</label>
-        <input type="file" id="c-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('c')">
-        <button class="photo-btn" onclick="document.getElementById('c-photo-input').click()">📷 Add photo</button>
+        <div class="photo-btn-wrap">
+          <div class="photo-btn-face" id="c-photo-face">📷 Add photo</div>
+          <input type="file" id="c-photo-input" accept="image/*"
+            style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"
+            onchange="handlePhoto('c')">
+        </div>
         <img id="c-photo-preview" class="photo-preview">
       </div>
       <div class="btn-row">
@@ -359,8 +393,12 @@
       <div class="field"><label>Notes</label><textarea id="p-notes" placeholder="Source, observations..."></textarea></div>
       <div class="field">
         <label>Photo</label>
-        <input type="file" id="p-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('p')">
-        <button class="photo-btn" onclick="document.getElementById('p-photo-input').click()">📷 Add photo</button>
+        <div class="photo-btn-wrap">
+          <div class="photo-btn-face" id="p-photo-face">📷 Add photo</div>
+          <input type="file" id="p-photo-input" accept="image/*"
+            style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"
+            onchange="handlePhoto('p')">
+        </div>
         <img id="p-photo-preview" class="photo-preview">
       </div>
       <div class="btn-row">
@@ -382,12 +420,12 @@
   <div class="map-wrap">
     <div id="map-scroll-wrap" style="margin:0 14px;border-radius:12px;border:1px solid var(--border);overflow:hidden;position:relative">
       <div id="map-zoom-controls" style="position:absolute;top:8px;right:8px;z-index:10;display:flex;flex-direction:column;gap:4px">
-        <button onclick="adjustZoom(0.2)" style="background:#22221aee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
-        <button onclick="adjustZoom(-0.2)" style="background:#22221aee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
-        <button onclick="resetZoom()" style="background:#22221aee;border:1px solid var(--border2);color:var(--muted);border-radius:6px;width:32px;height:28px;font-size:9px;cursor:pointer;letter-spacing:0.5px">FIT</button>
+        <button onclick="adjustZoom(0.2)" style="background:#ffffffee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+        <button onclick="adjustZoom(-0.2)" style="background:#ffffffee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+        <button onclick="resetZoom()" style="background:#ffffffee;border:1px solid var(--border2);color:var(--muted);border-radius:6px;width:32px;height:28px;font-size:9px;cursor:pointer;letter-spacing:0.5px">FIT</button>
       </div>
       <div id="map-viewport" style="overflow:auto;height:420px;touch-action:pan-x pan-y">
-        <div id="map-canvas" style="background:#141410;position:relative;height:600px;width:700px;touch-action:none"></div>
+        <div id="map-canvas" style="background:#f0ede4;position:relative;height:600px;width:700px;touch-action:none"></div>
       </div>
     </div>
     <div id="bed-detail-panel" style="margin:10px 14px 0"></div>
@@ -504,6 +542,58 @@
   <div style="padding:0 14px" id="care-log-list"></div>
 </div>
 
+<!-- ===== ANALYTICS ===== -->
+<div class="view" id="view-analytics">
+  <div class="header">
+    <div><div class="header-title">Data & Analytics</div></div>
+    <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="exportCSV()">↓ Export CSV</button>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <div style="padding:12px 14px 0">
+    <input type="text" id="analytics-search" placeholder="🔍 Search crop, variety, bed, notes..." 
+      oninput="renderAnalytics()"
+      style="width:100%;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:10px 14px;font-size:14px;font-family:Georgia,serif;color:var(--text);box-shadow:inset 0 1px 3px rgba(0,0,0,0.06)">
+  </div>
+
+  <!-- Filter row -->
+  <div style="padding:8px 14px 0;display:flex;gap:8px;flex-wrap:wrap">
+    <select id="af-crop" onchange="renderAnalytics()" style="background:#fff;border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;font-family:Georgia,serif;color:var(--text)">
+      <option value="">All crops</option>
+    </select>
+    <select id="af-bed" onchange="renderAnalytics()" style="background:#fff;border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;font-family:Georgia,serif;color:var(--text)">
+      <option value="">All beds</option>
+    </select>
+    <select id="af-sort" onchange="renderAnalytics()" style="background:#fff;border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;font-family:Georgia,serif;color:var(--text)">
+      <option value="date-desc">Newest first</option>
+      <option value="date-asc">Oldest first</option>
+      <option value="weight-desc">Heaviest first</option>
+      <option value="weight-asc">Lightest first</option>
+      <option value="crop">By crop</option>
+    </select>
+    <select id="af-month" onchange="renderAnalytics()" style="background:#fff;border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;font-family:Georgia,serif;color:var(--text)">
+      <option value="">All months</option>
+      <option value="1">January</option><option value="2">February</option>
+      <option value="3">March</option><option value="4">April</option>
+      <option value="5">May</option><option value="6">June</option>
+      <option value="7">July</option><option value="8">August</option>
+      <option value="9">September</option><option value="10">October</option>
+      <option value="11">November</option><option value="12">December</option>
+    </select>
+  </div>
+
+  <!-- Analytics tabs -->
+  <div style="padding:10px 14px 0">
+    <div class="type-tabs">
+      <button class="type-tab active" id="atab-summary" onclick="setAnalyticsTab('summary')">Summary</button>
+      <button class="type-tab" id="atab-entries" onclick="setAnalyticsTab('entries')">Entries</button>
+      <button class="type-tab" id="atab-trends" onclick="setAnalyticsTab('trends')">Trends</button>
+    </div>
+  </div>
+
+  <div id="analytics-content"></div>
+</div>
+
 <!-- ===== WEATHER ===== -->
 <div class="view" id="view-weather">
   <div class="header">
@@ -592,6 +682,10 @@
   <button class="nav-btn" onclick="showView('care',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     Care
+  </button>
+  <button class="nav-btn" onclick="showView('analytics',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Data
   </button>
   <button class="nav-btn" onclick="showView('weather',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
@@ -775,6 +869,7 @@ const BEDS_DEF = [
 // ===================== STATE =====================
 let harvests = [], careLog = [], plantLog = [], selectedBed = null;
 let filterCrop = "all", deleteTarget = null, deleteType = null;
+let displayUnit = localStorage.getItem("gl-demo-unit") || "g";
 let editId = null, editType = null, addType = "harvest", calMonth = new Date().getMonth() + 1;
 let photoData = { h: null, c: null, p: null };
 
@@ -830,6 +925,43 @@ function showView(v, btn) {
 }
 
 // ===================== TOAST =====================
+// ── UNIT CONVERSION ──
+const UNIT_FACTORS = { g: 1, oz: 0.035274, lb: 0.00220462, kg: 0.001 };
+const UNIT_LABELS  = { g: "g", oz: "oz", lb: "lb", kg: "kg" };
+
+function setUnit(u) {
+  displayUnit = u;
+  localStorage.setItem("gl-demo-unit", u);
+  document.querySelectorAll(".unit-selector button").forEach(b => {
+    b.classList.toggle("active", b.dataset.unit === u);
+  });
+  // Re-render all active views
+  renderDashboard();
+  renderLog();
+  if (document.getElementById("view-analytics").classList.contains("active")) renderAnalytics();
+  toast("Unit: " + UNIT_LABELS[u]);
+}
+
+function fmt(grams) {
+  const v = grams * UNIT_FACTORS[displayUnit];
+  if (displayUnit === "g") return Math.round(grams) + "g";
+  if (displayUnit === "kg") return v.toFixed(3) + "kg";
+  if (displayUnit === "oz") return v.toFixed(1) + "oz";
+  if (displayUnit === "lb") return v.toFixed(3) + "lb";
+  return grams + "g";
+}
+
+function fmtShort(grams) {
+  const v = grams * UNIT_FACTORS[displayUnit];
+  if (displayUnit === "g") return Math.round(grams);
+  if (displayUnit === "kg") return v.toFixed(3);
+  if (displayUnit === "oz") return v.toFixed(1);
+  if (displayUnit === "lb") return v.toFixed(3);
+  return Math.round(grams);
+}
+
+function unitLabel() { return UNIT_LABELS[displayUnit]; }
+
 function toast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
@@ -840,8 +972,10 @@ function toast(msg) {
 function renderDashboard() {
   const totalW = harvests.reduce((s,e) => s+e.weight, 0);
   const totalC = harvests.reduce((s,e) => s+e.count, 0);
-  document.getElementById("hdr-total").textContent = (totalW/1000).toFixed(2)+" kg";
-  document.getElementById("stat-kg").textContent = (totalW/1000).toFixed(2);
+  document.getElementById("hdr-total").textContent = fmt(totalW);
+  document.getElementById("stat-kg").textContent = fmtShort(totalW);
+  const sul = document.getElementById("stat-unit-label");
+  if(sul) sul.textContent = unitLabel() + " total";
   document.getElementById("stat-items").textContent = totalC;
   document.getElementById("stat-sessions").textContent = harvests.length;
 
@@ -890,7 +1024,7 @@ function renderDashboard() {
     breakdown.innerHTML += `<div class="crop-row">
       <div class="crop-row-top">
         <span>${EMOJI[crop]||"🌱"} <span style="text-transform:capitalize">${crop}</span></span>
-        <span style="color:var(--green)">${stats.weight}g <span style="color:var(--muted);font-size:11px">${stats.count} items</span></span>
+        <span style="color:var(--green)">${fmt(stats.weight)} <span style="color:var(--muted);font-size:11px">${stats.count} items</span></span>
       </div>
       <div class="crop-bar-bg"><div class="crop-bar-fill" style="width:${pct}%;background:${color}"></div></div>
       <div style="font-size:10px;color:var(--muted);margin-top:3px">avg ${avg}g · ${pct}% of total</div>
@@ -902,7 +1036,7 @@ function renderDashboard() {
   if (best) document.getElementById("best-harvest").innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div><div style="font-size:15px">${EMOJI[best.crop]||"🌱"} ${best.variety}</div><div style="font-size:11px;color:var(--muted)">${best.date} · ${best.bed}</div></div>
-      <div style="text-align:right"><div style="font-size:20px;color:var(--green);font-weight:bold">${best.weight}g</div><div style="font-size:11px;color:var(--muted)">${best.count} items</div></div>
+      <div style="text-align:right"><div style="font-size:20px;color:var(--green);font-weight:bold">${fmt(best.weight)}</div><div style="font-size:11px;color:var(--muted)">${best.count} items</div></div>
     </div>`;
 
   // Best day
@@ -965,7 +1099,7 @@ function renderLog() {
       <div class="entry-body">
         <div class="entry-top">
           <div><div class="entry-name">${e.variety} <span style="font-size:11px;color:var(--muted)">${e.bed}</span></div></div>
-          <div><div class="entry-weight">${e.weight}g</div><div class="entry-count">${e.count} items · ${(e.weight/e.count).toFixed(1)}g avg</div></div>
+          <div><div class="entry-weight">${fmt(e.weight)}</div><div class="entry-count">${e.count} items · ${fmt(e.weight/e.count)} avg</div></div>
         </div>
         <div class="entry-sub">${e.date}</div>
         ${e.notes?`<div class="entry-note">${e.notes}</div>`:""}
@@ -1040,12 +1174,15 @@ function updateCareTimer() {
 function handlePhoto(prefix) {
   const input = document.getElementById(prefix+"-photo-input");
   const preview = document.getElementById(prefix+"-photo-preview");
+  const face = document.getElementById(prefix+"-photo-face");
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    photoData[prefix]=ev.target.result;
-    preview.src=ev.target.result; preview.style.display="block";
+    photoData[prefix] = ev.target.result;
+    preview.src = ev.target.result;
+    preview.style.display = "block";
+    if (face) face.textContent = "📷 Change photo";
   };
   reader.readAsDataURL(file);
 }
@@ -1878,6 +2015,41 @@ function populateBedDropdowns() {
 }
 
 // ===================== WEATHER =====================
+// USDA Hardiness zone lookup by average annual minimum temp (°F)
+function getHardinessZone(lat, lon) {
+  // We'll use Open-Meteo historical to get min temp proxy
+  // For now use lat-based approximation for display
+  // This gets refined by actual weather data when loaded
+  if (lat < 25) return "10b-11";
+  if (lat < 27) return "10a-10b";
+  if (lat < 29) return "9b-10a";
+  if (lat < 31) return "9a-9b";
+  if (lat < 33) return "8b-9a";
+  if (lat < 35) return "8a-8b";
+  if (lat < 37) return "7b-8a";
+  if (lat < 39) return "7a-7b";
+  if (lat < 41) return "6b-7a";
+  if (lat < 43) return "6a-6b";
+  if (lat < 45) return "5b-6a";
+  if (lat < 47) return "5a-5b";
+  return "4b-5a";
+}
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const data = await res.json();
+    const addr = data.address || {};
+    const town = addr.city || addr.town || addr.village || addr.hamlet || addr.county || "Unknown location";
+    const state = addr.state_code || addr.state || "";
+    return state ? `${town}, ${state}` : town;
+  } catch(e) {
+    return `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  }
+}
+
+// ===================== WEATHER =====================
 const WMO_CODES = {
   0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",
   45:"Foggy",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",
@@ -1912,11 +2084,18 @@ async function loadWeather() {
   if (!WEATHER_LAT) {
     el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Getting your location...</div>';
     try {
-      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
-      WEATHER_LAT = pos.coords.latitude; WEATHER_LON = pos.coords.longitude;
-      document.getElementById("weather-location-label").textContent = WEATHER_LAT.toFixed(2)+", "+WEATHER_LON.toFixed(2);
+      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000}));
+      WEATHER_LAT = pos.coords.latitude;
+      WEATHER_LON = pos.coords.longitude;
+      const locationName = await reverseGeocode(WEATHER_LAT, WEATHER_LON);
+      const zone = getHardinessZone(WEATHER_LAT, WEATHER_LON);
+      const locationEl = document.getElementById("weather-location-label");
+      if (locationEl) locationEl.textContent = locationName + " · Zone " + zone;
+      const headerSub = document.querySelector("#view-weather .header-sub");
+      if (headerSub) headerSub.textContent = locationName + " · USDA Zone " + zone;
     } catch(e) {
-      el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>'; return;
+      el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>';
+      return;
     }
   }
   el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
@@ -2023,7 +2202,329 @@ function renderWeather() {
 }
 
 
+// ===================== ANALYTICS =====================
+let analyticsTab = "summary";
+
+function setAnalyticsTab(t) {
+  analyticsTab = t;
+  ["summary","entries","trends"].forEach(tab => {
+    document.getElementById("atab-"+tab).classList.toggle("active", tab===t);
+  });
+  renderAnalytics();
+}
+
+function populateAnalyticsFilters() {
+  const crops = [...new Set(harvests.map(e=>e.crop))].sort();
+  const beds = [...new Set(harvests.map(e=>e.bed))].sort();
+  const cropSel = document.getElementById("af-crop");
+  const bedSel = document.getElementById("af-bed");
+  if (!cropSel) return;
+  const cv = cropSel.value, bv = bedSel.value;
+  cropSel.innerHTML = '<option value="">All crops</option>' + crops.map(c=>`<option value="${c}">${getCropByKey(c).emoji||""} ${c}</option>`).join("");
+  bedSel.innerHTML = '<option value="">All beds</option>' + beds.map(b=>`<option value="${b}">${b}</option>`).join("");
+  cropSel.value = cv; bedSel.value = bv;
+}
+
+function getFilteredHarvests() {
+  const search = (document.getElementById("analytics-search")||{value:""}).value.toLowerCase();
+  const crop = (document.getElementById("af-crop")||{value:""}).value;
+  const bed = (document.getElementById("af-bed")||{value:""}).value;
+  const sort = (document.getElementById("af-sort")||{value:"date-desc"}).value;
+  const month = (document.getElementById("af-month")||{value:""}).value;
+
+  let filtered = harvests.filter(e => {
+    if (crop && e.crop !== crop) return false;
+    if (bed && e.bed !== bed) return false;
+    if (month && new Date(e.date).getMonth()+1 !== parseInt(month)) return false;
+    if (search) {
+      const haystack = [e.crop,e.variety,e.bed,e.notes,e.date].join(" ").toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a,b) => {
+    if (sort==="date-desc") return b.date.localeCompare(a.date);
+    if (sort==="date-asc") return a.date.localeCompare(b.date);
+    if (sort==="weight-desc") return b.weight - a.weight;
+    if (sort==="weight-asc") return a.weight - b.weight;
+    if (sort==="crop") return a.crop.localeCompare(b.crop)||b.date.localeCompare(a.date);
+    return 0;
+  });
+  return filtered;
+}
+
+function renderAnalytics() {
+  populateAnalyticsFilters();
+  const filtered = getFilteredHarvests();
+  const el = document.getElementById("analytics-content");
+  if (!el) return;
+
+  const totalW = filtered.reduce((s,e)=>s+e.weight,0);
+  const totalC = filtered.reduce((s,e)=>s+e.count,0);
+
+  // Result count bar
+  let html = `<div style="padding:8px 14px;font-size:12px;color:var(--muted)">
+    ${filtered.length} entries · ${totalW}g · ${totalC} items
+  </div>`;
+
+  if (analyticsTab === "summary") {
+    // ── BY CROP TABLE ──
+    const byCrop = {};
+    filtered.forEach(e => {
+      if (!byCrop[e.crop]) byCrop[e.crop]={weight:0,count:0,sessions:0};
+      byCrop[e.crop].weight+=e.weight; byCrop[e.crop].count+=e.count; byCrop[e.crop].sessions++;
+    });
+    const cropRows = Object.entries(byCrop).sort((a,b)=>b[1].weight-a[1].weight);
+    const maxW = cropRows[0]?.[1]?.weight||1;
+
+    html += `<div class="card"><div class="card-title">By Crop</div>
+      <table class="a-table">
+        <tr><th>Crop</th><th class="num">Total g</th><th class="num">Items</th><th class="num">Avg g</th><th class="num">Sessions</th></tr>
+        ${cropRows.map(([crop,s])=>`<tr>
+          <td><span style="font-size:16px">${getCropByKey(crop).emoji||"🌱"}</span> <span style="text-transform:capitalize">${crop}</span>
+            <div class="a-bar"><div class="a-bar-fill" style="width:${Math.round(s.weight/maxW*100)}%;background:${COLORS[crop]||"#5a8a3a"}"></div></div>
+          </td>
+          <td class="num" style="color:var(--green);font-weight:bold">${fmt(s.weight)}</td>
+          <td class="num">${s.count}</td>
+          <td class="num">${fmt(s.weight/s.count)}</td>
+          <td class="num">${s.sessions}</td>
+        </tr>`).join("")}
+        <tr style="font-weight:bold;border-top:2px solid var(--border)">
+          <td>Total</td>
+          <td class="num" style="color:var(--green)">${fmt(totalW)}</td>
+          <td class="num">${totalC}</td>
+          <td class="num">${totalC>0?(totalW/totalC).toFixed(1):"-"}</td>
+          <td class="num">${filtered.length}</td>
+        </tr>
+      </table>
+    </div>`;
+
+    // ── BY VARIETY TABLE ──
+    const byVariety = {};
+    filtered.forEach(e => {
+      const key = e.crop + "||" + e.variety;
+      if (!byVariety[key]) byVariety[key]={crop:e.crop,variety:e.variety,weight:0,count:0,sessions:0,dates:[]};
+      byVariety[key].weight+=e.weight; byVariety[key].count+=e.count; byVariety[key].sessions++;
+      byVariety[key].dates.push(e.date);
+    });
+    const varietyRows = Object.values(byVariety).sort((a,b)=>b.weight-a.weight);
+    const maxVW = varietyRows[0]?.weight||1;
+
+    if (varietyRows.length) {
+      html += `<div class="card"><div class="card-title">By Variety</div>
+        <table class="a-table">
+          <tr><th>Variety</th><th class="num">Total ${unitLabel()}</th><th class="num">Items</th><th class="num">Avg</th><th class="num">Last</th></tr>
+          ${varietyRows.map(r=>{
+            const lastDate = r.dates.sort().at(-1);
+            const label = r.variety + " " + r.crop.charAt(0).toUpperCase() + r.crop.slice(1);
+            return `<tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:15px">${getCropByKey(r.crop).emoji||"🌱"}</span>
+                  <div>
+                    <div style="font-size:13px;font-weight:bold">${r.variety}</div>
+                    <div style="font-size:10px;color:var(--muted);text-transform:capitalize">${r.crop}</div>
+                  </div>
+                </div>
+                <div class="a-bar"><div class="a-bar-fill" style="width:${Math.round(r.weight/maxVW*100)}%;background:${COLORS[r.crop]||"#5a8a3a"}"></div></div>
+              </td>
+              <td class="num" style="color:var(--green);font-weight:bold">${fmt(r.weight)}</td>
+              <td class="num">${r.count}</td>
+              <td class="num">${fmt(r.weight/r.count)}</td>
+              <td class="num" style="font-size:11px;color:var(--muted)">${lastDate}</td>
+            </tr>`;
+          }).join("")}
+        </table>
+      </div>`;
+    }
+
+    // ── BY BED TABLE ──
+    const byBed = {};
+    filtered.forEach(e => {
+      if (!byBed[e.bed]) byBed[e.bed]={weight:0,count:0};
+      byBed[e.bed].weight+=e.weight; byBed[e.bed].count+=e.count;
+    });
+    const bedRows = Object.entries(byBed).sort((a,b)=>b[1].weight-a[1].weight);
+    const maxBW = bedRows[0]?.[1]?.weight||1;
+
+    html += `<div class="card"><div class="card-title">By Bed</div>
+      <table class="a-table">
+        <tr><th>Bed</th><th class="num">Total ${unitLabel()}</th><th class="num">Items</th></tr>
+        ${bedRows.map(([bed,s])=>`<tr>
+          <td>${bed}
+            <div class="a-bar"><div class="a-bar-fill" style="width:${Math.round(s.weight/maxBW*100)}%;background:var(--green)"></div></div>
+          </td>
+          <td class="num" style="color:var(--green);font-weight:bold">${fmt(s.weight)}</td>
+          <td class="num">${s.count}</td>
+        </tr>`).join("")}
+      </table>
+    </div>`;
+
+    // ── BY MONTH TABLE ──
+    const byMonth = {};
+    filtered.forEach(e => {
+      const m = new Date(e.date).getMonth();
+      const key = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m];
+      if (!byMonth[key]) byMonth[key]={weight:0,count:0,m};
+      byMonth[key].weight+=e.weight; byMonth[key].count+=e.count;
+    });
+    const monthRows = Object.entries(byMonth).sort((a,b)=>a[1].m-b[1].m);
+    if (monthRows.length) {
+      const maxMW = Math.max(...monthRows.map(r=>r[1].weight));
+      html += `<div class="card"><div class="card-title">By Month</div>
+        <table class="a-table">
+          <tr><th>Month</th><th class="num">Total ${unitLabel()}</th><th class="num">Items</th></tr>
+          ${monthRows.map(([month,s])=>`<tr>
+            <td>${month}
+              <div class="a-bar"><div class="a-bar-fill" style="width:${Math.round(s.weight/maxMW*100)}%;background:var(--orange)"></div></div>
+            </td>
+            <td class="num" style="font-weight:bold">${fmt(s.weight)}</td>
+            <td class="num">${s.count}</td>
+          </tr>`).join("")}
+        </table>
+      </div>`;
+    }
+
+    // ── PERSONAL RECORDS ──
+    if (filtered.length) {
+      const best = filtered.slice().sort((a,b)=>b.weight-a.weight)[0];
+      const bestDay = (() => {
+        const dm = {}; filtered.forEach(e=>{dm[e.date]=(dm[e.date]||0)+e.weight;});
+        return Object.entries(dm).sort((a,b)=>b[1]-a[1])[0];
+      })();
+      const bestAvg = filtered.filter(e=>e.count>=3).sort((a,b)=>(b.weight/b.count)-(a.weight/a.count))[0];
+      html += `<div class="card"><div class="card-title">🏆 Records</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div><div style="font-size:13px">Heaviest single harvest</div><div style="font-size:11px;color:var(--muted)">${best.date} · ${best.variety} · ${best.bed}</div></div>
+            <div style="font-size:18px;color:var(--green);font-weight:bold">${fmt(best.weight)}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div><div style="font-size:13px">Most productive day</div><div style="font-size:11px;color:var(--muted)">${bestDay[0]}</div></div>
+            <div style="font-size:18px;color:var(--green);font-weight:bold">${fmt(bestDay[1])}</div>
+          </div>
+          ${bestAvg?`<div style="display:flex;justify-content:space-between;padding:8px 0">
+            <div><div style="font-size:13px">Best avg berry/item weight</div><div style="font-size:11px;color:var(--muted)">${bestAvg.date} · ${bestAvg.variety}</div></div>
+            <div style="font-size:18px;color:var(--green);font-weight:bold">${fmt(bestAvg.weight/bestAvg.count)}</div>
+          </div>`:""}
+        </div>
+      </div>`;
+    }
+
+  } else if (analyticsTab === "entries") {
+    // ── ENTRIES TABLE ──
+    if (!filtered.length) {
+      html += '<div style="padding:30px;text-align:center;color:var(--muted)">No entries match your filters</div>';
+    } else {
+      html += `<div class="card" style="padding:0;overflow:hidden">
+        <table class="a-table" style="margin:0">
+          <tr style="background:#f8f5ee"><th style="padding:10px 12px">Date</th><th>Crop</th><th>Variety</th><th>Bed</th><th class="num" style="padding-right:12px">${unitLabel()}</th></tr>
+          ${filtered.map(e=>`<tr onclick="startEdit(${e.id},'harvest')" style="cursor:pointer">
+            <td style="padding:9px 12px;white-space:nowrap;font-size:12px;color:var(--muted)">${e.date}</td>
+            <td style="padding:9px 6px">${getCropByKey(e.crop).emoji||"🌱"}</td>
+            <td style="padding:9px 6px;font-size:13px">${e.variety}</td>
+            <td style="padding:9px 6px;font-size:11px;color:var(--muted)">${e.bed}</td>
+            <td class="num" style="padding:9px 12px;font-weight:bold;color:var(--green)">${fmt(e.weight)}</td>
+          </tr>`).join("")}
+        </table>
+      </div>`;
+    }
+
+  } else if (analyticsTab === "trends") {
+    // ── WEEKLY TOTALS CHART ──
+    const weekMap = {};
+    filtered.forEach(e => {
+      const d = new Date(e.date);
+      const dow = d.getDay();
+      const weekStart = new Date(d); weekStart.setDate(d.getDate()-dow);
+      const key = weekStart.toISOString().split("T")[0];
+      if (!weekMap[key]) weekMap[key]={weight:0,count:0};
+      weekMap[key].weight+=e.weight; weekMap[key].count+=e.count;
+    });
+    const weeks = Object.entries(weekMap).sort((a,b)=>a[0].localeCompare(b[0]));
+
+    if (weeks.length > 1) {
+      const maxWW = Math.max(...weeks.map(w=>w[1].weight));
+      html += `<div class="card"><div class="card-title">Weekly harvest totals (g)</div>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:80px;padding:4px 0">
+          ${weeks.map(([wk,s])=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="flex:1;width:100%;background:var(--green);border-radius:3px 3px 0 0;min-height:2px" 
+              title="${wk}: ${s.weight}g"
+              data-h="${Math.round((s.weight/maxWW)*72)}"
+              style="height:${Math.round((s.weight/maxWW)*72)}px;background:var(--green);border-radius:3px 3px 0 0;width:100%"></div>
+          </div>`).join("")}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
+          <span>${weeks[0][0].slice(5)}</span><span>${weeks[weeks.length-1][0].slice(5)}</span>
+        </div>
+      </div>`;
+    }
+
+    // Strawberry avg weight trend
+    const strawSess = filtered.filter(e=>e.crop==="strawberry"&&e.count>0).sort((a,b)=>a.date.localeCompare(b.date));
+    if (strawSess.length > 2) {
+      const avgs = strawSess.map(e=>e.weight/e.count);
+      const maxA = Math.max(...avgs);
+      html += `<div class="card"><div class="card-title">🍓 Strawberry avg weight per session (g)</div>
+        <div style="position:relative;height:80px;margin:8px 0">
+          <svg width="100%" height="80" style="overflow:visible">
+            <polyline points="${avgs.map((v,i)=>`${(i/(avgs.length-1))*100}%,${80-((v/maxA)*70)}`).join(" ")}"
+              fill="none" stroke="#c4622d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="${100}%" cy="${80-((avgs[avgs.length-1]/maxA)*70)}" r="4" fill="#c4622d"/>
+          </svg>
+        </div>
+        <div style="font-size:12px;color:var(--muted2)">Latest: <span style="color:var(--red);font-weight:bold">${fmt(avgs[avgs.length-1])}</span> · Best: <span style="color:var(--green);font-weight:bold">${fmt(Math.max(...avgs))}</span></div>
+      </div>`;
+    }
+
+    // Running total
+    const runDates = [...new Set(filtered.map(e=>e.date))].sort();
+    if (runDates.length > 1) {
+      let running = 0;
+      const runData = runDates.map(d=>{
+        running += filtered.filter(e=>e.date===d).reduce((s,e)=>s+e.weight,0);
+        return running;
+      });
+      const maxR = runData[runData.length-1];
+      html += `<div class="card"><div class="card-title">Cumulative harvest (g)</div>
+        <div style="position:relative;height:80px;margin:8px 0">
+          <svg width="100%" height="80" style="overflow:visible">
+            <polyline points="${runData.map((v,i)=>`${(i/(runData.length-1))*100}%,${80-((v/maxR)*70)}`).join(" ")}"
+              fill="none" stroke="#4a7a32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div style="font-size:12px;color:var(--muted2)">Total: <span style="color:var(--green);font-weight:bold">${fmt(maxR)}</span></div>
+      </div>`;
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+// ── CSV EXPORT ──
+function exportCSV() {
+  const headers = ["Date","Crop","Variety","Bed","Weight (g)","Weight (lb)","Count","Avg g/item","Notes"];
+  const rows = getFilteredHarvests().map(e => [
+    e.date, e.crop, e.variety, e.bed, e.weight,
+    (e.weight*0.00220462).toFixed(4), e.count,
+    (e.weight/e.count).toFixed(1), (e.notes||"").replace(/,/g,";")
+  ]);
+  const csv = [headers, ...rows].map(r=>r.join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download="garden-harvest-"+new Date().toISOString().split("T")[0]+".csv";
+  a.click(); URL.revokeObjectURL(url);
+  toast("✓ CSV exported!");
+}
+
 function renderAll() {
+  // Sync unit selector buttons
+  document.querySelectorAll(".unit-selector button").forEach(b => {
+    b.classList.toggle("active", b.dataset.unit === displayUnit);
+  });
+  document.getElementById("stat-unit-label").textContent = unitLabel() + " total";
   populateCropDropdowns();
   populateBedDropdowns();
   updateVarieties(); updatePlantVarieties(); updateCareTimer();
@@ -2034,7 +2535,7 @@ function renderAll() {
   document.getElementById("cal-week-view").style.display="none";
   document.getElementById("cal-month-view").style.display="none";
   document.getElementById("cal-day-view").style.display="block";
-  renderDashboard(); renderLog(); renderMap(); renderCalendar(); renderCare();
+  renderDashboard(); renderLog(); renderMap(); renderCalendar(); renderCare(); populateAnalyticsFilters();
 }
 
 loadData();
