@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Garden Log">
 <meta name="theme-color" content="#1a1a12">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://api.open-meteo.com https://*.open-meteo.com; img-src 'self' data: blob:; media-src 'self' data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://api.open-meteo.com; img-src 'self' data: blob:;">
 <title>Garden Log</title>
 <style>
   :root {
@@ -1876,6 +1876,150 @@ function populateBedDropdowns() {
     if(el) el.innerHTML = opts;
   });
 }
+
+// ===================== WEATHER =====================
+const WMO_CODES = {
+  0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",
+  45:"Foggy",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",
+  61:"Light rain",63:"Rain",65:"Heavy rain",80:"Light showers",81:"Showers",
+  82:"Heavy showers",95:"Thunderstorm",96:"Thunderstorm w/ hail"
+};
+const WMO_EMOJI = {
+  0:"☀️",1:"🌤",2:"⛅",3:"☁️",45:"🌫",48:"🌫",
+  51:"🌦",53:"🌧",55:"🌧",61:"🌦",63:"🌧",65:"⛈",
+  80:"🌦",81:"🌧",82:"⛈",95:"⛈",96:"⛈"
+};
+const GARDEN_ALERTS = [
+  { check: d => d.temp_max >= 95, msg: "🔥 Heat stress risk — shade cloth on tomatoes & strawberries", level: "danger" },
+  { check: d => d.temp_max >= 85 && d.temp_max < 95, msg: "☀️ Hot day — check moisture, water early morning", level: "warn" },
+  { check: d => d.temp_min <= 35, msg: "🧊 Frost risk tonight — protect tender plants", level: "danger" },
+  { check: d => d.temp_min <= 45, msg: "🌡 Cool night — peppers & dragon fruit may slow", level: "warn" },
+  { check: d => d.precip >= 1.0, msg: "🌧 Heavy rain — hold off watering, check drainage", level: "warn" },
+  { check: d => d.precip >= 0.25 && d.precip < 1.0, msg: "🌦 Rain today — may skip irrigation", level: "ok" },
+  { check: d => d.wind >= 25, msg: "💨 High winds — stake tomatoes, protect tall plants", level: "warn" },
+  { check: d => d.humidity_max >= 85, msg: "💧 High humidity — watch for fungal disease", level: "warn" },
+];
+
+let weatherData = null;
+let WEATHER_LAT = null;
+let WEATHER_LON = null;
+
+function refreshWeather() { weatherData = null; loadWeather(); }
+
+async function loadWeather() {
+  const el = document.getElementById("weather-content");
+  if (!el) return;
+  if (!WEATHER_LAT) {
+    el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Getting your location...</div>';
+    try {
+      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+      WEATHER_LAT = pos.coords.latitude; WEATHER_LON = pos.coords.longitude;
+      document.getElementById("weather-location-label").textContent = WEATHER_LAT.toFixed(2)+", "+WEATHER_LON.toFixed(2);
+    } catch(e) {
+      el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>'; return;
+    }
+  }
+  el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
+  try {
+    const url = "https://api.open-meteo.com/v1/forecast" +
+      "?latitude=" + WEATHER_LAT + "&longitude=" + WEATHER_LON +
+      "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,weathercode,relativehumidity_2m_max" +
+      "&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph" +
+      "&precipitation_unit=inch&timezone=America%2FChicago&forecast_days=7";
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("API responded with " + res.status);
+    const data = await res.json();
+    if (!data || !data.daily) throw new Error("Unexpected response format");
+    weatherData = data;
+    renderWeather();
+  } catch(e) {
+    let msg = e.message || "Unknown error";
+    let advice = e.name === "AbortError" ? "Request timed out — check your connection." :
+      msg.includes("Failed to fetch") ? "Network error — ensure you have internet access." : "";
+    document.getElementById("weather-content").innerHTML = `
+      <div style="padding:14px">
+        <div class="alert alert-danger">
+          <div style="font-weight:bold;margin-bottom:4px">⚠️ Weather unavailable</div>
+          <div style="font-size:12px">${msg}</div>
+          ${advice ? `<div style="font-size:12px;margin-top:4px;color:var(--muted2)">${advice}</div>` : ""}
+        </div>
+        <button class="btn btn-secondary btn-full" style="margin-top:10px" onclick="loadWeather()">↻ Try again</button>
+        <div class="card" style="margin-top:14px">
+          <div class="card-title">Garden thresholds</div>
+          <div style="font-size:12px;color:var(--muted2);line-height:2">🔥 Heat stress: above 95°F<br>🧊 Frost risk: below 35°F<br>💧 Skip watering: rain > 0.25"<br>💨 Stake plants: wind > 25 mph<br>🍄 Fungal risk: humidity > 85%</div>
+        </div>
+        <div class="card" style="margin-top:10px">
+          <div class="card-title">🌐 External links</div>
+          <a href="https://forecast.weather.gov/MapClick.php?CityName=River+Ridge&state=LA&site=LIX" target="_blank" style="display:block;padding:8px 0;font-size:13px;color:var(--blue);border-bottom:1px solid var(--border)">NWS Forecast — River Ridge ↗</a>
+          <a href="https://www.wunderground.com/forecast/us/la/river-ridge" target="_blank" style="display:block;padding:8px 0;font-size:13px;color:var(--blue)">Weather Underground ↗</a>
+        </div>
+      </div>`;
+  }
+}
+
+function renderWeather() {
+  if (!weatherData) { loadWeather(); return; }
+  const d = weatherData;
+  const cur = d.current_weather;
+  const daily = d.daily;
+  const el = document.getElementById("weather-content");
+  const DAYS_W = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const todayData = {
+    temp_max:daily.temperature_2m_max[0], temp_min:daily.temperature_2m_min[0],
+    precip:daily.precipitation_sum[0], wind:daily.windspeed_10m_max[0],
+    humidity_max:daily.relativehumidity_2m_max[0], code:daily.weathercode[0]
+  };
+  const alerts = GARDEN_ALERTS.filter(a => a.check(todayData));
+  let html = `<div class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:48px;line-height:1">${WMO_EMOJI[cur.weathercode]||"🌡"}</div>
+        <div style="font-size:32px;color:var(--green);font-weight:bold;margin-top:4px">${Math.round(cur.temperature)}°F</div>
+        <div style="font-size:13px;color:var(--muted2);margin-top:2px">${WMO_CODES[cur.weathercode]||"Unknown"}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px">↑ ${Math.round(todayData.temp_max)}° / ↓ ${Math.round(todayData.temp_min)}°</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">💧 ${todayData.precip.toFixed(2)}"  💨 ${Math.round(todayData.wind)} mph  💦 ${todayData.humidity_max}%</div>
+      </div>
+    </div>
+  </div>`;
+  if (alerts.length) {
+    html += '<div style="margin:0 14px">';
+    alerts.forEach(a => { html += `<div class="alert alert-${a.level==="danger"?"danger":a.level==="warn"?"warn":"success"}" style="margin:4px 0">${a.msg}</div>`; });
+    html += '</div>';
+  }
+  html += '<div class="section-title">7-Day Forecast</div><div class="card" style="padding:10px 16px">';
+  for (let i=0; i<7; i++) {
+    const date = new Date(daily.time[i]+"T12:00:00");
+    const label = i===0?"Today":i===1?"Tomorrow":DAYS_W[date.getDay()];
+    const dd = { temp_max:daily.temperature_2m_max[i], temp_min:daily.temperature_2m_min[i],
+      precip:daily.precipitation_sum[i], wind:daily.windspeed_10m_max[i],
+      humidity_max:daily.relativehumidity_2m_max[i], code:daily.weathercode[i] };
+    const da = GARDEN_ALERTS.filter(a=>a.check(dd));
+    const dot = da.some(a=>a.level==="danger")?"🔴":da.some(a=>a.level==="warn")?"🟡":"";
+    html += `<div style="display:flex;align-items:center;padding:9px 0;border-bottom:${i<6?"1px solid var(--border)":"none"}">
+      <div style="width:72px;font-size:13px">${label}</div>
+      <div style="font-size:22px;width:36px">${WMO_EMOJI[dd.code]||"🌡"}</div>
+      <div style="flex:1;font-size:11px;color:var(--muted)">${WMO_CODES[dd.code]||""}</div>
+      <div style="text-align:right;font-size:12px">
+        <span>${Math.round(dd.temp_max)}°</span><span style="color:var(--muted);margin-left:4px">${Math.round(dd.temp_min)}°</span>
+        ${dd.precip>0.05?`<span style="color:var(--blue);margin-left:6px">${dd.precip.toFixed(2)}"</span>`:""}
+        ${dot?`<span style="margin-left:4px">${dot}</span>`:""}
+      </div>
+    </div>`;
+  }
+  html += "</div>";
+  const gdd = daily.temperature_2m_max.reduce((s,mx,i)=>s+Math.max(0,((mx+daily.temperature_2m_min[i])/2)-50),0);
+  const rain3 = daily.precipitation_sum.slice(0,3).reduce((s,v)=>s+v,0);
+  html += `<div class="card"><div class="card-title">🌡 Growing Degree Days (7-day)</div>
+    <div style="font-size:28px;color:var(--green);font-weight:bold">${gdd.toFixed(0)} GDD</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Base 50°F · Higher = faster development</div></div>`;
+  html += `<div class="card"><div class="card-title">💧 Watering guidance (3-day)</div>
+    <div style="font-size:13px;color:var(--muted2)">${rain3>=1?"Skip — sufficient rain forecast":rain3>=0.5?"Light irrigation may be needed":"Irrigate normally"}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Forecast: ${rain3.toFixed(2)}" over 3 days</div></div>`;
+  el.innerHTML = html;
+}
+
 
 function renderAll() {
   populateCropDropdowns();
