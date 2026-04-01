@@ -1897,7 +1897,7 @@ const GARDEN_ALERTS = [
   { check: d => d.precip >= 1.0, msg: "🌧 Heavy rain — hold off watering, check drainage", level: "warn" },
   { check: d => d.precip >= 0.25 && d.precip < 1.0, msg: "🌦 Rain today — may skip irrigation", level: "ok" },
   { check: d => d.wind >= 25, msg: "💨 High winds — stake tomatoes, protect tall plants", level: "warn" },
-  { check: d => d.humidity_max >= 85, msg: "💧 High humidity — watch for fungal disease", level: "warn" },
+  { check: d => d.precip_prob >= 70, msg: "🌧 High rain chance — watch for fungal disease, check drainage", level: "warn" },
 ];
 
 let weatherData = null;
@@ -1922,9 +1922,11 @@ async function loadWeather() {
   el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
   try {
     const url = "https://api.open-meteo.com/v1/forecast" +
-      "?latitude=" + WEATHER_LAT + "&longitude=" + WEATHER_LON +
-      "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,weathercode,relativehumidity_2m_max" +
-      "&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph" +
+      "?latitude=" + WEATHER_LAT +
+      "&longitude=" + WEATHER_LON +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,precipitation_probability_max" +
+      "&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m" +
+      "&temperature_unit=fahrenheit&wind_speed_unit=mph" +
       "&precipitation_unit=inch&timezone=America%2FChicago&forecast_days=7";
     const res = await fetch(url);
     if (!res.ok) throw new Error("API responded with " + res.status);
@@ -1960,26 +1962,26 @@ async function loadWeather() {
 function renderWeather() {
   if (!weatherData) { loadWeather(); return; }
   const d = weatherData;
-  const cur = d.current_weather;
+  const cur = d.current;
   const daily = d.daily;
   const el = document.getElementById("weather-content");
   const DAYS_W = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const todayData = {
     temp_max:daily.temperature_2m_max[0], temp_min:daily.temperature_2m_min[0],
-    precip:daily.precipitation_sum[0], wind:daily.windspeed_10m_max[0],
-    humidity_max:daily.relativehumidity_2m_max[0], code:daily.weathercode[0]
+    precip:daily.precipitation_sum[0], wind:daily.wind_speed_10m_max[0],
+    precip_prob:daily.precipitation_probability_max[0]||0, code:daily.weather_code[0]
   };
   const alerts = GARDEN_ALERTS.filter(a => a.check(todayData));
   let html = `<div class="card" style="margin-top:12px">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div style="font-size:48px;line-height:1">${WMO_EMOJI[cur.weathercode]||"🌡"}</div>
-        <div style="font-size:32px;color:var(--green);font-weight:bold;margin-top:4px">${Math.round(cur.temperature)}°F</div>
-        <div style="font-size:13px;color:var(--muted2);margin-top:2px">${WMO_CODES[cur.weathercode]||"Unknown"}</div>
+        <div style="font-size:48px;line-height:1">${WMO_EMOJI[cur.weather_code]||"🌡"}</div>
+        <div style="font-size:32px;color:var(--green);font-weight:bold;margin-top:4px">${Math.round(cur.temperature_2m)}°F</div>
+        <div style="font-size:13px;color:var(--muted2);margin-top:2px">${WMO_CODES[cur.weather_code]||"Unknown"}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:13px">↑ ${Math.round(todayData.temp_max)}° / ↓ ${Math.round(todayData.temp_min)}°</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">💧 ${todayData.precip.toFixed(2)}"  💨 ${Math.round(todayData.wind)} mph  💦 ${todayData.humidity_max}%</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">💧 ${todayData.precip.toFixed(2)}"  💨 ${Math.round(todayData.wind)} mph  🌧 ${todayData.precip_prob}%</div>
       </div>
     </div>
   </div>`;
@@ -1993,8 +1995,8 @@ function renderWeather() {
     const date = new Date(daily.time[i]+"T12:00:00");
     const label = i===0?"Today":i===1?"Tomorrow":DAYS_W[date.getDay()];
     const dd = { temp_max:daily.temperature_2m_max[i], temp_min:daily.temperature_2m_min[i],
-      precip:daily.precipitation_sum[i], wind:daily.windspeed_10m_max[i],
-      humidity_max:daily.relativehumidity_2m_max[i], code:daily.weathercode[i] };
+      precip:daily.precipitation_sum[i], wind:daily.wind_speed_10m_max[i],
+      precip_prob:daily.precipitation_probability_max[i]||0, code:daily.weather_code[i] };
     const da = GARDEN_ALERTS.filter(a=>a.check(dd));
     const dot = da.some(a=>a.level==="danger")?"🔴":da.some(a=>a.level==="warn")?"🟡":"";
     html += `<div style="display:flex;align-items:center;padding:9px 0;border-bottom:${i<6?"1px solid var(--border)":"none"}">
