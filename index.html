@@ -2085,8 +2085,7 @@ async function loadWeather() {
     el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Getting your location...</div>';
     try {
       const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000}));
-      WEATHER_LAT = pos.coords.latitude;
-      WEATHER_LON = pos.coords.longitude;
+      WEATHER_LAT = pos.coords.latitude; WEATHER_LON = pos.coords.longitude;
       const locationName = await reverseGeocode(WEATHER_LAT, WEATHER_LON);
       const zone = getHardinessZone(WEATHER_LAT, WEATHER_LON);
       const locationEl = document.getElementById("weather-location-label");
@@ -2094,8 +2093,7 @@ async function loadWeather() {
       const headerSub = document.querySelector("#view-weather .header-sub");
       if (headerSub) headerSub.textContent = locationName + " · USDA Zone " + zone;
     } catch(e) {
-      el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>';
-      return;
+      el.innerHTML = '<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>'; return;
     }
   }
   el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
@@ -2446,17 +2444,25 @@ function renderAnalytics() {
 
     if (weeks.length > 1) {
       const maxWW = Math.max(...weeks.map(w=>w[1].weight));
-      html += `<div class="card"><div class="card-title">Weekly harvest totals (g)</div>
-        <div style="display:flex;align-items:flex-end;gap:3px;height:80px;padding:4px 0">
-          ${weeks.map(([wk,s])=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="flex:1;width:100%;background:var(--green);border-radius:3px 3px 0 0;min-height:2px" 
-              title="${wk}: ${s.weight}g"
-              data-h="${Math.round((s.weight/maxWW)*72)}"
-              style="height:${Math.round((s.weight/maxWW)*72)}px;background:var(--green);border-radius:3px 3px 0 0;width:100%"></div>
-          </div>`).join("")}
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
-          <span>${weeks[0][0].slice(5)}</span><span>${weeks[weeks.length-1][0].slice(5)}</span>
+      const svgW = 320, svgH = 80, barGap = 4;
+      const barW = Math.max(4, Math.floor((svgW - (weeks.length-1)*barGap) / weeks.length));
+      const bars = weeks.map(([wk,s],i) => {
+        const bh = Math.max(2, Math.round((s.weight/maxWW)*(svgH-10)));
+        const bx = i*(barW+barGap);
+        const by = svgH - bh;
+        return `<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" rx="2"
+          fill="var(--green)" opacity="0.85">
+          <title>${wk}: ${fmt(s.weight)}</title>
+        </rect>`;
+      }).join("");
+      html += `<div class="card"><div class="card-title">Weekly harvest totals</div>
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="${svgH}" style="overflow:visible;display:block;margin:8px 0">
+          ${bars}
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)">
+          <span>${weeks[0][0].slice(5)}</span>
+          <span style="color:var(--green);font-weight:bold">${fmt(weeks.reduce((s,w)=>s+w[1].weight,0))} total</span>
+          <span>${weeks[weeks.length-1][0].slice(5)}</span>
         </div>
       </div>`;
     }
