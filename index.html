@@ -224,7 +224,7 @@
   <div class="header">
     <div>
       <div class="header-title">🌱 Garden Log</div>
-      <div class="header-sub">River Ridge · 2026 Season</div>
+      <div class="header-sub">My Garden · 2026 Season</div>
     </div>
     <div style="text-align:right">
       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Total harvest</div>
@@ -414,51 +414,94 @@
 <!-- ===== GARDEN MAP ===== -->
 <div class="view" id="view-map">
   <div class="header">
-    <div><div class="header-title">Garden Map</div><div class="header-sub" id="map-location-sub">Enter address for satellite view</div></div>
+    <div><div class="header-title">Garden Map</div><div class="header-sub">Drag beds · Tap to select · FIT to zoom out</div></div>
     <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="showBedSetup()">+ Add Bed</button>
-  </div>
-
-  <!-- ADDRESS SEARCH -->
-  <div style="padding:10px 14px 0;display:flex;gap:8px">
-    <input type="text" id="map-address-input" placeholder="236 Tullulah Ave, River Ridge, LA"
-      style="flex:1;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:Georgia,serif;color:var(--text)"
-      onkeydown="if(event.key==='Enter')searchMapAddress()">
-    <button onclick="searchMapAddress()" class="btn btn-primary" style="padding:9px 14px;font-size:13px">Go</button>
   </div>
 
   <!-- MAP TABS -->
   <div style="padding:8px 14px 0">
     <div class="type-tabs" style="margin-bottom:0">
-      <button class="type-tab" id="maptab-satellite" onclick="setMapTab('satellite')">🛰 Satellite</button>
+      <button class="type-tab" id="maptab-satellite" onclick="setMapTab('satellite')">📏 Lot View</button>
       <button class="type-tab active" id="maptab-canvas" onclick="setMapTab('canvas')">📐 Layout</button>
     </div>
   </div>
 
-  <!-- SATELLITE VIEW (hidden by default) -->
-  <div id="map-satellite-view" style="display:none;margin:10px 14px 0;border-radius:12px;overflow:hidden;border:1px solid var(--border)">
-    <div id="leaflet-map" style="height:380px;width:100%;background:#e8e4dc;position:relative">
-      <div id="map-loading-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#7a6e58;z-index:1;pointer-events:none;font-family:Georgia,serif">
-        🛰 Loading satellite imagery...
+  <!-- LOT VIEW -->
+  <div id="map-satellite-view" style="display:none;margin:10px 14px 0">
+    <div class="card">
+      <div class="card-title">Lot Dimensions</div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div class="field" style="flex:1;margin:0">
+          <label>Lot width (ft)</label>
+          <input type="number" id="lot-width" placeholder="e.g. 60"
+            style="width:100%;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:15px;font-family:Georgia,serif"
+            onchange="saveLotDimensions()">
+        </div>
+        <div class="field" style="flex:1;margin:0">
+          <label>Lot depth (ft)</label>
+          <input type="number" id="lot-depth" placeholder="e.g. 120"
+            style="width:100%;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:15px;font-family:Georgia,serif"
+            onchange="saveLotDimensions()">
+        </div>
       </div>
+      <canvas id="lot-canvas" style="width:100%;border-radius:8px;border:1px solid var(--border);background:#f8f5ee;display:block"></canvas>
+      <div id="lot-stats" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center"></div>
     </div>
   </div>
 
   <!-- CANVAS/LAYOUT VIEW -->
-  <div id="map-canvas-view">
+  <div id="map-canvas-view" style="position:relative">
     <div class="map-wrap">
-      <div id="map-scroll-wrap" style="margin:0 14px;border-radius:12px;border:1px solid var(--border);overflow:hidden;position:relative">
-        <div id="map-zoom-controls" style="position:absolute;top:8px;right:8px;z-index:10;display:flex;flex-direction:column;gap:4px">
-          <button onclick="adjustZoom(0.2)" style="background:#ffffffee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
-          <button onclick="adjustZoom(-0.2)" style="background:#ffffffee;border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
-          <button onclick="fitCanvasToBeds()" style="background:#ffffffee;border:1px solid var(--border2);color:var(--muted);border-radius:6px;width:32px;height:28px;font-size:9px;cursor:pointer;letter-spacing:0.5px">FIT</button>
-        </div>
-        <div id="map-viewport" style="overflow:auto;height:420px;touch-action:pan-x pan-y">
+      <!-- Zoom controls: plain row above canvas, never clipped -->
+      <div style="display:flex;justify-content:flex-end;gap:6px;padding:6px 14px 4px">
+        <button onclick="fitCanvasToBeds()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--muted2);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:Georgia,serif;letter-spacing:0.5px">FIT</button>
+        <button onclick="adjustZoom(-0.1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:20px;cursor:pointer">−</button>
+        <button onclick="adjustZoom(0.1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:20px;cursor:pointer">+</button>
+      </div>
+      <!-- Canvas: fixed 300px height so page is always scrollable below -->
+      <div id="map-scroll-wrap" style="margin:0 14px;border-radius:12px;border:1px solid var(--border);overflow:hidden">
+        <div id="map-viewport" style="overflow:auto;height:220px;touch-action:pan-x pan-y">
           <div id="map-canvas" style="background:#f0ede4;position:relative;height:600px;width:700px;touch-action:none"></div>
         </div>
       </div>
-      <div id="bed-detail-panel" style="margin:10px 14px 0"></div>
     </div>
   </div>
+
+
+</div><!-- end map-canvas-view -->
+
+<!-- SCROLL STRIP: touch-action auto means page scrolls when swiped here -->
+<div style="text-align:center;padding:10px 14px;touch-action:auto;cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:0.5px;user-select:none" onclick="">
+  ↕ Swipe here to scroll · tap a bed to edit/rotate/delete
+</div>
+
+<!-- BED ACTION BAR - outside canvas, no overflow issues -->
+<div id="bed-action-bar" style="display:none;background:#fff;border:2px solid #4a7a32;
+  border-radius:12px;margin:10px 14px 0;padding:14px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div id="bed-action-name" style="font-size:15px;font-weight:bold;color:#1a1a0e"></div>
+    <button id="bed-action-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7a6e58;padding:0 4px;line-height:1">×</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button id="bed-btn-rotate"
+      style="flex:1;background:#4a7a32;color:#fff;border:none;border-radius:8px;
+             padding:13px 0;font-size:17px;cursor:pointer;font-family:Georgia,serif;font-weight:bold">
+      ⟳ Rotate
+    </button>
+    <button id="bed-btn-edit"
+      style="flex:1;background:#f0ede4;color:#1a1a0e;border:1px solid #c8c0b0;border-radius:8px;
+             padding:13px 0;font-size:15px;cursor:pointer;font-family:Georgia,serif">
+      Edit
+    </button>
+    <button id="bed-btn-delete"
+      style="flex:1;background:#fdeee8;color:#c4622d;border:1px solid #e8a080;border-radius:8px;
+             padding:13px 0;font-size:15px;cursor:pointer;font-family:Georgia,serif">
+      Delete
+    </button>
+  </div>
+  <div id="bed-action-stats" style="display:flex;gap:8px"></div>
+  <div id="bed-action-plants" style="margin-top:6px"></div>
+</div>
 
   <!-- BED TABLE -->
   <div class="section-title">Beds & Locations</div>
@@ -502,6 +545,16 @@
     <div class="btn-row" style="margin-top:4px">
       <button class="btn btn-secondary" onclick="closeBedModal()">Cancel</button>
       <button class="btn btn-primary" style="flex:2" onclick="saveBed()">Save Bed</button>
+    </div>
+    <div id="bed-modal-actions" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:none;gap:8px">
+      <button type="button" onclick="rotateBedFromModal()"
+        style="flex:1;background:#e8f0df;color:#3a6a22;border:1px solid #b0d090;border-radius:8px;padding:11px 0;font-size:14px;cursor:pointer;font-family:Georgia,serif;font-weight:bold">
+        ⟳ Rotate
+      </button>
+      <button type="button" onclick="deleteBedFromModal()"
+        style="flex:1;background:#fdeee8;color:#c4622d;border:1px solid #e8a080;border-radius:8px;padding:11px 0;font-size:14px;cursor:pointer;font-family:Georgia,serif">
+        🗑 Delete
+      </button>
     </div>
   </div>
 </div>
@@ -626,7 +679,7 @@
 <!-- ===== WEATHER ===== -->
 <div class="view" id="view-weather">
   <div class="header">
-    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">River Ridge, LA</div></div>
+    <div><div class="header-title">Weather</div><div class="header-sub" id="weather-location-label">Detecting location...</div></div>
     <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="refreshWeather()">↻ Refresh</button>
   </div>
   <div id="weather-content" style="padding:0 14px">
@@ -768,6 +821,21 @@
     </div>
 
     <div id="setup-step-5" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">📏</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">What are your lot dimensions?</h2>
+      <p style="font-size:13px;color:#7a6e58;text-align:center;margin-bottom:20px">Used to draw your garden map to scale. You can find this on your county assessor's website.</p>
+      <div class="field-row">
+        <div class="field"><label>Lot width (ft)</label><input type="number" id="setup-lot-w" placeholder="e.g. 60" style="font-size:16px"></div>
+        <div class="field"><label>Lot depth (ft)</label><input type="number" id="setup-lot-d" placeholder="e.g. 120" style="font-size:16px"></div>
+      </div>
+      <div style="font-size:12px;color:#7a6e58;text-align:center;margin-bottom:16px">Not sure? Check qpublic.net or your county assessor's website</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-6" style="display:none">
       <div style="font-size:32px;text-align:center;margin-bottom:12px">⚖️</div>
       <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Preferred weight unit</h2>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0">
@@ -794,7 +862,7 @@
       </div>
     </div>
 
-    <div id="setup-step-6" style="display:none">
+    <div id="setup-step-7" style="display:none">
       <div style="font-size:40px;text-align:center;margin-bottom:16px">✅</div>
       <h2 style="font-size:22px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">You're all set!</h2>
       <div id="setup-summary" style="background:#f0ede4;border-radius:10px;padding:16px;margin:20px 0;font-size:13px;line-height:2;color:#5a5040"></div>
@@ -940,7 +1008,7 @@ let cropRegistry = [];
 
 function loadCropRegistry() {
   try {
-    const saved = localStorage.getItem("gl-crops");
+    const saved = localStorage.getItem("gl-demo-crops");
     if (saved) { cropRegistry = JSON.parse(saved); return; }
   } catch(e) {}
   cropRegistry = DEFAULT_CROPS.map(c => ({...c, varieties:[...c.varieties]}));
@@ -948,7 +1016,7 @@ function loadCropRegistry() {
 }
 
 function saveCropRegistry() {
-  try { localStorage.setItem("gl-crops", JSON.stringify(cropRegistry)); } catch(e) {}
+  try { localStorage.setItem("gl-demo-crops", JSON.stringify(cropRegistry)); } catch(e) {}
 }
 
 function getCropKeys() { return cropRegistry.map(c=>c.key); }
@@ -1014,17 +1082,18 @@ const BEDS_DEF = [
 // ===================== STATE =====================
 let harvests = [], careLog = [], plantLog = [], selectedBed = null;
 let filterCrop = "all", deleteTarget = null, deleteType = null;
-let displayUnit = localStorage.getItem("gl-unit") || "g";
+let displayUnit = localStorage.getItem("gl-demo-unit") || "g";
 let editId = null, editType = null, addType = "harvest", calMonth = new Date().getMonth() + 1;
 let photoData = { h: null, c: null, p: null };
 
 // ===================== STORAGE =====================
 async function loadData() {
   loadCropRegistry();
+  showSetupIfNeeded();
   try {
-    const h = localStorage.getItem("gl-harvests");
-    const c = localStorage.getItem("gl-care");
-    const p = localStorage.getItem("gl-plants");
+    const h = localStorage.getItem("gl-demo-harvests");
+    const c = localStorage.getItem("gl-demo-care");
+    const p = localStorage.getItem("gl-demo-plants");
     if (h) harvests = JSON.parse(h);
     if (c) careLog = JSON.parse(c);
     if (p) plantLog = JSON.parse(p);
@@ -1035,89 +1104,22 @@ async function loadData() {
   renderAll();
 }
 
-function saveHarvests() { try { localStorage.setItem("gl-harvests", JSON.stringify(harvests)); } catch(e){} }
-function saveCare() { try { localStorage.setItem("gl-care", JSON.stringify(careLog)); } catch(e){} }
-function savePlants() { try { localStorage.setItem("gl-plants", JSON.stringify(plantLog)); } catch(e){} }
+function saveHarvests() { try { localStorage.setItem("gl-demo-harvests", JSON.stringify(harvests)); } catch(e){} }
+function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){} }
+function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){} }
 
 function seedHarvests() {
-  harvests = [
-    {id:1,date:"2026-02-22",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:21,count:1,notes:"first",photo:null},
-    {id:2,date:"2026-02-22",crop:"pepper",variety:"Serrano",bed:"Green Bed",weight:3,count:1,notes:"from transplanting",photo:null},
-    {id:3,date:"2026-02-25",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"transplants",photo:null},
-    {id:4,date:"2026-03-01",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:1,notes:"",photo:null},
-    {id:5,date:"2026-03-03",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:30,count:1,notes:"",photo:null},
-    {id:6,date:"2026-03-06",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:76,count:5,notes:"",photo:null},
-    {id:7,date:"2026-03-07",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:236,count:16,notes:"",photo:null},
-    {id:8,date:"2026-03-07",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:6,count:2,notes:"",photo:null},
-    {id:9,date:"2026-03-08",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:54,count:5,notes:"",photo:null},
-    {id:10,date:"2026-03-10",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"",photo:null},
-    {id:11,date:"2026-03-11",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:57,count:5,notes:"",photo:null},
-    {id:12,date:"2026-03-13",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:281,count:3,notes:"First harvest",photo:null},
-    {id:13,date:"2026-03-14",crop:"strawberry",variety:"Festival",bed:"Square",weight:2,count:1,notes:"Deformed not quite ripe",photo:null},
-    {id:14,date:"2026-03-14",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:91,count:7,notes:"",photo:null},
-    {id:15,date:"2026-03-15",crop:"strawberry",variety:"Festival",bed:"Square",weight:6,count:1,notes:"Ugly too",photo:null},
-    {id:16,date:"2026-03-16",crop:"strawberry",variety:"Festival",bed:"Oval",weight:16,count:2,notes:"",photo:null},
-    {id:17,date:"2026-03-18",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:3,notes:"",photo:null},
-    {id:18,date:"2026-03-20",crop:"strawberry",variety:"Festival",bed:"Oval",weight:8,count:1,notes:"",photo:null},
-    {id:19,date:"2026-03-21",crop:"strawberry",variety:"Festival",bed:"Oval",weight:5,count:2,notes:"",photo:null},
-    {id:20,date:"2026-03-21",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:3,count:2,notes:"",photo:null},
-    {id:21,date:"2026-03-21",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:150,count:1,notes:"",photo:null},
-    {id:22,date:"2026-03-22",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
-    {id:23,date:"2026-03-22",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:40,count:1,notes:"",photo:null},
-    {id:24,date:"2026-03-23",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
-    {id:25,date:"2026-03-24",crop:"strawberry",variety:"Festival",bed:"Oval",weight:42,count:6,notes:"",photo:null},
-    {id:26,date:"2026-03-24",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
-    {id:27,date:"2026-03-24",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:396,count:4,notes:"",photo:null},
-    {id:28,date:"2026-03-24",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:14,count:1,notes:"",photo:null},
-    {id:29,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:73,count:9,notes:"",photo:null},
-    {id:30,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:49,count:3,notes:"",photo:null},
-    {id:31,date:"2026-03-25",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:202,count:2,notes:"",photo:null},
-    {id:32,date:"2026-03-26",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:5,notes:"",photo:null},
-    {id:33,date:"2026-03-29",crop:"strawberry",variety:"Festival",bed:"Oval",weight:110,count:16,notes:"",photo:null},
-    {id:34,date:"2026-03-29",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
-    {id:35,date:"2026-03-29",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:46,count:1,notes:"",photo:null},
-    {id:36,date:"2026-03-30",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:4,notes:"",photo:null},
-    {id:37,date:"2026-03-30",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:96,count:2,notes:"",photo:null},
-    {id:38,date:"2026-03-30",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:23,count:3,notes:"",photo:null},
-    {id:39,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:41,count:3,notes:"",photo:null},
-    {id:40,date:"2026-03-31",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:4,notes:"",photo:null},
-    {id:41,date:"2026-03-31",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:62,count:1,notes:"",photo:null},
-    {id:42,date:"2026-03-31",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:24,count:4,notes:"",photo:null},
-    {id:43,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:20,count:3,notes:"",photo:null},
-    {id:44,date:"2026-04-01",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:6,notes:"",photo:null},
-  ];
+  harvests = [];
   saveHarvests();
 }
 
 function seedCare() {
-  careLog = [
-    {id:Date.now(),date:"2026-04-01",type:"spray-spinosad",product:"Spinosad",plants:"All tomatoes",notes:"Broad mite treatment on Sungold and all other tomatoes",photo:null,nextDate:"2026-04-08"}
-  ];
+  careLog = [];
   saveCare();
 }
 
 function seedPlants() {
-  plantLog = [
-    {id:1,crop:"tomato",variety:"Sungold",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:2,crop:"tomato",variety:"Super Sweet 100",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:3,crop:"tomato",variety:"Lemon Boy",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:4,crop:"tomato",variety:"Early Girl",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:5,crop:"pepper",variety:"Shishito",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
-    {id:6,crop:"pepper",variety:"Serrano",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
-    {id:7,crop:"strawberry",variety:"Festival",bed:"Oval",count:25,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Oval bed"},
-    {id:8,crop:"strawberry",variety:"Festival",bed:"Square",count:20,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:"Square bed"},
-    {id:9,crop:"cucumber",variety:"Merlin",bed:"Tomato Bed",count:4,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
-    {id:10,crop:"cucumber",variety:"Beit Alpha",bed:"Tomato Bed",count:2,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:"First fruit April 1"},
-    {id:11,crop:"eggplant",variety:"Camo Camo",bed:"Tomato Bed",count:2,seedDate:"2026-01-20",transplantDate:"2026-02-25",status:"flowering",notes:""},
-    {id:12,crop:"dragon fruit",variety:"Palora",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"flowering",notes:"Bloomed April 1 — self + red pollen applied"},
-    {id:13,crop:"dragon fruit",variety:"Haley's Comet",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:14,crop:"dragon fruit",variety:"Pink Noid",bed:"Container",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:15,crop:"mango",variety:"Carrie",bed:"Container",count:1,seedDate:"",transplantDate:"2023-01-01",status:"flowering",notes:"31 panicles — hand pollination underway"},
-    {id:16,crop:"blackberry",variety:"Prime Ark Freedom",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:"~2 weeks from first ripe"},
-    {id:17,crop:"blueberry",variety:"Alapaha",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:""},
-    {id:18,crop:"blueberry",variety:"Ochlockonee",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
-    {id:19,crop:"blueberry",variety:"Legacy",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
-  ];
+  plantLog = [];
   savePlants();
 }
 
@@ -1129,7 +1131,7 @@ function showView(v, btn) {
   if (btn) btn.classList.add("active");
   if (v === "dashboard") renderDashboard();
   if (v === "log") renderLog();
-  if (v === "map") { renderMap(); }
+  if (v === "map") { renderMap(); setTimeout(fitCanvasToBeds, 350); }
   if (v === "add") { populateBedDropdowns(); }
   if (v === "calendar") renderCalendar();
   if (v === "care") renderCare();
@@ -1143,7 +1145,7 @@ const UNIT_LABELS  = { g: "g", oz: "oz", lb: "lb", kg: "kg" };
 
 function setUnit(u) {
   displayUnit = u;
-  localStorage.setItem("gl-unit", u);
+  localStorage.setItem("gl-demo-unit", u);
   document.querySelectorAll(".unit-selector button").forEach(b => {
     b.classList.toggle("active", b.dataset.unit === u);
   });
@@ -1482,10 +1484,108 @@ function confirmDelete() {
   closeDeleteModal(); toast("Deleted");
 }
 
+// ===================== LOT VIEW =====================
+let lotWidth = parseFloat(localStorage.getItem("gl-demo-lot-width")) || 0;
+let lotDepth = parseFloat(localStorage.getItem("gl-demo-lot-depth")) || 0;
+// 236 Tullulah Ave defaults — update after checking Jefferson Parish assessor
+
+function saveLotDimensions() {
+  const w = parseFloat(document.getElementById("lot-width").value) || 60;
+  const d = parseFloat(document.getElementById("lot-depth").value) || 120;
+  lotWidth = w; lotDepth = d;
+  localStorage.setItem("gl-demo-lot-width", w);
+  localStorage.setItem("gl-demo-lot-depth", d);
+  drawLotCanvas();
+}
+
+function initLotView() {
+  const wEl = document.getElementById("lot-width");
+  const dEl = document.getElementById("lot-depth");
+  if (wEl) wEl.value = lotWidth;
+  if (dEl) dEl.value = lotDepth;
+  drawLotCanvas();
+}
+
+function drawLotCanvas() {
+  const canvas = document.getElementById("lot-canvas");
+  if (!canvas) return;
+  const w = lotWidth || 60;
+  const d = lotDepth || 120;
+  const SCALE = Math.min(4.0, Math.min(280 / w, 380 / d));
+  const cw = Math.round(w * SCALE) + 60;
+  const ch = Math.round(d * SCALE) + 60;
+  canvas.width = cw;
+  canvas.height = ch;
+  canvas.style.maxHeight = "400px";
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, cw, ch);
+  const ox = 30, oy = 30;
+  const lw = Math.round(w * SCALE);
+  const lh = Math.round(d * SCALE);
+
+  // Draw lot outline
+  ctx.fillStyle = "#e8f0df";
+  ctx.fillRect(ox, oy, lw, lh);
+  ctx.strokeStyle = "#4a7a32";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ox, oy, lw, lh);
+
+  // Draw beds as overlays
+  const BSCALE = SCALE;
+  beds.forEach(b => {
+    const bw = Math.max(60, b.w * 18);
+    const bh = Math.max(44, b.l * 18);
+    // Convert canvas px to feet (canvas px / 18 = feet, then * SCALE)
+    const bxFt = b.x / 18;
+    const byFt = b.y / 18;
+    const bxPx = ox + bxFt * SCALE;
+    const byPx = oy + byFt * SCALE;
+    const bwPx = b.w * SCALE;
+    const bhPx = b.l * SCALE;
+    const isOval = b.shape === "oval" || b.shape === "container";
+    ctx.fillStyle = b.color + "cc";
+    if (isOval) {
+      ctx.beginPath();
+      ctx.ellipse(bxPx + bwPx/2, byPx + bhPx/2, bwPx/2, bhPx/2, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(bxPx, byPx, bwPx, bhPx);
+      ctx.strokeRect(bxPx, byPx, bwPx, bhPx);
+    }
+    // Label
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${Math.max(8, Math.round(9 * SCALE / 3))}px Georgia`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const label = b.name.length > 10 ? b.name.slice(0,10)+"…" : b.name;
+    ctx.fillText(label, bxPx + bwPx/2, byPx + bhPx/2);
+  });
+
+  // Dimension labels
+  ctx.fillStyle = "#5a5040";
+  ctx.font = "11px Georgia";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // Width label (top)
+  ctx.fillText(w + " ft", ox + lw/2, oy - 15);
+  // Depth label (left, rotated)
+  ctx.save();
+  ctx.translate(ox - 15, oy + lh/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText(d + " ft", 0, 0);
+  ctx.restore();
+
+  // Stats
+  const sqft = w * d;
+  const statsEl = document.getElementById("lot-stats");
+  if (statsEl) statsEl.textContent = `${w} × ${d} ft · ${sqft.toLocaleString()} sq ft · ${(sqft * 0.0929).toFixed(0)} m²`;
+}
+
 // ===================== SATELLITE MAP =====================
 let leafletMap = null;
 let mapTab = "canvas";
-let gardenAddress = localStorage.getItem("gl-garden-address") || "236 Tullulah Ave, River Ridge, LA";
+let gardenAddress = localStorage.getItem("gl-demo-garden-address") || "";
 
 function setMapTab(t) {
   mapTab = t;
@@ -1494,49 +1594,29 @@ function setMapTab(t) {
   document.getElementById("map-satellite-view").style.display = t==="satellite" ? "block" : "none";
   document.getElementById("map-canvas-view").style.display = t==="canvas" ? "block" : "none";
   if (t==="satellite") {
-    setTimeout(() => { if(leafletMap) { leafletMap.invalidateSize(); } }, 150);
+    setTimeout(() => initLotView(), 100);
   }
   if (t==="canvas") {
-    setTimeout(() => fitCanvasToBeds(), 100);
+    setTimeout(() => { renderMap(); setTimeout(fitCanvasToBeds, 100); }, 50);
   }
 }
 
 function fitCanvasToBeds() {
-  if (!beds.length) return;
-  const SCALE = 18;
-  const padding = 20;
-  // Find extents
-  let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
-  beds.forEach(b => {
-    const pw = Math.max(60, b.w * SCALE);
-    const ph = Math.max(44, b.l * SCALE);
-    minX = Math.min(minX, b.x);
-    minY = Math.min(minY, b.y);
-    maxX = Math.max(maxX, b.x + pw);
-    maxY = Math.max(maxY, b.y + ph);
-  });
-  // Calc zoom to fit viewport
-  const viewport = document.getElementById("map-viewport");
-  if (!viewport) return;
-  const vw = viewport.clientWidth - padding * 2;
-  const vh = viewport.clientHeight - padding * 2;
-  const contentW = maxX - minX + padding * 2;
-  const contentH = maxY - minY + padding * 2;
-  const zoomFit = Math.min(1.0, Math.min(vw / contentW, vh / contentH));
-  mapZoom = Math.max(0.4, Math.min(1.0, zoomFit));
-  // Scroll to center on beds
-  const canvas = document.getElementById("map-canvas");
-  if (canvas) {
-    canvas.style.width = Math.round(700 * mapZoom) + "px";
-    canvas.style.height = Math.round(600 * mapZoom) + "px";
-  }
-  // Re-render beds at new zoom
+  var FT=18, MARGIN=80;
+  var viewport=document.getElementById("map-viewport");
+  var canvas=document.getElementById("map-canvas");
+  if(!viewport||!canvas) return;
+  // Full lot dimensions at zoom=1
+  var logW=(lotWidth>0?lotWidth*FT:600)+MARGIN*2;
+  var logH=(lotDepth>0?lotDepth*FT:400)+MARGIN*2;
+  // Viewport size
+  var vw=viewport.clientWidth||300;
+  var vh=viewport.clientHeight||420;
+  // Fit zoom so entire lot fits
+  var newZoom = Math.min(vw/logW, vh/logH) * 0.92;
+  mapZoom = Math.max(0.1, Math.min(3.0, newZoom));
   renderMap();
-  // Scroll viewport to show beds
-  setTimeout(() => {
-    viewport.scrollLeft = Math.max(0, minX * mapZoom - padding);
-    viewport.scrollTop = Math.max(0, minY * mapZoom - padding);
-  }, 50);
+  setTimeout(function(){viewport.scrollLeft=0;viewport.scrollTop=0;},60);
 }
 
 function initLeafletMap(lat, lon, zoom) {
@@ -1594,9 +1674,9 @@ async function searchMapAddress() {
     if (!data || !data.length) { toast("Address not found — try adding city/state"); return; }
     const lat = parseFloat(data[0].lat);
     const lon = parseFloat(data[0].lon);
-    localStorage.setItem("gl-garden-address", addr);
-    localStorage.setItem("gl-garden-lat", lat);
-    localStorage.setItem("gl-garden-lon", lon);
+    localStorage.setItem("gl-demo-garden-address", addr);
+    localStorage.setItem("gl-demo-garden-lat", lat);
+    localStorage.setItem("gl-demo-garden-lon", lon);
     gardenAddress = addr;
     document.getElementById("map-location-sub").textContent = data[0].display_name.split(",").slice(0,3).join(",");
     initLeafletMap(lat, lon, 19);
@@ -1607,9 +1687,9 @@ async function searchMapAddress() {
 }
 
 function loadSavedMapLocation() {
-  const lat = parseFloat(localStorage.getItem("gl-garden-lat")) || 29.9608;
-  const lon = parseFloat(localStorage.getItem("gl-garden-lon")) || -90.2154;
-  const addr = localStorage.getItem("gl-garden-address") || "236 Tullulah Ave, River Ridge, LA";
+  const lat = parseFloat(localStorage.getItem("gl-demo-garden-lat")) || 29.9608;
+  const lon = parseFloat(localStorage.getItem("gl-demo-garden-lon")) || -90.2154;
+  const addr = localStorage.getItem("gl-demo-garden-address") || "236 Tullulah Ave, Detecting location...";
   const addrInput = document.getElementById("map-address-input");
   if (addrInput && !addrInput.value) addrInput.value = addr;
   document.getElementById("map-location-sub").textContent = addr;
@@ -1622,27 +1702,42 @@ let selectedBedId = null;
 let selectedBedColor = "#1e3a10";
 let dragState = null;
 
-function saveBeds() { try { localStorage.setItem("gl-beds", JSON.stringify(beds)); } catch(e){} }
+function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
 function loadBeds() {
   try {
-    const b = localStorage.getItem("gl-beds");
+    const b = localStorage.getItem("gl-demo-beds");
     if (b) { beds = JSON.parse(b); return; }
   } catch(e){}
-  // Default beds seeded from your garden
-  beds = [
-    {id:"oval", name:"Oval Stock Tank", w:4, l:4, shape:"oval", color:"#1e3a10", x:10, y:10, notes:"Strawberries + onions"},
-    {id:"square", name:"Square Raised Bed", w:4, l:4, shape:"rect", color:"#1a3a1a", x:140, y:10, notes:"Strawberries"},
-    {id:"tomato", name:"Tomato Bed", w:8, l:3, shape:"rect", color:"#3a1a1a", x:10, y:140, notes:"Tomatoes, cucumbers, eggplant"},
-    {id:"green", name:"Green Bed", w:6, l:3, shape:"rect", color:"#1a2a3a", x:10, y:250, notes:"Peppers, watermelon radish"},
-    {id:"container", name:"Containers", w:3, l:6, shape:"container", color:"#2a1a3a", x:200, y:130, notes:"Dragon fruit, mango, blueberries, potatoes"},
-  ];
+  beds = [];
   saveBeds();
+}
+
+function rotateBedFromModal() {
+  var id = document.getElementById("bed-edit-id") ? document.getElementById("bed-edit-id").value : null;
+  if (!id) return;
+  window.rotBed(id);
+  closeBedModal();
+}
+
+function deleteBedFromModal() {
+  var id = document.getElementById("bed-edit-id") ? document.getElementById("bed-edit-id").value : null;
+  if (!id) return;
+  if (confirm("Delete this bed?")) {
+    beds = beds.filter(function(b){ return b.id !== id; });
+    saveBeds();
+    selectedBedId = null;
+    closeBedModal();
+    renderMap();
+    toast("Bed deleted");
+  }
 }
 
 function showBedSetup(editId) {
   document.getElementById("bed-modal").classList.add("open");
   document.getElementById("bed-modal-title").textContent = editId ? "Edit Bed" : "Add Bed";
   document.getElementById("bed-edit-id").value = editId||"";
+  var actRow = document.getElementById("bed-modal-actions");
+  if (actRow) actRow.style.display = editId ? "flex" : "none";
   if (editId) {
     const b = beds.find(b=>b.id===editId);
     if (!b) return;
@@ -1695,6 +1790,13 @@ function saveBed() {
   saveBeds(); closeBedModal(); renderMap(); toast("✓ Bed saved!");
 }
 
+function deletePlantEntry(id) {
+  plantLog = plantLog.filter(function(p){ return p.id !== id; });
+  savePlants();
+  renderMap();
+  toast("Plant removed");
+}
+
 function deleteBed(id) {
   if (!confirm("Delete this bed?")) return;
   beds = beds.filter(b=>b.id!==id);
@@ -1702,132 +1804,188 @@ function deleteBed(id) {
   saveBeds(); renderMap();
 }
 
-function rotateBed(id) {
-  beds = beds.map(b => {
-    if (b.id !== id) return b;
-    return { ...b, w: b.l, l: b.w };
-  });
-  saveBeds(); renderMap(); toast("⟳ Bed rotated");
+var rotTouchTarget = null;
+// Global rotate function - called directly, no delegation needed
+window.rotBed = function(id) {
+  var idx = beds.findIndex(function(b){ return b.id === id; });
+  if (idx < 0) { toast("Bed not found"); return; }
+  var b = beds[idx];
+  var newW = b.l, newL = b.w;
+  beds[idx] = { id:b.id, name:b.name, w:newW, l:newL, shape:b.shape,
+    color:b.color, x:b.x, y:b.y, notes:b.notes };
+  saveBeds();
+  renderMap();
+  setTimeout(fitCanvasToBeds, 80);
+  toast("Rotated");
+};
+
+function doRotateBed(bedId) {
+  var idx = beds.findIndex(function(b){return b.id===bedId;});
+  if (idx < 0) return;
+  var b = beds[idx];
+  beds[idx] = Object.assign({}, b, {w: b.l, l: b.w});
+  saveBeds();
+  renderMap();
+  setTimeout(fitCanvasToBeds, 80);
+  toast("Rotated");
 }
 
 function renderMap() {
   loadBedsIfNeeded();
-  if (mapTab === "satellite") setTimeout(loadSavedMapLocation, 150);
-  const canvas = document.getElementById("map-canvas");
-  const bedHarvestTotals = {};
-  const bedPlants = {};
+  const FT = 18, MARGIN = 80;
+  const bedHarvestTotals = {}, bedPlants = {};
   harvests.forEach(e => { bedHarvestTotals[e.bed]=(bedHarvestTotals[e.bed]||0)+e.weight; });
   plantLog.forEach(p => { if(!bedPlants[p.bed])bedPlants[p.bed]=[]; bedPlants[p.bed].push(p); });
+  const canvas = document.getElementById("map-canvas");
+  if (!canvas) return;
+  const lotW_px = lotWidth>0 ? Math.round(lotWidth*FT) : 600;
+  const lotH_px = lotDepth>0 ? Math.round(lotDepth*FT) : 400;
+  const totalW = (lotW_px + MARGIN*2) * mapZoom;
+  const totalH = (lotH_px + MARGIN*2) * mapZoom;
+  canvas.style.width  = Math.round(totalW) + "px";
+  canvas.style.height = Math.round(totalH) + "px";
 
-  // Scale: 1 ft = ~18px
-  const SCALE = 18;
-
-  canvas.style.width  = Math.round(700 * mapZoom) + "px";
-  canvas.style.height = Math.round(600 * mapZoom) + "px";
-  canvas.innerHTML = beds.map(b => {
-    const pw = Math.max(60, b.w * SCALE), ph = Math.max(44, b.l * SCALE);
-    const plants = (bedPlants[b.name]||[]).slice(0,5).map(p=>EMOJI[p.crop]||"🌱").join("");
-    const total = bedHarvestTotals[b.name]||0;
-    const isOval = b.shape==="oval"||b.shape==="container";
-    const br = isOval ? "50%" : b.shape==="container"?"10px":"6px";
-    const zx = Math.round(b.x * mapZoom);
-    const zy = Math.round(b.y * mapZoom);
-    const zpw = Math.round(pw * mapZoom);
-    const zph = Math.round(ph * mapZoom);
-    const zfs = Math.round(9 * mapZoom);
-    return `<div class="map-bed ${selectedBedId===b.id?'selected':''}"
-      id="mapbed-${b.id}"
-      data-id="${b.id}"
-      style="left:${zx}px;top:${zy}px;width:${zpw}px;height:${zph}px;background:${b.color};border-radius:${br};font-size:${zfs}px"
-      ontouchstart="startDrag(event,'${b.id}')"
-      onmousedown="startDrag(event,'${b.id}')"
-      onclick="selectMapBed('${b.id}')">
-      <div class="map-bed-label">${b.name}</div>
-      <div class="map-bed-crops">${plants}</div>
-      ${total?`<div class="map-bed-weight">${total}g</div>`:""}
-    </div>`;
+  const bedHTML = beds.map(function(b) {
+    var pw = Math.max(50, b.w*FT), ph = Math.max(36, b.l*FT);
+    var zx = Math.round((b.x+MARGIN)*mapZoom), zy = Math.round((b.y+MARGIN)*mapZoom);
+    var zpw = Math.round(pw*mapZoom), zph = Math.round(ph*mapZoom);
+    var zfs = Math.max(8, Math.round(9*mapZoom));
+    var plants = (bedPlants[b.name]||[]).slice(0,5).map(function(p){return EMOJI[p.crop]||"";}).join("");
+    var total = bedHarvestTotals[b.name]||0;
+    var isOval = b.shape==="oval"||b.shape==="container";
+    var br = isOval ? "50%" : (b.shape==="container" ? "10px" : "6px");
+    var isSel = selectedBedId===b.id;
+    var selStyle = isSel ? "border:3px solid #4a7a32;box-shadow:0 0 0 2px #4a7a3244;" : "";
+    var rotBtn = '';
+    var weightDiv = total ? '<div class="map-bed-weight">'+fmt(total)+'</div>' : "";
+    var div = '<div class="map-bed '+(isSel?"selected":"")+'" id="mapbed-'+b.id+'" data-id="'+b.id+'"';
+    div += ' style="left:'+zx+'px;top:'+zy+'px;width:'+zpw+'px;height:'+zph+'px;';
+    div += 'background:'+b.color+';border-radius:'+br+';font-size:'+zfs+'px;'+selStyle+'"';
+    div += ' ontouchstart="startDrag(event,\''+b.id+'\')"';
+    div += ' onmousedown="startDrag(event,\''+b.id+'\')"';
+    div += ' onclick="selectMapBed(\''+b.id+'\')">';
+    div += '<div class="map-bed-label">'+b.name+'</div>';
+    div += '<div class="map-bed-crops">'+plants+'</div>';
+    div += weightDiv + rotBtn + '</div>';
+    return div;
   }).join("");
 
-  // Setup drag
-  setupDrag(canvas);
-  // Auto-fit on first render
-  if (mapTab === "canvas") setTimeout(fitCanvasToBeds, 50);
-
-  // Bed detail panel
-  const detail = document.getElementById("bed-detail-panel");
-  if (selectedBedId) {
-    const b = beds.find(b=>b.id===selectedBedId);
-    if (!b) { detail.innerHTML=""; }
-    else {
-      const plants = bedPlants[b.name]||[];
-      const totalW = bedHarvestTotals[b.name]||0;
-      const totalC = harvests.filter(e=>e.bed===b.name).reduce((s,e)=>s+e.count,0);
-      detail.innerHTML = `<div class="bed-detail">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div class="bed-detail-title">${b.name}</div>
-          <div style="display:flex;gap:8px">
-            <button onclick="rotateBed('${b.id}')" title="Rotate 90°" style="background:var(--bg3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted2);cursor:pointer;font-family:Georgia,serif">⟳ Rotate</button>
-            <button onclick="showBedSetup('${b.id}')" style="background:var(--bg3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted2);cursor:pointer;font-family:Georgia,serif">Edit</button>
-            <button onclick="deleteBed('${b.id}')" style="background:var(--bg3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--red);cursor:pointer;font-family:Georgia,serif">Delete</button>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${b.w} × ${b.l} ft${b.notes?" · "+b.notes:""}</div>
-        <div class="bed-stat-row">
-          <div class="bed-stat"><div class="bed-stat-val">${totalW}g</div><div class="bed-stat-lbl">Harvested</div></div>
-          <div class="bed-stat"><div class="bed-stat-val">${totalC}</div><div class="bed-stat-lbl">Items</div></div>
-          <div class="bed-stat"><div class="bed-stat-val">${plants.length}</div><div class="bed-stat-lbl">Crops</div></div>
-        </div>
-        ${plants.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
-          <div><span style="font-size:13px">${EMOJI[p.crop]||"🌱"} ${p.variety}</span><div style="font-size:10px;color:var(--muted)">${p.status} · ${p.count} plant${p.count!==1?"s":""}</div></div>
-          <span class="plant-status" style="background:${statusColor(p.status)}22;color:${statusColor(p.status)}">${p.status}</span>
-        </div>`).join("")}
-      </div>`;
-    }
-  } else detail.innerHTML="";
-
-  // Bed table
-  const bt = document.getElementById("bed-table");
-  if (!beds.length) { bt.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">No beds yet — tap "+ Add Bed" to start</div>'; }
-  else {
-    bt.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-      <tr style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px">
-        <th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--border)">Bed</th>
-        <th style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--border)">Size</th>
-        <th style="text-align:left;padding:6px 4px;border-bottom:1px solid var(--border)">Current crops</th>
-        <th style="border-bottom:1px solid var(--border)"></th>
-      </tr>
-      ${beds.map(b=>{
-        const crops = (bedPlants[b.name]||[]).map(p=>EMOJI[p.crop]).join(" ")||"—";
-        return `<tr class="bed-table-row" style="display:table-row">
-          <td style="padding:8px 0">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div class="bed-table-swatch" style="background:${b.color}"></div>
-              <span>${b.name}</span>
-            </div>
-          </td>
-          <td style="text-align:center;padding:8px 4px;color:var(--muted)">${b.w}×${b.l}ft</td>
-          <td style="padding:8px 4px">${crops}</td>
-          <td style="padding:8px 0;text-align:right">
-            <button onclick="showBedSetup('${b.id}')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:12px;font-family:Georgia,serif">Edit</button>
-          </td>
-        </tr>`;
-      }).join("")}
-    </table></div>`;
+  var lotSVG = "";
+  if (lotWidth > 0) {
+    var lx = Math.round(MARGIN*mapZoom), ly = Math.round(MARGIN*mapZoom);
+    var lw = Math.round(lotW_px*mapZoom), lh = Math.round(lotH_px*mapZoom);
+    var fs = Math.max(9, Math.round(11*mapZoom));
+    var ds = Math.round(8*mapZoom)+","+Math.round(4*mapZoom);
+    var sw = Math.max(1.5, 2*mapZoom);
+    lotSVG = '<svg style="position:absolute;top:0;left:0;width:'+Math.round(totalW)+'px;height:'+Math.round(totalH)+'px;pointer-events:none;overflow:visible">';
+    lotSVG += '<rect x="'+lx+'" y="'+ly+'" width="'+lw+'" height="'+lh+'" fill="#e8f4e0" fill-opacity="0.4" stroke="#4a7a32" stroke-width="'+sw+'" stroke-dasharray="'+ds+'" rx="2"/>';
+    lotSVG += '<text x="'+(lx+lw/2)+'" y="'+(ly-12)+'" text-anchor="middle" font-family="Georgia,serif" font-size="'+fs+'" fill="#4a7a32" font-weight="bold">'+lotWidth+' ft</text>';
+    lotSVG += '<text x="'+(lx+lw/2)+'" y="'+(ly+lh+20)+'" text-anchor="middle" font-family="Georgia,serif" font-size="'+fs+'" fill="#4a7a32">'+lotWidth+' ft</text>';
+    lotSVG += '<text transform="rotate(-90,'+(lx-18)+','+(ly+lh/2)+')" x="'+(lx-18)+'" y="'+(ly+lh/2)+'" text-anchor="middle" dominant-baseline="middle" font-family="Georgia,serif" font-size="'+fs+'" fill="#4a7a32" font-weight="bold">'+lotDepth+' ft</text>';
+    lotSVG += '<text transform="rotate(90,'+(lx+lw+18)+','+(ly+lh/2)+')" x="'+(lx+lw+18)+'" y="'+(ly+lh/2)+'" text-anchor="middle" dominant-baseline="middle" font-family="Georgia,serif" font-size="'+fs+'" fill="#4a7a32">'+lotDepth+' ft</text>';
+    lotSVG += '</svg>';
   }
 
-  // Plant log
-  const pl = document.getElementById("plant-log-list");
-  if (!plantLog.length) { pl.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0 20px">No plants logged yet</div>'; return; }
-  pl.innerHTML = plantLog.map(p=>`<div class="plant-row">
-    <div class="plant-dot" style="background:${COLORS[p.crop]||'#8fba6a'}"></div>
-    <div style="flex:1">
-      <div class="plant-name">${EMOJI[p.crop]||"🌱"} ${p.variety} <span style="font-size:11px;color:var(--muted)">${p.bed}</span></div>
-      <div class="plant-sub">${p.count} plant${p.count!==1?"s":""}${p.seedDate?" · Seed: "+p.seedDate:""}${p.transplantDate?" · Transplant: "+p.transplantDate:""}</div>
-      ${p.notes?`<div style="font-size:11px;color:var(--muted2);font-style:italic">${p.notes}</div>`:""}
-    </div>
-    <span class="plant-status" style="background:${statusColor(p.status)}22;color:${statusColor(p.status)};font-size:10px">${p.status}</span>
-  </div>`).join("");
+  canvas.innerHTML = bedHTML + lotSVG;
+  setupDrag(canvas);
+
+  // Update action bar
+  var actionBar = document.getElementById("bed-action-bar");
+  if (actionBar) {
+    if (selectedBedId) {
+      var b = beds.find(function(b){return b.id===selectedBedId;});
+      if (b) {
+        actionBar.style.display = "block";
+        document.getElementById("bed-action-name").textContent = b.name + " (" + b.w + "×" + b.l + " ft)";
+        // Wire buttons
+        document.getElementById("bed-btn-rotate").onclick = function() { window.rotBed(b.id); };
+        document.getElementById("bed-btn-edit").onclick = function() { showBedSetup(b.id); };
+        document.getElementById("bed-btn-delete").onclick = function() { deleteBed(b.id); };
+        document.getElementById("bed-action-close").onclick = function() {
+          selectedBedId = null; renderMap();
+        };
+        var bPlants = bedPlants[b.name]||[];
+        var tW = bedHarvestTotals[b.name]||0;
+        var tC = harvests.filter(function(e){return e.bed===b.name;}).reduce(function(s,e){return s+e.count;},0);
+        var html = '';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+        html += '<div style="font-size:15px;font-weight:bold">'+b.name+' <span style="font-size:11px;color:var(--muted);font-weight:normal">'+b.w+'x'+b.l+' ft</span></div>';
+        html += '<div style="display:flex;gap:6px">';
+        html += '<div data-rotid="' + b.id + '" style="background:#4a7a32;color:#fff;border-radius:8px;padding:10px 18px;font-size:15px;cursor:pointer;font-family:Georgia,serif;font-weight:bold;display:inline-block;user-select:none">&#x27F3; Rotate</div>';
+        html += '<button onclick="deleteBed(\''+b.id+'\')" style="background:#fdeee8;border:1px solid #e8a080;border-radius:6px;padding:8px 10px;font-size:13px;color:var(--red);cursor:pointer;font-family:Georgia,serif">X</button>';
+        html += '</div></div>';
+        html += '<div class="bed-stat-row">';
+        html += '<div class="bed-stat"><div class="bed-stat-val">'+fmt(tW)+'</div><div class="bed-stat-lbl">Harvested</div></div>';
+        html += '<div class="bed-stat"><div class="bed-stat-val">'+tC+'</div><div class="bed-stat-lbl">Items</div></div>';
+        html += '<div class="bed-stat"><div class="bed-stat-val">'+bPlants.length+'</div><div class="bed-stat-lbl">Crops</div></div>';
+        html += '</div>';
+        bPlants.forEach(function(p){
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">';
+          html += '<div><span>'+(EMOJI[p.crop]||"")+" "+p.variety+'</span><div style="font-size:10px;color:var(--muted)">'+p.status+'</div></div>';
+          html += '<span style="background:'+statusColor(p.status)+'22;color:'+statusColor(p.status)+';border-radius:10px;padding:2px 7px;font-size:10px">'+p.status+'</span></div>';
+        });
+        html += '</div>';
+        // Show stats and plants in action bar
+        var statsEl = document.getElementById("bed-action-stats");
+        var plantsEl = document.getElementById("bed-action-plants");
+        if (statsEl) statsEl.innerHTML =
+          '<div class="bed-stat"><div class="bed-stat-val">' + fmt(tW) + '</div><div class="bed-stat-lbl">Harvested</div></div>' +
+          '<div class="bed-stat"><div class="bed-stat-val">' + tC + '</div><div class="bed-stat-lbl">Items</div></div>' +
+          '<div class="bed-stat"><div class="bed-stat-val">' + bPlants.length + '</div><div class="bed-stat-lbl">Crops</div></div>';
+        if (plantsEl) plantsEl.innerHTML = bPlants.map(function(p) {
+          return '<div style="font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">' +
+            '<span>' + (EMOJI[p.crop]||'') + ' ' + p.variety + '</span>' +
+            '<span style="color:var(--muted)">' + p.status + '</span></div>';
+        }).join('');
+      } else { actionBar.style.display = "none"; }
+    } else { actionBar.style.display = "none"; }
+  }
+
+  var bt = document.getElementById("bed-table");
+  if (bt) {
+    if (!beds.length) {
+      bt.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0">No beds yet — tap "+ Add Bed" to start</div>';
+    } else {
+      var tbl = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+      tbl += '<tr style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px">';
+      tbl += '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--border)">Bed</th>';
+      tbl += '<th style="padding:6px;border-bottom:1px solid var(--border)">Size</th>';
+      tbl += '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--border)">Crops</th>';
+      tbl += '<th style="border-bottom:1px solid var(--border)"></th></tr>';
+      beds.forEach(function(b) {
+        var crops = (bedPlants[b.name]||[]).map(function(p){return EMOJI[p.crop]||"";}).join(" ")||"—";
+        tbl += '<tr><td style="padding:8px 0"><div style="display:flex;align-items:center;gap:8px">';
+        tbl += '<div style="width:10px;height:10px;border-radius:3px;background:'+b.color+'"></div>'+b.name+'</div></td>';
+        tbl += '<td style="text-align:center;padding:8px 4px;color:var(--muted)">'+b.w+'x'+b.l+'ft</td>';
+        tbl += '<td style="padding:8px 4px">'+crops+'</td>';
+        tbl += '<td style="text-align:right"><button onclick="showBedSetup(\''+b.id+'\')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:12px;font-family:Georgia,serif">Edit</button></td></tr>';
+      });
+      tbl += '</table></div>';
+      bt.innerHTML = tbl;
+    }
+  }
+
+  var pl = document.getElementById("plant-log-list");
+  if (pl) {
+    if (!plantLog.length) { pl.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0 20px">No plants logged yet</div>'; return; }
+    var phtml = plantLog.map(function(p) {
+      return '<div class="plant-row" style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+        '<div class="plant-dot" style="background:'+(COLORS[p.crop]||'#8fba6a')+';width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0"></div>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:13px;font-weight:bold">'+(EMOJI[p.crop]||'')+" "+p.variety+' <span style="font-size:11px;color:var(--muted);font-weight:normal">'+p.bed+'</span></div>' +
+          '<div style="font-size:11px;color:var(--muted)">'+p.count+' plant'+(p.count!==1?'s':'')+(p.seedDate?' · '+p.seedDate:'')+'</div>' +
+          (p.notes?'<div style="font-size:11px;color:var(--muted2);font-style:italic">'+p.notes+'</div>':'') +
+        '</div>' +
+        '<button data-delid="'+p.id+'" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0" title="Remove">×</button>' +
+      '</div>';
+    }).join("");
+    pl.innerHTML = phtml;
+  }
 }
+
+
+
+
 
 function selectMapBed(id) {
   if (dragState && dragState.moved) return;
@@ -1849,63 +2007,143 @@ function loadBedsIfNeeded() {
 
 // ── DRAG & DROP ──
 function setupDrag(canvas) {
-  const onMove = (e) => {
-    if (!dragState) return;
-    e.preventDefault();
-    const pt = e.touches ? e.touches[0] : e;
-    const rect = canvas.getBoundingClientRect();
-    // All math in logical (unzoomed) coordinates
-    const logicalX = (pt.clientX - rect.left) / mapZoom;
-    const logicalY = (pt.clientY - rect.top)  / mapZoom;
-    const SCALE = 18;
-    const bed = beds.find(b => b.id === dragState.id);
-    const pw = Math.max(60, bed.w * SCALE);
-    const ph = Math.max(44, bed.l * SCALE);
-    const nx = Math.max(0, Math.min(700 - pw, logicalX - dragState.ox));
-    const ny = Math.max(0, Math.min(600 - ph, logicalY - dragState.oy));
-    // Update logical position in beds array immediately for smooth drag
-    beds = beds.map(b => b.id === dragState.id ? {...b, x: nx, y: ny} : b);
-    // Move the element visually
-    dragState.el.style.left = Math.round(nx * mapZoom) + "px";
-    dragState.el.style.top  = Math.round(ny * mapZoom) + "px";
-    if (Math.abs(nx - dragState.startX) > 3 || Math.abs(ny - dragState.startY) > 3) dragState.moved = true;
-  };
-  const onEnd = () => {
-    if (!dragState) return;
-    if (dragState.moved) {
-      saveBeds();
+  var panState = null; // for viewport panning
+
+  var onStart = function(e) {
+    var pt = e.touches ? e.touches[0] : e;
+    // Check if touch is on a bed element
+    var target = e.target;
+    var bedEl = null;
+    var el = target;
+    while (el && el !== canvas) {
+      if (el.dataset && el.dataset.id) { bedEl = el; break; }
+      el = el.parentElement;
     }
-    dragState = null;
+
+    if (bedEl) {
+      // Start bed drag
+      startDrag(e, bedEl.dataset.id);
+    } else {
+      // Start viewport pan
+      var viewport = document.getElementById("map-viewport");
+      if (!viewport) return;
+      panState = {
+        startX: pt.clientX,
+        startY: pt.clientY,
+        scrollLeft: viewport.scrollLeft,
+        scrollTop: viewport.scrollTop
+      };
+    }
   };
-  canvas.addEventListener("mousemove", onMove);
-  canvas.addEventListener("touchmove", onMove, {passive:false});
-  window.addEventListener("mouseup", onEnd);
-  window.addEventListener("touchend", onEnd);
+
+  var onMove = function(e) {
+    if (dragState) {
+      // Bed drag logic
+      e.preventDefault();
+      var pt = e.touches ? e.touches[0] : e;
+      var rect = canvas.getBoundingClientRect();
+      var MARGIN = 80, FT = 18;
+      var logicalX = (pt.clientX - rect.left) / mapZoom - MARGIN;
+      var logicalY = (pt.clientY - rect.top) / mapZoom - MARGIN;
+      var bed = beds.find(function(b){return b.id===dragState.id;});
+      if (!bed) return;
+      var pw = Math.max(50, bed.w*FT), ph = Math.max(36, bed.l*FT);
+      var maxX = (lotWidth>0?lotWidth*FT:600) - pw;
+      var maxY = (lotDepth>0?lotDepth*FT:400) - ph;
+      var nx = Math.max(0, Math.min(maxX, logicalX - dragState.ox));
+      var ny = Math.max(0, Math.min(maxY, logicalY - dragState.oy));
+      beds = beds.map(function(b){return b.id===dragState.id ? Object.assign({},b,{x:nx,y:ny}) : b;});
+      dragState.el.style.left = Math.round((nx+MARGIN)*mapZoom)+"px";
+      dragState.el.style.top  = Math.round((ny+MARGIN)*mapZoom)+"px";
+      if (Math.abs(nx-dragState.startX)>2||Math.abs(ny-dragState.startY)>2) dragState.moved=true;
+    } else if (panState) {
+      // Viewport pan
+      e.preventDefault();
+      var pt2 = e.touches ? e.touches[0] : e;
+      var viewport = document.getElementById("map-viewport");
+      if (!viewport) return;
+      var dx = panState.startX - pt2.clientX;
+      var dy = panState.startY - pt2.clientY;
+      viewport.scrollLeft = panState.scrollLeft + dx;
+      viewport.scrollTop  = panState.scrollTop  + dy;
+    }
+  };
+
+  var onEnd = function(e) {
+    if (dragState) {
+      if (!dragState.moved) selectMapBed(dragState.id);
+      else saveBeds();
+      dragState = null;
+    }
+    panState = null;
+  };
+
+  canvas.addEventListener("touchstart", onStart, {passive: true});
+  canvas.addEventListener("mousedown",  onStart);
+  canvas.addEventListener("touchmove",  onMove, {passive: false});
+  canvas.addEventListener("mousemove",  onMove);
+  window.addEventListener("touchend",   onEnd);
+  window.addEventListener("mouseup",    onEnd);
+
+  // Rotate button delegation
+  document.addEventListener("touchstart", function(e) {
+    var el = e.target;
+    for (var i = 0; i < 5 && el && el.tagName !== 'BODY'; i++) {
+      if (el.getAttribute && el.getAttribute('data-rotid')) {
+        rotTouchTarget = el.getAttribute('data-rotid');
+        e.stopPropagation();
+        return;
+      }
+      el = el.parentElement;
+    }
+    rotTouchTarget = null;
+  }, {passive: true});
+  document.addEventListener("touchend", function(e) {
+    if (rotTouchTarget) {
+      e.preventDefault();
+      e.stopPropagation();
+      var id = rotTouchTarget;
+      rotTouchTarget = null;
+      window.rotBed(id);
+    }
+  }, {passive: false});
+  document.addEventListener("click", function(e) {
+    var el = e.target;
+    for (var i = 0; i < 5 && el && el.tagName !== 'BODY'; i++) {
+      if (el.getAttribute && el.getAttribute('data-rotid')) {
+        e.stopPropagation();
+        window.rotBed(el.getAttribute('data-rotid'));
+        return;
+      }
+      el = el.parentElement;
+    }
+  });
 }
 
+
+
 function startDrag(e, id) {
-  const el = document.getElementById("mapbed-"+id);
-  const canvas = document.getElementById("map-canvas");
-  const rect = canvas.getBoundingClientRect();
-  const pt = e.touches ? e.touches[0] : e;
-  // Convert screen px to logical canvas px
-  const logicalX = (pt.clientX - rect.left) / mapZoom;
-  const logicalY = (pt.clientY - rect.top)  / mapZoom;
-  const bed = beds.find(b => b.id === id);
+  var el = document.getElementById("mapbed-"+id);
+  var canvas = document.getElementById("map-canvas");
+  var rect = canvas.getBoundingClientRect();
+  var pt = e.touches ? e.touches[0] : e;
+  var MARGIN = 80;
+  var logicalX = (pt.clientX - rect.left) / mapZoom - MARGIN;
+  var logicalY = (pt.clientY - rect.top)  / mapZoom - MARGIN;
+  var bed = beds.find(function(b){return b.id===id;});
+  if (!bed) return;
   dragState = {
-    id, el, moved: false,
+    id: id, el: el, moved: false,
     ox: logicalX - bed.x,
     oy: logicalY - bed.y,
     startX: bed.x,
     startY: bed.y,
   };
-  e.stopPropagation();
-  e.preventDefault();
 }
 
 let mapZoom = 1;
 function adjustZoom(delta) {
-  mapZoom = Math.max(0.4, Math.min(2.0, mapZoom + delta));
+  mapZoom = Math.max(0.1, Math.min(3.0, mapZoom + delta));
   applyZoom();
 }
 function resetZoom() {
@@ -1913,23 +2151,7 @@ function resetZoom() {
   applyZoom();
 }
 function applyZoom() {
-  const canvas = document.getElementById("map-canvas");
-  // Scale the canvas itself — beds keep their logical px positions
-  canvas.style.width = Math.round(700 * mapZoom) + "px";
-  canvas.style.height = Math.round(600 * mapZoom) + "px";
-  // Scale all beds
-  beds.forEach(b => {
-    const el = document.getElementById("mapbed-" + b.id);
-    if (!el) return;
-    const SCALE = 18;
-    const pw = Math.max(60, b.w * SCALE);
-    const ph = Math.max(44, b.l * SCALE);
-    el.style.left = Math.round(b.x * mapZoom) + "px";
-    el.style.top  = Math.round(b.y * mapZoom) + "px";
-    el.style.width  = Math.round(pw * mapZoom) + "px";
-    el.style.height = Math.round(ph * mapZoom) + "px";
-    el.style.fontSize = Math.round(9 * mapZoom) + "px";
-  });
+  renderMap();
 }
 
 function selectBed(id) { selectedBedId=selectedBedId===id?null:id; renderMap(); }
@@ -2262,7 +2484,7 @@ function renderCare() {
 
 // ===================== SETUP WIZARD =====================
 let setupStep = 0;
-const SETUP_STEPS = 7;
+const SETUP_STEPS = 8;
 let setupData = { name:"", gardenName:"", address:"", lat:null, lon:null, zone:"", unit:"g" };
 
 function showSetupIfNeeded() {
@@ -2297,6 +2519,7 @@ function nextSetupStep() {
   if(setupStep===2) setupData.gardenName = document.getElementById("setup-garden-name").value.trim();
   if(setupStep===3) setupData.address = document.getElementById("setup-address").value.trim();
   if(setupStep===4) setupData.zone = document.getElementById("setup-zone").value;
+  if(setupStep===5) { setupData.lotW = parseFloat(document.getElementById("setup-lot-w").value)||0; setupData.lotD = parseFloat(document.getElementById("setup-lot-d").value)||0; }
   showSetupStep(Math.min(setupStep+1, SETUP_STEPS-1));
 }
 
@@ -2362,6 +2585,7 @@ function finishSetup() {
   localStorage.setItem("gl-demo-setup-zone", setupData.zone||"");
   if(setupData.address) localStorage.setItem("gl-demo-garden-address", setupData.address);
   if(setupData.lat) { localStorage.setItem("gl-demo-garden-lat", setupData.lat); localStorage.setItem("gl-demo-garden-lon", setupData.lon); }
+  if(setupData.lotW) { localStorage.setItem("gl-demo-lot-width", setupData.lotW); localStorage.setItem("gl-demo-lot-depth", setupData.lotD||setupData.lotW); }
   // Apply settings
   displayUnit = unit;
   // Update UI
@@ -2548,15 +2772,22 @@ const GARDEN_ALERTS = [
 ];
 
 let weatherData = null;
-const WEATHER_LAT = 29.9499;
-const WEATHER_LON = -90.2178;
+let WEATHER_LAT = null;
+let WEATHER_LON = null;
 
 function refreshWeather() { weatherData = null; loadWeather(); }
 
 async function loadWeather() {
   const el = document.getElementById("weather-content");
   if (!el) return;
-  el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
+  if (!WEATHER_LAT) {
+    const sLat=parseFloat(localStorage.getItem("gl-demo-garden-lat")),sLon=parseFloat(localStorage.getItem("gl-demo-garden-lon"));
+    if(sLat&&sLon){WEATHER_LAT=sLat;WEATHER_LON=sLon;}
+    else{el.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--muted)">Getting location...</div>';
+      try{const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000}));WEATHER_LAT=pos.coords.latitude;WEATHER_LON=pos.coords.longitude;}
+      catch(e){el.innerHTML='<div class="alert alert-warn" style="margin:20px 14px">Location access denied.</div>';return;}}
+  }
+  el.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--muted)">Loading weather...</div>';
   try {
     const url = "https://api.open-meteo.com/v1/forecast" +
       "?latitude=" + WEATHER_LAT +
@@ -3001,10 +3232,28 @@ function renderAll() {
   document.getElementById("cal-week-view").style.display="none";
   document.getElementById("cal-month-view").style.display="none";
   document.getElementById("cal-day-view").style.display="block";
-  renderDashboard(); renderLog(); renderMap(); renderCalendar(); renderCare(); populateAnalyticsFilters();
+  renderDashboard(); renderLog(); renderMap(); setTimeout(function(){if(document.getElementById("view-map").classList.contains("active"))fitCanvasToBeds();},400); renderCalendar(); renderCare(); populateAnalyticsFilters();
 }
 
 loadData();
+
+// Plant delete handler
+document.addEventListener('click', function(e) {
+  var el = e.target;
+  for (var i = 0; i < 4 && el; i++) {
+    var id = el.getAttribute && el.getAttribute('data-delid');
+    if (id) {
+      plantLog = plantLog.filter(function(p){ return p.id !== id; });
+      savePlants();
+      renderMap();
+      toast("Plant removed");
+      return;
+    }
+    el = el.parentElement;
+  }
+});
+
+// Rotate handled via action bar buttons
 </script>
 </body>
 </html>
