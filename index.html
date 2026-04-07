@@ -467,9 +467,6 @@
     </div>
   </div>
 
-
-</div><!-- end map-canvas-view -->
-
 <!-- SCROLL STRIP: touch-action auto means page scrolls when swiped here -->
 <div style="text-align:center;padding:10px 14px;touch-action:auto;cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:0.5px;user-select:none" onclick="">
   ↕ Swipe here to scroll · tap a bed to edit/rotate/delete
@@ -1096,7 +1093,14 @@ async function loadData() {
     const p = localStorage.getItem("gl-demo-plants");
     if (h) harvests = JSON.parse(h);
     if (c) careLog = JSON.parse(c);
-    if (p) plantLog = JSON.parse(p);
+    // Plant data version check — re-seed if outdated
+    var plantVersion = localStorage.getItem("gl-demo-plant-version");
+    if (p && plantVersion === "v2") {
+      plantLog = JSON.parse(p);
+    } else {
+      seedPlants();
+      try { localStorage.setItem("gl-demo-plant-version", "v2"); } catch(e){}
+    }
     if (!h) seedHarvests();
     if (!c) seedCare();
     if (!p) seedPlants();
@@ -1703,13 +1707,19 @@ let selectedBedColor = "#1e3a10";
 let dragState = null;
 
 function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
-function loadBeds() {
-  try {
-    const b = localStorage.getItem("gl-demo-beds");
-    if (b) { beds = JSON.parse(b); return; }
-  } catch(e){}
+function seedBeds() {
   beds = [];
   saveBeds();
+}
+
+function loadBeds() {
+  try {
+    var b = localStorage.getItem("gl-demo-beds");
+    var bv = localStorage.getItem("gl-demo-bed-version");
+    if (b && bv === "v4") { beds = JSON.parse(b); return; }
+  } catch(e) {}
+  seedBeds();
+  try { localStorage.setItem("gl-demo-bed-version", "v4"); } catch(e) {}
 }
 
 function rotateBedFromModal() {
@@ -1853,9 +1863,11 @@ function renderMap() {
     var plants = (bedPlants[b.name]||[]).slice(0,5).map(function(p){return EMOJI[p.crop]||"";}).join("");
     var total = bedHarvestTotals[b.name]||0;
     var isOval = b.shape==="oval"||b.shape==="container";
+    var isHouse = b.shape==="house";
     var br = isOval ? "50%" : (b.shape==="container" ? "10px" : "6px");
     var isSel = selectedBedId===b.id;
     var selStyle = isSel ? "border:3px solid #4a7a32;box-shadow:0 0 0 2px #4a7a3244;" : "";
+    if (isHouse) selStyle = "border:2px dashed #888;";
     var rotBtn = '';
     var weightDiv = total ? '<div class="map-bed-weight">'+fmt(total)+'</div>' : "";
     var div = '<div class="map-bed '+(isSel?"selected":"")+'" id="mapbed-'+b.id+'" data-id="'+b.id+'"';
@@ -1867,6 +1879,9 @@ function renderMap() {
     div += '<div class="map-bed-label">'+b.name+'</div>';
     div += '<div class="map-bed-crops">'+plants+'</div>';
     div += weightDiv + rotBtn + '</div>';
+    if (isHouse) {
+      return '<div id="mapbed-'+b.id+'" style="position:absolute;left:'+zx+'px;top:'+zy+'px;width:'+zpw+'px;height:'+zph+'px;background:'+b.color+';opacity:0.35;border:2px dashed #666;border-radius:4px;pointer-events:none;display:flex;align-items:center;justify-content:center;font-size:'+Math.max(8,Math.round(8*mapZoom))+'px;color:#444;font-family:Georgia,serif;font-weight:bold;text-align:center;line-height:1.2">'+b.name+'</div>';
+    }
     return div;
   }).join("");
 
@@ -1883,11 +1898,14 @@ function renderMap() {
     lotSVG += '<text x="'+(lx+lw/2)+'" y="'+(ly+lh+20)+'" text-anchor="middle" font-family="Georgia,serif" font-size="'+fs+'" fill="#4a7a32">'+lotWidth+' ft</text>';
     lotSVG += '<text transform="rotate(-90,'+(lx-18)+','+(ly+lh/2)+')" x="'+(lx-18)+'" y="'+(ly+lh/2)+'" text-anchor="middle" dominant-baseline="middle" font-family="Georgia,serif" font-size="'+fs+'" fill="#4a7a32" font-weight="bold">'+lotDepth+' ft</text>';
     lotSVG += '<text transform="rotate(90,'+(lx+lw+18)+','+(ly+lh/2)+')" x="'+(lx+lw+18)+'" y="'+(ly+lh/2)+'" text-anchor="middle" dominant-baseline="middle" font-family="Georgia,serif" font-size="'+fs+'" fill="#4a7a32">'+lotDepth+' ft</text>';
+    // Street label + compass
+    lotSVG += '<text x="'+(lx+lw/2)+'" y="'+(ly+lh+36)+'" text-anchor="middle" font-family="Georgia,serif" font-size="'+Math.max(8,Math.round(10*mapZoom))+'" fill="#888" font-style="italic">Tullulah Ave (S)</text>';
+    lotSVG += '<text x="'+(lx-16)+'" y="'+(ly-16)+'" text-anchor="middle" font-family="Georgia,serif" font-size="'+Math.max(9,Math.round(10*mapZoom))+'" fill="#aaa" font-weight="bold">N</text>';
     lotSVG += '</svg>';
   }
 
   canvas.innerHTML = bedHTML + lotSVG;
-  setupDrag(canvas);
+  if (!canvas.dataset.dragSetup) { canvas.dataset.dragSetup = "1"; setupDrag(canvas); }
 
   // Update action bar
   var actionBar = document.getElementById("bed-action-bar");
@@ -2585,7 +2603,7 @@ function finishSetup() {
   localStorage.setItem("gl-demo-setup-zone", setupData.zone||"");
   if(setupData.address) localStorage.setItem("gl-demo-garden-address", setupData.address);
   if(setupData.lat) { localStorage.setItem("gl-demo-garden-lat", setupData.lat); localStorage.setItem("gl-demo-garden-lon", setupData.lon); }
-  if(setupData.lotW) { localStorage.setItem("gl-demo-lot-width", setupData.lotW); localStorage.setItem("gl-demo-lot-depth", setupData.lotD||setupData.lotW); }
+  if(setupData.lotW) { localStorage.setItem("gl-demo-lot-width", setupData.lotW); localStorage.setItem("gl-demo-lot-depth", setupData.lotD||setupData.lotW); lotWidth=setupData.lotW; lotDepth=setupData.lotD||setupData.lotW; }
   // Apply settings
   displayUnit = unit;
   // Update UI
