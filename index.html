@@ -224,7 +224,7 @@
   <div class="header">
     <div>
       <div class="header-title">🌱 Garden Log</div>
-      <div class="header-sub">River Ridge · 2026 Season</div>
+      <div class="header-sub">MY GARDEN · 2026 SEASON</div>
     </div>
     <div style="text-align:right">
       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Total harvest</div>
@@ -1042,7 +1042,7 @@ let cropRegistry = [];
 
 function loadCropRegistry() {
   try {
-    const saved = localStorage.getItem("gl-crops");
+    const saved = localStorage.getItem("gl-demo-crops");
     if (saved) { cropRegistry = JSON.parse(saved); return; }
   } catch(e) {}
   cropRegistry = DEFAULT_CROPS.map(c => ({...c, varieties:[...c.varieties]}));
@@ -1050,7 +1050,7 @@ function loadCropRegistry() {
 }
 
 function saveCropRegistry() {
-  try { localStorage.setItem("gl-crops", JSON.stringify(cropRegistry)); } catch(e) {}
+  try { localStorage.setItem("gl-demo-crops", JSON.stringify(cropRegistry)); } catch(e) {}
 }
 
 function getCropKeys() { return cropRegistry.map(c=>c.key); }
@@ -1129,7 +1129,7 @@ const BEDS_DEF = [
 // ===================== STATE =====================
 let harvests = [], careLog = [], plantLog = [], selectedBed = null;
 let filterCrop = "all", deleteTarget = null, deleteType = null;
-let displayUnit = localStorage.getItem("gl-unit") || "g";
+let displayUnit = localStorage.getItem("gl-demo-unit") || "g";
 let editId = null, editType = null, addType = "harvest", calMonth = new Date().getMonth() + 1;
 let photoData = { h: null, c: null, p: null };
 
@@ -1137,41 +1137,24 @@ let photoData = { h: null, c: null, p: null };
 async function loadData() {
   loadCropRegistry();
   try {
-    const h = localStorage.getItem("gl-harvests");
-    const c = localStorage.getItem("gl-care");
-    const p = localStorage.getItem("gl-plants");
+    const h = localStorage.getItem("gl-demo-harvests");
+    const c = localStorage.getItem("gl-demo-care");
+    const p = localStorage.getItem("gl-demo-plants");
     if (h) {
       harvests = JSON.parse(h); loadHarvestPhotos();
-      // Migration: inject Apr 7-8 entries if missing
-      var hids = harvests.map(function(e){return e.id;});
-      var newEntries = [
-        {id:45,date:"2026-04-07",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:20,count:9,notes:"",photo:null},
-        {id:46,date:"2026-04-07",crop:"strawberry",variety:"Festival",bed:"Oval Strawberry Bed",weight:48,count:9,notes:"",photo:null},
-        {id:47,date:"2026-04-07",crop:"blackberry",variety:"Prime Ark Freedom",bed:"Triangular Bed",weight:48,count:2,notes:"",photo:null},
-        {id:48,date:"2026-04-08",crop:"strawberry",variety:"Festival",bed:"Oval Strawberry Bed",weight:13,count:1,notes:"",photo:null},
-        {id:49,date:"2026-04-08",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:21,count:1,notes:"",photo:null},
-        {id:50,date:"2026-04-08",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:89,count:2,notes:"",photo:null}
-      ].filter(function(e){ return hids.indexOf(e.id) === -1; });
-      if (newEntries.length) { harvests = harvests.concat(newEntries); saveHarvests(); }
+      
     }
     if (c) {
       careLog = JSON.parse(c);
-      // Migration: add Apr 8 entries if not already present
-      var apr8ids = careLog.map(function(e){return e.id;});
-      var toAdd = [
-        {id:3,date:"2026-04-08",type:"spray-spinosad",product:"Spinosad",plants:"All tomatoes",notes:"Second broad mite application",photo:null,nextDate:"2026-04-15"},
-        {id:2,date:"2026-04-08",type:"spray-bt",product:"BT Thuracide",plants:"All beds",notes:"Applied today",photo:null,nextDate:"2026-04-15"},
-        {id:1,date:"2026-04-08",type:"spray-copper",product:"Peyton 35 Copper",plants:"All beds",notes:"Monthly copper application",photo:null,nextDate:"2026-05-08"}
-      ].filter(function(e){ return apr8ids.indexOf(e.id) === -1; });
-      if (toAdd.length) { careLog = toAdd.concat(careLog); saveCare(); }
+      
     }
     // Plant data version check — re-seed if outdated
-    var plantVersion = localStorage.getItem("gl-plant-version");
+    var plantVersion = localStorage.getItem("gl-demo-plant-version");
     if (p && plantVersion === "v2") {
       plantLog = JSON.parse(p);
     } else {
       seedPlants();
-      try { localStorage.setItem("gl-plant-version", "v2"); } catch(e){}
+      try { localStorage.setItem("gl-demo-plant-version", "v2"); } catch(e){}
     }
     if (!h) seedHarvests();
     if (!c) seedCare();
@@ -1187,84 +1170,28 @@ function saveHarvests() {
       if (h.photo) { photos[h.id] = h.photo; }
       return Object.assign({}, h, {photo: h.photo ? true : null});
     });
-    try { localStorage.setItem("gl-harvest-photos", JSON.stringify(photos)); } catch(e) {}
-    localStorage.setItem("gl-harvests", JSON.stringify(slim));
+    try { localStorage.setItem("gl-demo-harvest-photos", JSON.stringify(photos)); } catch(e) {}
+    localStorage.setItem("gl-demo-harvests", JSON.stringify(slim));
   } catch(e) { toast("⚠️ Save failed — storage full. Try deleting old photo entries."); }
 }
 function loadHarvestPhotos() {
   try {
-    const p = JSON.parse(localStorage.getItem("gl-harvest-photos")||"{}");
+    const p = JSON.parse(localStorage.getItem("gl-demo-harvest-photos")||"{}");
     harvests = harvests.map(function(h) {
       return Object.assign({}, h, {photo: h.photo ? (p[h.id] || null) : null});
     });
   } catch(e) {}
 }
-function saveCare() { try { localStorage.setItem("gl-care", JSON.stringify(careLog)); } catch(e){} }
-function savePlants() { try { localStorage.setItem("gl-plants", JSON.stringify(plantLog)); } catch(e){} }
+function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){} }
+function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){} }
 
 function seedHarvests() {
-  harvests = [
-    {id:1,date:"2026-02-22",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:21,count:1,notes:"first",photo:null},
-    {id:2,date:"2026-02-22",crop:"pepper",variety:"Serrano",bed:"Green Bed",weight:3,count:1,notes:"from transplanting",photo:null},
-    {id:3,date:"2026-02-25",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"transplants",photo:null},
-    {id:4,date:"2026-03-01",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:1,notes:"",photo:null},
-    {id:5,date:"2026-03-03",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:30,count:1,notes:"",photo:null},
-    {id:6,date:"2026-03-06",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:76,count:5,notes:"",photo:null},
-    {id:7,date:"2026-03-07",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:236,count:16,notes:"",photo:null},
-    {id:8,date:"2026-03-07",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:6,count:2,notes:"",photo:null},
-    {id:9,date:"2026-03-08",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:54,count:5,notes:"",photo:null},
-    {id:10,date:"2026-03-10",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:2,notes:"",photo:null},
-    {id:11,date:"2026-03-11",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:57,count:5,notes:"",photo:null},
-    {id:12,date:"2026-03-13",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:281,count:3,notes:"First harvest",photo:null},
-    {id:13,date:"2026-03-14",crop:"strawberry",variety:"Festival",bed:"Square",weight:2,count:1,notes:"Deformed not quite ripe",photo:null},
-    {id:14,date:"2026-03-14",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:91,count:7,notes:"",photo:null},
-    {id:15,date:"2026-03-15",crop:"strawberry",variety:"Festival",bed:"Square",weight:6,count:1,notes:"Ugly too",photo:null},
-    {id:16,date:"2026-03-16",crop:"strawberry",variety:"Festival",bed:"Oval",weight:16,count:2,notes:"",photo:null},
-    {id:17,date:"2026-03-18",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:26,count:3,notes:"",photo:null},
-    {id:18,date:"2026-03-20",crop:"strawberry",variety:"Festival",bed:"Oval",weight:8,count:1,notes:"",photo:null},
-    {id:19,date:"2026-03-21",crop:"strawberry",variety:"Festival",bed:"Oval",weight:5,count:2,notes:"",photo:null},
-    {id:20,date:"2026-03-21",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:3,count:2,notes:"",photo:null},
-    {id:21,date:"2026-03-21",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:150,count:1,notes:"",photo:null},
-    {id:22,date:"2026-03-22",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
-    {id:23,date:"2026-03-22",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:40,count:1,notes:"",photo:null},
-    {id:24,date:"2026-03-23",crop:"strawberry",variety:"Festival",bed:"Oval",weight:14,count:2,notes:"",photo:null},
-    {id:25,date:"2026-03-24",crop:"strawberry",variety:"Festival",bed:"Oval",weight:42,count:6,notes:"",photo:null},
-    {id:26,date:"2026-03-24",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
-    {id:27,date:"2026-03-24",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:396,count:4,notes:"",photo:null},
-    {id:28,date:"2026-03-24",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:14,count:1,notes:"",photo:null},
-    {id:29,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:73,count:9,notes:"",photo:null},
-    {id:30,date:"2026-03-25",crop:"strawberry",variety:"Festival",bed:"Oval",weight:49,count:3,notes:"",photo:null},
-    {id:31,date:"2026-03-25",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:202,count:2,notes:"",photo:null},
-    {id:32,date:"2026-03-26",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:5,notes:"",photo:null},
-    {id:33,date:"2026-03-29",crop:"strawberry",variety:"Festival",bed:"Oval",weight:110,count:16,notes:"",photo:null},
-    {id:34,date:"2026-03-29",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:3,notes:"",photo:null},
-    {id:35,date:"2026-03-29",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:46,count:1,notes:"",photo:null},
-    {id:36,date:"2026-03-30",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:4,notes:"",photo:null},
-    {id:37,date:"2026-03-30",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:96,count:2,notes:"",photo:null},
-    {id:38,date:"2026-03-30",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:23,count:3,notes:"",photo:null},
-    {id:39,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:41,count:3,notes:"",photo:null},
-    {id:40,date:"2026-03-31",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:5,count:4,notes:"",photo:null},
-    {id:41,date:"2026-03-31",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:62,count:1,notes:"",photo:null},
-    {id:42,date:"2026-03-31",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:24,count:4,notes:"",photo:null},
-    {id:43,date:"2026-03-31",crop:"strawberry",variety:"Festival",bed:"Oval",weight:20,count:3,notes:"",photo:null},
-    {id:44,date:"2026-04-01",crop:"strawberry",variety:"Festival",bed:"Oval",weight:46,count:6,notes:"",photo:null},
-    {id:45,date:"2026-04-07",crop:"pepper",variety:"Shishito",bed:"Green Bed",weight:20,count:9,notes:"",photo:null},
-    {id:46,date:"2026-04-07",crop:"strawberry",variety:"Festival",bed:"Oval Strawberry Bed",weight:48,count:9,notes:"",photo:null},
-    {id:47,date:"2026-04-07",crop:"blackberry",variety:"Prime Ark Freedom",bed:"Triangular Bed",weight:48,count:2,notes:"",photo:null},
-    {id:48,date:"2026-04-08",crop:"strawberry",variety:"Festival",bed:"Oval Strawberry Bed",weight:13,count:1,notes:"",photo:null},
-    {id:49,date:"2026-04-08",crop:"raddish",variety:"French B",bed:"Tomato Bed",weight:21,count:1,notes:"",photo:null},
-    {id:50,date:"2026-04-08",crop:"raddish",variety:"Watermelon",bed:"Green Bed",weight:89,count:2,notes:"",photo:null},
-  ];
+  harvests = [];
   saveHarvests();
 }
 
 function seedCare() {
-  careLog = [
-    {id:3,date:"2026-04-08",type:"spray-spinosad",product:"Spinosad",plants:"All tomatoes",notes:"Second broad mite application",photo:null,nextDate:"2026-04-15"},
-    {id:2,date:"2026-04-08",type:"spray-bt",product:"BT Thuracide",plants:"All beds",notes:"Applied today",photo:null,nextDate:"2026-04-15"},
-    {id:1,date:"2026-04-08",type:"spray-copper",product:"Peyton 35 Copper",plants:"All beds",notes:"Monthly copper application",photo:null,nextDate:"2026-05-08"},
-    {id:0,date:"2026-04-01",type:"spray-spinosad",product:"Spinosad",plants:"All tomatoes",notes:"Broad mite treatment on Sungold and all other tomatoes",photo:null,nextDate:"2026-04-08"}
-  ];
+  careLog = [];
   saveCare();
 }
 
@@ -1367,7 +1294,7 @@ const UNIT_LABELS  = { g: "g", oz: "oz", lb: "lb", kg: "kg" };
 
 function setUnit(u) {
   displayUnit = u;
-  localStorage.setItem("gl-unit", u);
+  localStorage.setItem("gl-demo-unit", u);
   document.querySelectorAll(".unit-selector button").forEach(b => {
     b.classList.toggle("active", b.dataset.unit === u);
   });
@@ -1707,16 +1634,16 @@ function confirmDelete() {
 }
 
 // ===================== LOT VIEW =====================
-let lotWidth = parseFloat(localStorage.getItem("gl-lot-width")) || 60;
-let lotDepth = parseFloat(localStorage.getItem("gl-lot-depth")) || 132;
+let lotWidth = parseFloat(localStorage.getItem("gl-demo-lot-width")) || 60;
+let lotDepth = parseFloat(localStorage.getItem("gl-demo-lot-depth")) || 132;
 // 236 Tullulah Ave defaults — update after checking Jefferson Parish assessor
 
 function saveLotDimensions() {
   const w = parseFloat(document.getElementById("lot-width").value) || 60;
   const d = parseFloat(document.getElementById("lot-depth").value) || 120;
   lotWidth = w; lotDepth = d;
-  localStorage.setItem("gl-lot-width", w);
-  localStorage.setItem("gl-lot-depth", d);
+  localStorage.setItem("gl-demo-lot-width", w);
+  localStorage.setItem("gl-demo-lot-depth", d);
   drawLotCanvas();
 }
 
@@ -1807,7 +1734,7 @@ function drawLotCanvas() {
 // ===================== SATELLITE MAP =====================
 let leafletMap = null;
 let mapTab = "canvas";
-let gardenAddress = localStorage.getItem("gl-garden-address") || "236 Tullulah Ave, River Ridge, LA";
+let gardenAddress = localStorage.getItem("gl-demo-garden-address") || "236 Tullulah Ave, River Ridge, LA";
 
 function setMapTab(t) {
   mapTab = t;
@@ -1896,9 +1823,9 @@ async function searchMapAddress() {
     if (!data || !data.length) { toast("Address not found — try adding city/state"); return; }
     const lat = parseFloat(data[0].lat);
     const lon = parseFloat(data[0].lon);
-    localStorage.setItem("gl-garden-address", addr);
-    localStorage.setItem("gl-garden-lat", lat);
-    localStorage.setItem("gl-garden-lon", lon);
+    localStorage.setItem("gl-demo-garden-address", addr);
+    localStorage.setItem("gl-demo-garden-lat", lat);
+    localStorage.setItem("gl-demo-garden-lon", lon);
     gardenAddress = addr;
     document.getElementById("map-location-sub").textContent = data[0].display_name.split(",").slice(0,3).join(",");
     initLeafletMap(lat, lon, 19);
@@ -1909,9 +1836,9 @@ async function searchMapAddress() {
 }
 
 function loadSavedMapLocation() {
-  const lat = parseFloat(localStorage.getItem("gl-garden-lat")) || 29.9608;
-  const lon = parseFloat(localStorage.getItem("gl-garden-lon")) || -90.2154;
-  const addr = localStorage.getItem("gl-garden-address") || "236 Tullulah Ave, River Ridge, LA";
+  const lat = parseFloat(localStorage.getItem("gl-demo-garden-lat")) || 29.9608;
+  const lon = parseFloat(localStorage.getItem("gl-demo-garden-lon")) || -90.2154;
+  const addr = localStorage.getItem("gl-demo-garden-address") || "236 Tullulah Ave, River Ridge, LA";
   const addrInput = document.getElementById("map-address-input");
   if (addrInput && !addrInput.value) addrInput.value = addr;
   document.getElementById("map-location-sub").textContent = addr;
@@ -1924,7 +1851,7 @@ let selectedBedId = null;
 let selectedBedColor = "#1e3a10";
 let dragState = null;
 
-function saveBeds() { try { localStorage.setItem("gl-beds", JSON.stringify(beds)); } catch(e){} }
+function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
 function seedBeds() {
   beds = [
     // Structures
@@ -1962,8 +1889,8 @@ function seedBeds() {
 
 function loadBeds() {
   try {
-    var b = localStorage.getItem("gl-beds");
-    var bv = localStorage.getItem("gl-bed-version");
+    var b = localStorage.getItem("gl-demo-beds");
+    var bv = localStorage.getItem("gl-demo-bed-version");
     if (b && bv === "v4") {
       beds = JSON.parse(b);
       // Migration: fix house position if it was placed on the street
@@ -1982,7 +1909,7 @@ function loadBeds() {
     }
   } catch(e) {}
   seedBeds();
-  try { localStorage.setItem("gl-bed-version", "v4"); } catch(e) {}
+  try { localStorage.setItem("gl-demo-bed-version", "v4"); } catch(e) {}
 }
 
 function rotateBedFromModal() {
@@ -3475,8 +3402,8 @@ function renderAnalytics() {
 
 // ── FULL DATA EXPORT / IMPORT ──
 function exportAppData() {
-  const keys = ["gl-harvests","gl-harvest-photos","gl-care","gl-plants","gl-plant-version",
-    "gl-beds","gl-bed-version","gl-unit","gl-crops","gl-demo-lot-width","gl-demo-lot-depth",
+  const keys = ["gl-demo-harvests","gl-demo-harvest-photos","gl-demo-care","gl-demo-plants","gl-demo-plant-version",
+    "gl-demo-beds","gl-demo-bed-version","gl-demo-unit","gl-demo-crops","gl-demo-lot-width","gl-demo-lot-depth",
     "gl-demo-garden-name","gl-demo-user-name","gl-demo-setup-done","gl-demo-garden-address",
     "gl-demo-garden-lat","gl-demo-garden-lon","gl-demo-setup-zone","gl-demo-unit"];
   const data = {};
