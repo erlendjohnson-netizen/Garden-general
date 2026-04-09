@@ -224,7 +224,7 @@
   <div class="header">
     <div>
       <div class="header-title">🌱 Garden Log</div>
-      <div class="header-sub">MY GARDEN · 2026 SEASON</div>
+      <div class="header-sub">River Ridge · 2026 Season</div>
     </div>
     <div style="text-align:right">
       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Total harvest</div>
@@ -385,7 +385,35 @@
       </div>
       <div class="field"><label>Product / Detail</label><input type="text" id="c-product" placeholder="e.g. Spinosad, 20-20-20, etc."></div>
       <div class="field"><label>Plants / Beds treated</label><input type="text" id="c-plants" placeholder="e.g. All tomatoes, Oval bed..."></div>
-      <div id="c-next-preview" style="font-size:12px;color:var(--muted2);margin-bottom:14px;padding:10px;background:var(--bg3);border-radius:8px;display:none"></div>
+
+      <!-- Reminder controls -->
+      <div id="c-reminder-wrap" style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label style="font-size:13px;font-weight:bold;color:var(--text)">⏱ Reminder</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="c-reminder-on" onchange="updateCareTimer()" style="width:16px;height:16px;cursor:pointer">
+            Set reminder
+          </label>
+        </div>
+        <div id="c-reminder-fields" style="display:none">
+          <div class="field-row" style="margin-bottom:8px">
+            <div class="field" style="margin:0;flex:1">
+              <label style="font-size:11px">Repeat every (days)</label>
+              <input type="number" id="c-interval" min="1" max="365" placeholder="e.g. 30"
+                style="width:100%;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:15px;font-family:Georgia,serif"
+                oninput="updateCareTimer()">
+            </div>
+            <div class="field" style="margin:0;flex:1">
+              <label style="font-size:11px">Applications in course</label>
+              <input type="number" id="c-app-total" min="1" max="10" placeholder="e.g. 3"
+                style="width:100%;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:15px;font-family:Georgia,serif"
+                oninput="updateCareTimer()">
+            </div>
+          </div>
+          <div id="c-next-preview" style="font-size:12px;color:var(--muted2);padding:8px 10px;background:#fff;border-radius:8px;border:1px solid var(--border)"></div>
+        </div>
+        <div id="c-reminder-hint" style="font-size:12px;color:var(--muted2)"></div>
+      </div>
       <div class="field"><label>Notes</label><textarea id="c-notes" placeholder="Any observations..."></textarea></div>
       <div class="field">
         <label>Photo</label>
@@ -944,97 +972,49 @@
 // ===================== DATA =====================
 // ── DEFAULT CROP DATABASE ──
 const DEFAULT_CROPS = [
-  // Fruiting vegetables
-  { key:"tomato",      label:"Tomato",       emoji:"🍅", color:"#e74c3c",
-    varieties:["Sungold","Super Sweet 100","Barry's Crazy Cherry","Shelby","Early Girl","Hossinator","Redsnapper","Mushroom Basket","Lemon Boy","Norfolk Purple","Cherokee Purple","Black Krim","Brandywine","Roma","San Marzano","Celebrity","Better Boy","Mortgage Lifter","Green Zebra","Pink Berkeley Tie Dye"] },
-  { key:"pepper",      label:"Pepper",       emoji:"🌶️", color:"#e8a020",
-    varieties:["Shishito","Serrano","Scotch Bonnet","Thai","Aji Chincha","Fatali","Habanero","Jalapeño","Banana","Bell","Cayenne","Anaheim","Poblano","Ghost","Carolina Reaper","Cubanelle","Pimento","Padron","Lemon Drop","Aji Amarillo"] },
-  { key:"eggplant",    label:"Eggplant",     emoji:"🍆", color:"#6c3483",
-    varieties:["Camo Camo","Black Beauty","Ichiban","Rosa Bianca","Ping Tung Long","Fairy Tale","Calliope","Orient Express","Listada de Gandia","White"] },
-  { key:"cucumber",    label:"Cucumber",     emoji:"🥒", color:"#27ae60",
-    varieties:["Merlin","Beit Alpha","Marketmore","Straight Eight","Spacemaster","Muncher","Lemon","Armenian","English","Persian","Calypso","Bush Pickle"] },
-  { key:"okra",        label:"Okra",         emoji:"🌿", color:"#5a8a2a",
-    varieties:["Clemson Spineless","Emerald","Burgundy","Cajun Delight","Annie Oakley","Silver Queen","Jambalaya","Louisiana Green Velvet","Stewart's Zeebest","Hill Country Red"] },
-  { key:"squash",      label:"Squash",       emoji:"🎃", color:"#e8780a",
-    varieties:["Yellow Crookneck","Pattypan","Zucchini","Butternut","Acorn","Spaghetti","Delicata","Hubbard","Black Beauty Zucchini","Costata Romanesco"] },
-  { key:"corn",        label:"Corn",         emoji:"🌽", color:"#f1c40f",
-    varieties:["Silver Queen","Peaches & Cream","Honey Select","Incredible","Kandy Korn","Country Gentleman","Golden Bantam","Blue Hopi","Glass Gem","Stowell's Evergreen"] },
-  { key:"watermelon",  label:"Watermelon",   emoji:"🍉", color:"#e8436a",
-    varieties:["Sugar Baby","Crimson Sweet","Jubilee","Charleston Grey","Moon & Stars","Orangeglo","Yellow Doll","Kleckley Sweet","Black Diamond","Picnic"] },
-  { key:"cantaloupe",  label:"Cantaloupe",   emoji:"🍈", color:"#e8b86d",
-    varieties:["Hale's Best","Ambrosia","Honey Rock","Athena","Edisto 47","Crenshaw","Collective Farm Woman","Banana","Sweet Granite"] },
-  { key:"beans",       label:"Beans",        emoji:"🫘", color:"#4a7a2a",
-    varieties:["Blue Lake","Kentucky Wonder","Provider","Purple Hull","Rattlesnake","Yard Long","Contender","Roma II","Dragon Tongue","Scarlet Runner"] },
-  { key:"long bean",   label:"Long Bean",    emoji:"🌿", color:"#1e8449",
-    varieties:["Long Bean","Red Noodle","White Seeded","Green Podded"] },
-  // Root vegetables
-  { key:"raddish",     label:"Radish",       emoji:"🌿", color:"#9b59b6",
-    varieties:["French B","Watermelon","Cherry Belle","Easter Egg","Daikon","Black Spanish","China Rose","Purple Plum","White Icicle","Champion"] },
-  { key:"sweet potato",label:"Sweet Potato", emoji:"🍠", color:"#c0612a",
-    varieties:["Beauregard","Jewel","Covington","Hernandez","O'Henry","Purple","Japanese","Garnet","Vardaman","Porto Rico"] },
-  { key:"potato",      label:"Potato",       emoji:"🥔", color:"#8a7a4a",
-    varieties:["Red Pontiac","Yukon Gold","Kennebec","Russet Burbank","Purple Majesty","Fingerling","German Butterball","Adirondack Blue","All Blue","Norland"] },
-  { key:"carrot",      label:"Carrot",       emoji:"🥕", color:"#e8720a",
-    varieties:["Danvers","Nantes","Chantenay","Imperator","Rainbow","Cosmic Purple","Atomic Red","Solar Yellow","Scarlet Nantes","Bolero"] },
-  { key:"onion",       label:"Onion",        emoji:"🧅", color:"#c8a040",
-    varieties:["Yellow Granex","Texas 1015","White Lisbon","Red Burgundy","Walla Walla","Candy","Sweet Spanish","Evergreen Bunching","Egyptian Walking","Cipollini"] },
-  { key:"garlic",      label:"Garlic",       emoji:"🧄", color:"#c8c0a0",
-    varieties:["Softneck","Hardneck","Elephant","Creole","German Red","Music","Chesnok Red","Purple Stripe","Porcelain","Artichoke"] },
-  // Brassicas
-  { key:"lettuce",     label:"Lettuce",      emoji:"🥬", color:"#5aba6a",
-    varieties:["Black Seeded Simpson","Buttercrunch","Romaine","Red Sails","Oakleaf","Mesclun Mix","Arugula","Looseleaf","Batavian","Little Gem"] },
-  { key:"kale",        label:"Kale",         emoji:"🥬", color:"#2a7a4a",
-    varieties:["Lacinato/Dinosaur","Curly Scotch","Red Russian","Winterbor","Redbor","Siberian","Premier","Dwarf Blue Curled","Rainbow Lacinato"] },
-  // Herbs
-  { key:"basil",       label:"Basil",        emoji:"🌿", color:"#3a8a3a",
-    varieties:["Genovese","Thai","Holy","Lemon","Purple Ruffles","Spicy Globe","Cinnamon","Lime","African Blue","Napoletano"] },
-  { key:"mint",        label:"Mint",         emoji:"🌿", color:"#4aba8a",
-    varieties:["Spearmint","Peppermint","Chocolate","Apple","Mojito","Corsican","Pennyroyal","Ginger","Watermint","Lemon"] },
-  { key:"thyme",       label:"Thyme",        emoji:"🌿", color:"#6a9a5a",
-    varieties:["Common/French","Lemon","Creeping","English","Orange","Caraway","Woolly","Silver","Mother of Thyme"] },
-  { key:"oregano",     label:"Oregano",      emoji:"🌿", color:"#7a8a3a",
-    varieties:["Italian","Greek","Mexican","Cuban","Hot & Spicy","Compact","Aureum","Syrian","Za'atar"] },
-  { key:"rosemary",    label:"Rosemary",     emoji:"🌿", color:"#4a6a8a",
-    varieties:["Tuscan Blue","Arp","Salem","Spice Islands","Prostrate","Hill Hardy","Blue Boy","Miss Jessup's Upright"] },
-  { key:"sage",        label:"Sage",         emoji:"🌿", color:"#8a9a6a",
-    varieties:["Common","Purple","Tricolor","Golden","Berggarten","Pineapple","Clary","Mexican","Variegated"] },
-  { key:"cilantro",    label:"Cilantro",     emoji:"🌿", color:"#5a9a5a",
-    varieties:["Santo","Calypso","Slow Bolt","Leisure","Vietnamese","Moroccan","Chinese","Delfino"] },
-  { key:"dill",        label:"Dill",         emoji:"🌿", color:"#8ab05a",
-    varieties:["Bouquet","Fernleaf","Mammoth","Dukat","Long Island","Hera","Ella","Superdukat"] },
-  { key:"parsley",     label:"Parsley",      emoji:"🌿", color:"#4a8a4a",
-    varieties:["Curly","Italian Flat Leaf","Hamburg","Japanese","Moss Curled","Giant Italian","Dark Green Italian"] },
-  { key:"chives",      label:"Chives",       emoji:"🌿", color:"#5a9a6a",
-    varieties:["Common","Garlic","Giant Siberian","Staro","Fine Leaf"] },
-  { key:"lemongrass",  label:"Lemongrass",   emoji:"🌿", color:"#9ab05a",
-    varieties:["East Indian","West Indian","Citronella","Palmarosa"] },
-  // Fruits
-  { key:"strawberry",  label:"Strawberry",   emoji:"🍓", color:"#e85d75",
-    varieties:["Festival","Chandler","Camarosa","Seascape","Albion","Portola","San Andreas","Sweet Charlie","Earliglow","Honeoye","Ozark Beauty","Quinault"] },
-  { key:"blackberry",  label:"Blackberry",   emoji:"🫐", color:"#4a235a",
-    varieties:["Prime Ark Freedom","Natchez","Ouachita","Arapaho","Kiowa","Triple Crown","Chester","Apache","Osage","Von"] },
-  { key:"blueberry",   label:"Blueberry",    emoji:"🫐", color:"#2471a3",
-    varieties:["Alapaha","Ochlockonee","Legacy","Rabbiteye","Climax","Premier","Brightwell","Tifblue","Powderblue","O'Neal","Sunshine Blue","Misty"] },
-  { key:"fig",         label:"Fig",          emoji:"🌿", color:"#7d6608",
-    varieties:["LSU Purple","Celeste","LSU Tiger","Brown Turkey","Black Mission","Kadota","Alma","Marseilles","O'Rourke","Violette de Bordeaux"] },
-  { key:"mango",       label:"Mango",        emoji:"🥭", color:"#f39c12",
-    varieties:["Carrie","Cogshall","Glenn","Lancetilla","Nam Doc Mai","Pickering","Fairchild","Haden","Kent","Tommy Atkins","Keitt","Valencia Pride"] },
-  { key:"dragon fruit",label:"Dragon Fruit", emoji:"🐉", color:"#e91e63",
-    varieties:["Haley's Comet","Palora","Pink Noid","American Beauty","Delight","Physical Graffiti","Seoul Kitchen","Vietnam White","Yellow Dragon","Voodoo Child"] },
-  { key:"passionfruit",label:"Passionfruit", emoji:"🌺", color:"#8e44ad",
-    varieties:["Latino Mora","Frederick","Possum Purple","Incense","Maypop","Yellow Giant","Sweet Granadilla","Panama Gold"] },
-  { key:"citrus",      label:"Citrus",       emoji:"🍊", color:"#e8820a",
-    varieties:["Owari Satsuma","Cara Cara Navel","Meyer Lemon","Persian Lime","Clementine","Blood Orange","Hamlin","Valencia","Calamondin","Kumquat"] },
-  { key:"peach",       label:"Peach",        emoji:"🍑", color:"#e8a07a",
-    varieties:["Florida King","Tropic Beauty","Tropic Sweet","Gulf King","UF Gold","Flordacrest","Bonanza","Redhaven","Reliance"] },
-  // Trees
-  { key:"avocado",     label:"Avocado",      emoji:"🥑", color:"#3a6a2a",
-    varieties:["Mexicola","Brogdon","Monroe","Choquette","Donnie","Gainesville","Day","Russell","Lula","Simmonds"] },
-  // Other
-  { key:"sweet corn",  label:"Sweet Corn",   emoji:"🌽", color:"#e8c020", varieties:["Silver Queen","Peaches & Cream","Honey Select"] },
-  { key:"sunflower",   label:"Sunflower",    emoji:"🌻", color:"#f1c40f",
-    varieties:["Mammoth","Autumn Beauty","Teddy Bear","Italian White","Velvet Queen","Lemon Queen","Ring of Fire","Strawberry Blonde"] },
-  { key:"other",       label:"Other",        emoji:"🌱", color:"#7f8c8d", varieties:["Other","Custom"] },
+  { key:"tomato", label:"Tomato", emoji:"🍅", color:"#e74c3c", varieties:["Sungold", "Super Sweet 100", "Barry's Crazy Cherry", "Shelby", "Early Girl", "Hossinator", "Redsnapper", "Mushroom Basket", "Lemon Boy", "Norfolk Purple", "Cherokee Purple", "Black Krim", "Brandywine", "Roma", "San Marzano", "Celebrity", "Better Boy", "Mortgage Lifter", "Green Zebra", "Pink Berkeley Tie Dye"] },
+  { key:"pepper", label:"Pepper", emoji:"🌶️", color:"#e8a020", varieties:["Shishito", "Serrano", "Scotch Bonnet", "Thai", "Aji Chincha", "Fatali", "Habanero", "Jalape\u00f1o", "Banana", "Bell", "Cayenne", "Anaheim", "Poblano", "Ghost", "Carolina Reaper", "Cubanelle", "Pimento", "Padron", "Lemon Drop", "Aji Amarillo"] },
+  { key:"eggplant", label:"Eggplant", emoji:"🍆", color:"#6c3483", varieties:["Camo Camo", "Black Beauty", "Ichiban", "Rosa Bianca", "Ping Tung Long", "Fairy Tale", "Calliope", "Orient Express", "Listada de Gandia", "White"] },
+  { key:"cucumber", label:"Cucumber", emoji:"🥒", color:"#27ae60", varieties:["Merlin", "Beit Alpha", "Marketmore", "Straight Eight", "Spacemaster", "Muncher", "Lemon", "Armenian", "English", "Persian", "Calypso", "Bush Pickle"] },
+  { key:"okra", label:"Okra", emoji:"🌿", color:"#5a8a2a", varieties:["Clemson Spineless", "Emerald", "Burgundy", "Cajun Delight", "Annie Oakley", "Silver Queen", "Jambalaya", "Louisiana Green Velvet", "Stewart's Zeebest", "Hill Country Red"] },
+  { key:"squash", label:"Squash", emoji:"🎃", color:"#e8780a", varieties:["Yellow Crookneck", "Pattypan", "Zucchini", "Butternut", "Acorn", "Spaghetti", "Delicata", "Hubbard", "Black Beauty Zucchini", "Costata Romanesco"] },
+  { key:"corn", label:"Corn", emoji:"🌽", color:"#f1c40f", varieties:["Silver Queen", "Peaches & Cream", "Honey Select", "Incredible", "Kandy Korn", "Country Gentleman", "Golden Bantam", "Blue Hopi", "Glass Gem", "Stowell's Evergreen"] },
+  { key:"watermelon", label:"Watermelon", emoji:"🍉", color:"#e8436a", varieties:["Sugar Baby", "Crimson Sweet", "Jubilee", "Charleston Grey", "Moon & Stars", "Orangeglo", "Yellow Doll", "Kleckley Sweet", "Black Diamond", "Picnic"] },
+  { key:"cantaloupe", label:"Cantaloupe", emoji:"🍈", color:"#e8b86d", varieties:["Hale's Best", "Ambrosia", "Honey Rock", "Athena", "Edisto 47", "Crenshaw", "Collective Farm Woman", "Banana", "Sweet Granite"] },
+  { key:"beans", label:"Beans", emoji:"🫘", color:"#4a7a2a", varieties:["Blue Lake", "Kentucky Wonder", "Provider", "Purple Hull", "Rattlesnake", "Yard Long", "Contender", "Roma II", "Dragon Tongue", "Scarlet Runner"] },
+  { key:"long bean", label:"Long Bean", emoji:"🌿", color:"#1e8449", varieties:["Long Bean", "Red Noodle", "White Seeded", "Green Podded"] },
+  { key:"raddish", label:"Radish", emoji:"🌿", color:"#9b59b6", varieties:["French B", "Watermelon", "Cherry Belle", "Easter Egg", "Daikon", "Black Spanish", "China Rose", "Purple Plum", "White Icicle", "Champion"] },
+  { key:"sweet potato", label:"Sweet Potato", emoji:"🍠", color:"#c0612a", varieties:["Beauregard", "Jewel", "Covington", "Hernandez", "O'Henry", "Purple", "Japanese", "Garnet", "Vardaman", "Porto Rico"] },
+  { key:"potato", label:"Potato", emoji:"🥔", color:"#8a7a4a", varieties:["Red Pontiac", "Yukon Gold", "Kennebec", "Russet Burbank", "Purple Majesty", "Fingerling", "German Butterball", "Adirondack Blue", "All Blue", "Norland"] },
+  { key:"carrot", label:"Carrot", emoji:"🥕", color:"#e8720a", varieties:["Danvers", "Nantes", "Chantenay", "Imperator", "Rainbow", "Cosmic Purple", "Atomic Red", "Solar Yellow", "Scarlet Nantes", "Bolero"] },
+  { key:"onion", label:"Onion", emoji:"🧅", color:"#c8a040", varieties:["Yellow Granex", "Texas 1015", "White Lisbon", "Red Burgundy", "Walla Walla", "Candy", "Sweet Spanish", "Evergreen Bunching", "Egyptian Walking", "Cipollini"] },
+  { key:"garlic", label:"Garlic", emoji:"🧄", color:"#c8c0a0", varieties:["Softneck", "Hardneck", "Elephant", "Creole", "German Red", "Music", "Chesnok Red", "Purple Stripe", "Porcelain", "Artichoke"] },
+  { key:"lettuce", label:"Lettuce", emoji:"🥬", color:"#5aba6a", varieties:["Black Seeded Simpson", "Buttercrunch", "Romaine", "Red Sails", "Oakleaf", "Mesclun Mix", "Arugula", "Looseleaf", "Batavian", "Little Gem"] },
+  { key:"kale", label:"Kale", emoji:"🥬", color:"#2a7a4a", varieties:["Lacinato/Dinosaur", "Curly Scotch", "Red Russian", "Winterbor", "Redbor", "Siberian", "Premier", "Dwarf Blue Curled", "Rainbow Lacinato"] },
+  { key:"basil", label:"Basil", emoji:"🌿", color:"#3a8a3a", varieties:["Genovese", "Thai", "Holy", "Lemon", "Purple Ruffles", "Spicy Globe", "Cinnamon", "Lime", "African Blue", "Napoletano"] },
+  { key:"mint", label:"Mint", emoji:"🌿", color:"#4aba8a", varieties:["Spearmint", "Peppermint", "Chocolate", "Apple", "Mojito", "Corsican", "Pennyroyal", "Ginger", "Watermint", "Lemon"] },
+  { key:"thyme", label:"Thyme", emoji:"🌿", color:"#6a9a5a", varieties:["Common/French", "Lemon", "Creeping", "English", "Orange", "Caraway", "Woolly", "Silver", "Mother of Thyme"] },
+  { key:"oregano", label:"Oregano", emoji:"🌿", color:"#7a8a3a", varieties:["Italian", "Greek", "Mexican", "Cuban", "Hot & Spicy", "Compact", "Aureum", "Syrian", "Za'atar"] },
+  { key:"rosemary", label:"Rosemary", emoji:"🌿", color:"#4a6a8a", varieties:["Tuscan Blue", "Arp", "Salem", "Spice Islands", "Prostrate", "Hill Hardy", "Blue Boy", "Miss Jessup's Upright"] },
+  { key:"sage", label:"Sage", emoji:"🌿", color:"#8a9a6a", varieties:["Common", "Purple", "Tricolor", "Golden", "Berggarten", "Pineapple", "Clary", "Mexican", "Variegated"] },
+  { key:"cilantro", label:"Cilantro", emoji:"🌿", color:"#5a9a5a", varieties:["Santo", "Calypso", "Slow Bolt", "Leisure", "Vietnamese", "Moroccan", "Chinese", "Delfino"] },
+  { key:"dill", label:"Dill", emoji:"🌿", color:"#8ab05a", varieties:["Bouquet", "Fernleaf", "Mammoth", "Dukat", "Long Island", "Hera", "Ella", "Superdukat"] },
+  { key:"parsley", label:"Parsley", emoji:"🌿", color:"#4a8a4a", varieties:["Curly", "Italian Flat Leaf", "Hamburg", "Japanese", "Moss Curled", "Giant Italian", "Dark Green Italian"] },
+  { key:"chives", label:"Chives", emoji:"🌿", color:"#5a9a6a", varieties:["Common", "Garlic", "Giant Siberian", "Staro", "Fine Leaf"] },
+  { key:"lemongrass", label:"Lemongrass", emoji:"🌿", color:"#9ab05a", varieties:["East Indian", "West Indian", "Citronella", "Palmarosa"] },
+  { key:"strawberry", label:"Strawberry", emoji:"🍓", color:"#e85d75", varieties:["Festival", "Chandler", "Camarosa", "Seascape", "Albion", "Portola", "San Andreas", "Sweet Charlie", "Earliglow", "Honeoye", "Ozark Beauty", "Quinault"] },
+  { key:"blackberry", label:"Blackberry", emoji:"🫐", color:"#4a235a", varieties:["Prime Ark Freedom", "Natchez", "Ouachita", "Arapaho", "Kiowa", "Triple Crown", "Chester", "Apache", "Osage", "Von"] },
+  { key:"blueberry", label:"Blueberry", emoji:"🫐", color:"#2471a3", varieties:["Alapaha", "Ochlockonee", "Legacy", "Rabbiteye", "Climax", "Premier", "Brightwell", "Tifblue", "Powderblue", "O'Neal", "Sunshine Blue", "Misty"] },
+  { key:"fig", label:"Fig", emoji:"🌿", color:"#7d6608", varieties:["LSU Purple", "Celeste", "LSU Tiger", "Brown Turkey", "Black Mission", "Kadota", "Alma", "Marseilles", "O'Rourke", "Violette de Bordeaux"] },
+  { key:"mango", label:"Mango", emoji:"🥭", color:"#f39c12", varieties:["Carrie", "Cogshall", "Glenn", "Lancetilla", "Nam Doc Mai", "Pickering", "Fairchild", "Haden", "Kent", "Tommy Atkins", "Keitt", "Valencia Pride"] },
+  { key:"dragon fruit", label:"Dragon Fruit", emoji:"🐉", color:"#e91e63", varieties:["Haley's Comet", "Palora", "Pink Noid", "American Beauty", "Delight", "Physical Graffiti", "Seoul Kitchen", "Vietnam White", "Yellow Dragon", "Voodoo Child"] },
+  { key:"passionfruit", label:"Passionfruit", emoji:"🌺", color:"#8e44ad", varieties:["Latino Mora", "Frederick", "Possum Purple", "Incense", "Maypop", "Yellow Giant", "Sweet Granadilla", "Panama Gold"] },
+  { key:"citrus", label:"Citrus", emoji:"🍊", color:"#e8820a", varieties:["Owari Satsuma", "Cara Cara Navel", "Meyer Lemon", "Persian Lime", "Clementine", "Blood Orange", "Hamlin", "Valencia", "Calamondin", "Kumquat"] },
+  { key:"peach", label:"Peach", emoji:"🍑", color:"#e8a07a", varieties:["Florida King", "Tropic Beauty", "Tropic Sweet", "Gulf King", "UF Gold", "Flordacrest", "Bonanza", "Redhaven", "Reliance"] },
+  { key:"avocado", label:"Avocado", emoji:"🥑", color:"#3a6a2a", varieties:["Mexicola", "Brogdon", "Monroe", "Choquette", "Donnie", "Gainesville", "Day", "Russell", "Lula", "Simmonds"] },
+  { key:"sweet corn", label:"Sweet Corn", emoji:"🌽", color:"#e8c020", varieties:["Silver Queen", "Peaches & Cream", "Honey Select"] },
+  { key:"sunflower", label:"Sunflower", emoji:"🌻", color:"#f1c40f", varieties:["Mammoth", "Autumn Beauty", "Teddy Bear", "Italian White", "Velvet Queen", "Lemon Queen", "Ring of Fire", "Strawberry Blonde"] },
+  { key:"other", label:"Other", emoji:"🌱", color:"#7f8c8d", varieties:["Other", "Custom"] }
 ];
 
 // ── CROP REGISTRY — loaded from storage or defaults ──
@@ -1103,6 +1083,18 @@ const CARE_INTERVALS = {
   "fert-ammonium-sulfate":30,"fert-potassium-sulfate":30,"fert-granular":30,
   "fert-bone-meal":60,"fert-slow-release":90,"fert-compost":90
 };
+// chronic = always set reminder by default; as-needed = no reminder by default; none = never remind
+const CARE_MODE = {
+  "spray-spinosad":"as-needed","spray-bt":"as-needed","spray-pyrethrin":"as-needed",
+  "spray-insecticidal":"as-needed","spray-neem":"as-needed","spray-hort-oil":"as-needed",
+  "spray-sulfur":"as-needed","spray-other":"as-needed",
+  "spray-copper":"chronic",
+  "fert-20-20-20":"chronic","fert-bloom":"chronic","fert-fish":"chronic","fert-kelp":"chronic",
+  "fert-calcium":"chronic","fert-epsom":"chronic","fert-soluble":"chronic",
+  "fert-ammonium-sulfate":"chronic","fert-potassium-sulfate":"chronic","fert-granular":"chronic",
+  "fert-bone-meal":"chronic","fert-slow-release":"chronic","fert-compost":"chronic",
+  "water":"none","prune":"none","transplant":"none","harvest-care":"none","other":"none"
+};
 const CARE_LABELS = {
   "spray-spinosad":"Spinosad","spray-bt":"BT Thuracide","spray-pyrethrin":"Pyrethrin",
   "spray-insecticidal":"Insecticidal Soap","spray-neem":"Neem Oil","spray-hort-oil":"Horticultural Oil",
@@ -1137,28 +1129,37 @@ let photoData = { h: null, c: null, p: null };
 async function loadData() {
   loadCropRegistry();
   try {
-    const h = localStorage.getItem("gl-demo-harvests");
-    const c = localStorage.getItem("gl-demo-care");
-    const p = localStorage.getItem("gl-demo-plants");
-    if (h) {
+    const h  = localStorage.getItem("gl-demo-harvests");
+    const hv = localStorage.getItem("gl-demo-harvest-version");
+    const c  = localStorage.getItem("gl-demo-care");
+    const cv = localStorage.getItem("gl-demo-care-version");
+    const p  = localStorage.getItem("gl-demo-plants");
+    const pv = localStorage.getItem("gl-demo-plant-version");
+
+    // Harvests — re-seed if version outdated
+    if (h && hv === "v2") {
       harvests = JSON.parse(h); loadHarvestPhotos();
-      
+    } else {
+      seedHarvests();
+      try { localStorage.setItem("gl-demo-harvest-version", "v2"); } catch(e) {}
     }
-    if (c) {
+
+    // Care — re-seed if version outdated (bumping forces fresh Apr 8 data)
+    if (c && cv === "v2") {
       careLog = JSON.parse(c);
-      
+    } else {
+      seedCare();
+      try { localStorage.setItem("gl-demo-care-version", "v2"); } catch(e) {}
     }
-    // Plant data version check — re-seed if outdated
-    var plantVersion = localStorage.getItem("gl-demo-plant-version");
-    if (p && plantVersion === "v2") {
+
+    // Plants — re-seed if version outdated
+    if (p && pv === "v2") {
       plantLog = JSON.parse(p);
     } else {
       seedPlants();
-      try { localStorage.setItem("gl-demo-plant-version", "v2"); } catch(e){}
+      try { localStorage.setItem("gl-demo-plant-version", "v2"); } catch(e) {}
     }
-    if (!h) seedHarvests();
-    if (!c) seedCare();
-    if (!p) seedPlants();
+
   } catch(e) { seedHarvests(); seedCare(); seedPlants(); }
   renderAll();
 }
@@ -1196,79 +1197,7 @@ function seedCare() {
 }
 
 function seedPlants() {
-  plantLog = [
-    // TOMATO BED 16x3
-    {id:"t1",crop:"tomato",variety:"Early Girl",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t2",crop:"tomato",variety:"Barry's Crazy Cherry",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t3",crop:"tomato",variety:"Red Snapper",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t4",crop:"tomato",variety:"Hossinator",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t5",crop:"tomato",variety:"Lemon Boy",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t6",crop:"tomato",variety:"Mushroom Basket",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t7",crop:"tomato",variety:"Sungold",bed:"Tomato Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t8",crop:"tomato",variety:"Norfolk Purple",bed:"Tomato Bed",count:2,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t9",crop:"pepper",variety:"Jalapeño",bed:"Tomato Bed",count:1,seedDate:"",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t10",crop:"pepper",variety:"Banana Pepper",bed:"Tomato Bed",count:1,seedDate:"",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"t11",crop:"radish",variety:"French Breakfast",bed:"Tomato Bed",count:1,seedDate:"2026-01-20",transplantDate:"",status:"harvesting",notes:""},
-    {id:"t12",crop:"basil",variety:"Genovese",bed:"Tomato Bed",count:4,seedDate:"2026-02-01",transplantDate:"2026-03-01",status:"harvesting",notes:""},
-    // GREEN BED 8x3
-    {id:"g1",crop:"tomato",variety:"Super Sweet 100",bed:"Green Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"g2",crop:"tomato",variety:"Sungold",bed:"Green Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"g3",crop:"pepper",variety:"Fatali",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"fruiting",notes:"Overwintered"},
-    {id:"g4",crop:"pepper",variety:"Scotch Bonnet",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"fruiting",notes:"Overwintered"},
-    {id:"g5",crop:"pepper",variety:"Ahi Chincha",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"fruiting",notes:"Overwintered"},
-    {id:"g6",crop:"pepper",variety:"Shishito",bed:"Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"harvesting",notes:"Overwintered"},
-    {id:"g7",crop:"cucumber",variety:"Merlin",bed:"Green Bed",count:3,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
-    {id:"g8",crop:"cucumber",variety:"Beit Alpha",bed:"Green Bed",count:1,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
-    {id:"g9",crop:"radish",variety:"Watermelon",bed:"Green Bed",count:1,seedDate:"2026-01-20",transplantDate:"",status:"harvesting",notes:""},
-    // SQUARE GREEN BED 4x3
-    {id:"s1",crop:"tomato",variety:"Lemon Boy",bed:"Square Green Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"s2",crop:"tomato",variety:"Norfolk Purple",bed:"Square Green Bed",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    {id:"s3",crop:"pepper",variety:"Habanero",bed:"Square Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"fruiting",notes:"Overwintered"},
-    {id:"s4",crop:"pepper",variety:"Serrano",bed:"Square Green Bed",count:1,seedDate:"",transplantDate:"2026-01-10",status:"fruiting",notes:"Overwintered"},
-    {id:"s5",crop:"cucumber",variety:"Merlin",bed:"Square Green Bed",count:1,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
-    {id:"s6",crop:"cucumber",variety:"Beit Alpha",bed:"Square Green Bed",count:1,seedDate:"2026-02-28",transplantDate:"2026-03-15",status:"fruiting",notes:""},
-    {id:"s7",crop:"basil",variety:"Holy Basil",bed:"Square Green Bed",count:1,seedDate:"2026-02-01",transplantDate:"2026-03-01",status:"harvesting",notes:""},
-    // OVAL STRAWBERRY BED 6x3
-    {id:"os1",crop:"strawberry",variety:"Festival",bed:"Oval Strawberry Bed",count:25,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:""},
-    {id:"os2",crop:"onion",variety:"Green Onion",bed:"Oval Strawberry Bed",count:1,seedDate:"2026-02-01",transplantDate:"",status:"harvesting",notes:""},
-    // MINT PLANTER 2x2
-    {id:"mp1",crop:"mint",variety:"Mint",bed:"Mint Planter",count:1,seedDate:"",transplantDate:"2025-01-01",status:"harvesting",notes:""},
-    {id:"mp2",crop:"tomato",variety:"Super Sweet 100",bed:"Mint Planter",count:1,seedDate:"2026-01-15",transplantDate:"2026-02-20",status:"fruiting",notes:""},
-    // SQUARE STRAWBERRY 3x3
-    {id:"sq1",crop:"strawberry",variety:"Festival",bed:"Square Strawberry Bed",count:20,seedDate:"",transplantDate:"2025-10-15",status:"harvesting",notes:""},
-    // OVAL BLUEBERRY BED 6x3
-    {id:"bb1",crop:"blueberry",variety:"Alapaha",bed:"Oval Blueberry Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:""},
-    {id:"bb2",crop:"blueberry",variety:"Ochlockonee",bed:"Oval Blueberry Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
-    {id:"bb3",crop:"blueberry",variety:"Legacy",bed:"Oval Blueberry Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"flowering",notes:"Fresh transplant"},
-    // DRAGON FRUIT PLANTERS
-    {id:"df1",crop:"dragon fruit",variety:"Palora",bed:"Dragon Fruit Planter",count:1,seedDate:"",transplantDate:"2024-01-01",status:"flowering",notes:"Bloomed April 1"},
-    {id:"df2",crop:"dragon fruit",variety:"Haley's Comet",bed:"Dragon Fruit Planter",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:"df3",crop:"dragon fruit",variety:"Pink Noid",bed:"New Planter",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:"Pink flesh"},
-    // MANGO PLANTER
-    {id:"mn1",crop:"mango",variety:"Carrie",bed:"Mango Planter",count:1,seedDate:"",transplantDate:"2023-01-01",status:"flowering",notes:"31 panicles"},
-    // TRIANGULAR IN GROUND 8x4
-    {id:"tri1",crop:"blackberry",variety:"Prime Ark Freedom",bed:"Triangular Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:"tri2",crop:"fig",variety:"LSU Purple",bed:"Triangular Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    // HERB BED 1 6x3
-    {id:"h1",crop:"passionfruit",variety:"Passionfruit",bed:"Herb Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:"h2",crop:"herb",variety:"Thyme",bed:"Herb Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"harvesting",notes:""},
-    {id:"h3",crop:"herb",variety:"Sage",bed:"Herb Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"harvesting",notes:""},
-    {id:"h4",crop:"herb",variety:"Oregano",bed:"Herb Bed",count:1,seedDate:"",transplantDate:"2025-01-01",status:"harvesting",notes:""},
-    {id:"h5",crop:"bean",variety:"Long Bean Red",bed:"Herb Bed",count:1,seedDate:"2026-02-01",transplantDate:"2026-03-01",status:"fruiting",notes:""},
-    {id:"h6",crop:"bean",variety:"Long Bean Green",bed:"Herb Bed",count:1,seedDate:"2026-02-01",transplantDate:"2026-03-01",status:"fruiting",notes:""},
-    {id:"h7",crop:"berry",variety:"Mora (Blackberry)",bed:"Herb Bed",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    // HERB BED 2
-    {id:"h8",crop:"passionfruit",variety:"Passionfruit",bed:"Herb Bed 2",count:1,seedDate:"",transplantDate:"2024-01-01",status:"fruiting",notes:""},
-    {id:"h9",crop:"bean",variety:"Long Bean",bed:"Herb Bed 2",count:1,seedDate:"2026-02-01",transplantDate:"2026-03-01",status:"fruiting",notes:""},
-    // IN GROUND TREES
-    {id:"ig1",crop:"fig",variety:"Celeste",bed:"In Ground",count:1,seedDate:"",transplantDate:"2022-01-01",status:"fruiting",notes:""},
-    {id:"ig2",crop:"citrus",variety:"Owari Satsuma",bed:"In Ground",count:1,seedDate:"",transplantDate:"2022-01-01",status:"fruiting",notes:""},
-    {id:"ig3",crop:"fig",variety:"LSU Tiger",bed:"In Ground",count:1,seedDate:"",transplantDate:"2022-01-01",status:"fruiting",notes:""},
-    {id:"ig4",crop:"peach",variety:"Florida King",bed:"In Ground",count:1,seedDate:"",transplantDate:"2022-01-01",status:"flowering",notes:"Blooming April 2026"},
-    {id:"ig5",crop:"citrus",variety:"Cara Cara",bed:"In Ground",count:1,seedDate:"",transplantDate:"2022-01-01",status:"fruiting",notes:""},
-    {id:"ig6",crop:"citrus",variety:"Meyer Lemon",bed:"In Ground",count:1,seedDate:"",transplantDate:"2022-01-01",status:"fruiting",notes:""},
-    {id:"ig7",crop:"citrus",variety:"Persian Lime",bed:"In Ground",count:1,seedDate:"",transplantDate:"2022-01-01",status:"fruiting",notes:""},
-  ];
+  plantLog = [];
   savePlants();
 }
 
@@ -1504,6 +1433,8 @@ function resetAddForm() {
   document.getElementById("c-product").value="";
   document.getElementById("c-plants").value="";
   document.getElementById("c-notes").value="";
+  document.getElementById("c-interval").value="";
+  document.getElementById("c-app-total").value="";
   updateVarieties(); updatePlantVarieties(); updateCareTimer();
   setAddType("harvest");
 }
@@ -1524,14 +1455,45 @@ function updatePlantVarieties() {
 
 function updateCareTimer() {
   const t = document.getElementById("c-type").value;
-  const days = CARE_INTERVALS[t];
-  const prev = document.getElementById("c-next-preview");
-  if (days) {
-    const d = new Date(document.getElementById("c-date").value||new Date());
-    d.setDate(d.getDate()+days);
-    prev.style.display="block";
-    prev.textContent = `⏱ Next recommended: ${d.toISOString().split("T")[0]} (${days} days)`;
-  } else prev.style.display="none";
+  const mode = CARE_MODE[t] || "as-needed";
+  const defaultDays = CARE_INTERVALS[t];
+  const reminderOn = document.getElementById("c-reminder-on");
+  const reminderFields = document.getElementById("c-reminder-fields");
+  const reminderHint = document.getElementById("c-reminder-hint");
+  const preview = document.getElementById("c-next-preview");
+
+  // Set checkbox state based on mode (only auto-set on type change, not on checkbox toggle)
+  if (document.activeElement !== reminderOn) {
+    reminderOn.checked = (mode === "chronic");
+  }
+
+  // Show/hide fields
+  reminderFields.style.display = reminderOn.checked ? "block" : "none";
+
+  // Hint text
+  if (mode === "chronic") reminderHint.textContent = "Recurring — reminder on by default";
+  else if (mode === "as-needed") reminderHint.textContent = "As-needed — enable reminder if starting a treatment course";
+  else reminderHint.textContent = "";
+
+  // Pre-fill interval from defaults if empty
+  const intervalEl = document.getElementById("c-interval");
+  if (reminderOn.checked && !intervalEl.value && defaultDays) intervalEl.value = defaultDays;
+
+  // Preview
+  if (reminderOn.checked && intervalEl.value) {
+    const days = parseInt(intervalEl.value);
+    const appTotal = parseInt(document.getElementById("c-app-total").value) || 1;
+    const date = document.getElementById("c-date").value || new Date().toISOString().split("T")[0];
+    const next = new Date(date); next.setDate(next.getDate() + days);
+    const nextStr = next.toISOString().split("T")[0];
+    if (appTotal > 1) {
+      preview.textContent = `⏱ App 1 of ${appTotal} — next: ${nextStr} (+${days}d) · ${appTotal-1} more application${appTotal>2?"s":""} to follow`;
+    } else {
+      preview.textContent = `⏱ Next reminder: ${nextStr} (+${days} days)`;
+    }
+  } else {
+    preview.textContent = "";
+  }
 }
 
 function handlePhoto(prefix) {
@@ -1571,18 +1533,49 @@ function submitHarvest() {
 
 function submitCare() {
   const type = document.getElementById("c-type").value;
-  const days = CARE_INTERVALS[type];
   const date = document.getElementById("c-date").value;
+  const reminderOn = document.getElementById("c-reminder-on").checked;
+  const intervalDays = parseInt(document.getElementById("c-interval").value) || CARE_INTERVALS[type] || null;
+  const appTotal = parseInt(document.getElementById("c-app-total").value) || 1;
+
   let nextDate = null;
-  if (days) { const d=new Date(date); d.setDate(d.getDate()+days); nextDate=d.toISOString().split("T")[0]; }
+  if (reminderOn && intervalDays) {
+    const d = new Date(date); d.setDate(d.getDate() + intervalDays);
+    nextDate = d.toISOString().split("T")[0];
+  }
+
   const entry = {
-    id: Date.now(), date,
-    type, product: document.getElementById("c-product").value,
+    id: Date.now(), date, type,
+    product: document.getElementById("c-product").value,
     plants: document.getElementById("c-plants").value,
     notes: document.getElementById("c-notes").value,
-    photo: photoData.c, nextDate
+    photo: photoData.c,
+    nextDate,
+    intervalDays: reminderOn ? intervalDays : null,
+    appNum: appTotal > 1 ? 1 : null,
+    appTotal: appTotal > 1 ? appTotal : null
   };
-  careLog.unshift(entry); saveCare(); toast("✓ Care logged!"); cancelAdd(); renderCare();
+  careLog.unshift(entry);
+
+  // If this is a multi-app course, auto-generate the remaining reminder entries
+  if (reminderOn && appTotal > 1 && intervalDays) {
+    for (let i = 2; i <= appTotal; i++) {
+      const dDue = new Date(date); dDue.setDate(dDue.getDate() + intervalDays * (i-1));
+      const dNext = new Date(date); dNext.setDate(dNext.getDate() + intervalDays * i);
+      careLog.unshift({
+        id: Date.now() + i, date: null, type,
+        product: entry.product, plants: entry.plants,
+        notes: `Scheduled — app ${i} of ${appTotal}`,
+        photo: null,
+        nextDate: dDue.toISOString().split("T")[0],
+        intervalDays,
+        appNum: i, appTotal,
+        scheduled: true
+      });
+    }
+  }
+
+  saveCare(); toast("✓ Care logged!"); cancelAdd(); renderCare();
 }
 
 function submitPlant() {
@@ -1853,37 +1846,7 @@ let dragState = null;
 
 function saveBeds() { try { localStorage.setItem("gl-demo-beds", JSON.stringify(beds)); } catch(e){} }
 function seedBeds() {
-  beds = [
-    // Structures
-    {id:"str2",name:"Apartment",w:15,l:30,shape:"house",color:"#8a8a8a",x:810,y:18,notes:"Back NE structure"},
-    {id:"str1",name:"House",w:35,l:40,shape:"house",color:"#9a9a9a",x:225,y:864,notes:"Main house"},
-    // Back fence tree row (spread across full 60ft width)
-    {id:"b14",name:"Florida King Peach",w:5,l:5,shape:"oval",color:"#c4622d",x:18,y:18,notes:"In ground — flowering Apr 2026"},
-    {id:"b15",name:"Celeste Fig",w:5,l:5,shape:"oval",color:"#4a2d6b",x:108,y:18,notes:"In ground"},
-    {id:"b16",name:"LSU Tiger Fig",w:5,l:5,shape:"oval",color:"#5a3d7b",x:198,y:18,notes:"In ground"},
-    {id:"b17",name:"LSU Purple Fig",w:5,l:5,shape:"oval",color:"#3a1d5b",x:288,y:18,notes:"In ground"},
-    {id:"b21",name:"Persian Lime",w:4,l:4,shape:"oval",color:"#3a6b20",x:378,y:18,notes:"In ground"},
-    {id:"b20",name:"Meyer Lemon",w:4,l:4,shape:"oval",color:"#b8a020",x:450,y:18,notes:"In ground"},
-    {id:"b18",name:"Owari Satsuma",w:4,l:4,shape:"oval",color:"#c47a2d",x:522,y:18,notes:"In ground"},
-    {id:"b19",name:"Cara Cara",w:4,l:4,shape:"oval",color:"#c4622d",x:594,y:18,notes:"In ground"},
-    // Second row — large planters & triangular bed (~10ft from back)
-    {id:"b13",name:"Triangular Bed",w:8,l:4,shape:"rect",color:"#1a5c3a",x:18,y:180,notes:"Prime Ark Freedom, LSU Purple"},
-    {id:"b08",name:"Dragon Fruit Planter",w:4,l:3,shape:"rect",color:"#6a1a8a",x:180,y:180,notes:"Palora, Haley\'s Comet"},
-    {id:"b09",name:"New Planter",w:3,l:3,shape:"rect",color:"#7a2a9a",x:270,y:180,notes:"Pink Noid dragon fruit"},
-    {id:"b10",name:"Mango Planter",w:3,l:3,shape:"rect",color:"#8a5a1a",x:360,y:180,notes:"Carrie mango"},
-    // Tomato Bed row (~17ft from back)
-    {id:"b01",name:"Tomato Bed",w:16,l:3,shape:"rect",color:"#2d5016",x:18,y:306,notes:"16 varieties + jalapeño, banana pepper, basil, radish"},
-    // Mixed veg row (~22ft from back)
-    {id:"b02",name:"Green Bed",w:8,l:3,shape:"rect",color:"#3a6b20",x:18,y:396,notes:"Tomatoes, peppers, cukes, radish"},
-    {id:"b03",name:"Square Green Bed",w:4,l:3,shape:"rect",color:"#4a7a32",x:180,y:396,notes:"Mixed veg + holy basil"},
-    {id:"b11",name:"Herb Bed",w:6,l:3,shape:"rect",color:"#5a6b20",x:288,y:396,notes:"Passionfruit, herbs, beans, mora"},
-    {id:"b12",name:"Herb Bed 2",w:4,l:3,shape:"rect",color:"#6b7a2a",x:432,y:396,notes:"Passionfruit, long beans"},
-    // Strawberry / blueberry row (~28ft from back)
-    {id:"b04",name:"Oval Strawberry Bed",w:6,l:3,shape:"oval",color:"#8b2020",x:18,y:504,notes:"Festival + green onions"},
-    {id:"b05",name:"Square Strawberry",w:3,l:3,shape:"rect",color:"#8b2020",x:144,y:504,notes:"Festival"},
-    {id:"b06",name:"Oval Blueberry Bed",w:6,l:3,shape:"oval",color:"#1a3a6b",x:216,y:504,notes:"3 varieties"},
-    {id:"b07",name:"Mint Planter",w:2,l:2,shape:"oval",color:"#5a8a3a",x:360,y:504,notes:"Mint + Super Sweet 100"}
-  ];
+  beds = [];
   saveBeds();
 }
 
@@ -1891,25 +1854,13 @@ function loadBeds() {
   try {
     var b = localStorage.getItem("gl-demo-beds");
     var bv = localStorage.getItem("gl-demo-bed-version");
-    if (b && bv === "v4") {
+    if (b && bv === "v5") {
       beds = JSON.parse(b);
-      // Migration: fix house position if it was placed on the street
-      var hi = beds.findIndex(function(b){return b.id==="str1";});
-      if (hi >= 0 && beds[hi].y > 1000) {
-        beds[hi] = Object.assign({}, beds[hi], {x:225, y:864});
-        saveBeds();
-      }
-      // Migration: fix apartment to NE corner, correct dimensions
-      var ai = beds.findIndex(function(b){return b.id==="str2";});
-      if (ai >= 0 && (beds[ai].w !== 15 || beds[ai].l !== 30)) {
-        beds[ai] = Object.assign({}, beds[ai], {x:810, y:18, w:15, l:30, notes:"Back NE structure"});
-        saveBeds();
-      }
       return;
     }
   } catch(e) {}
   seedBeds();
-  try { localStorage.setItem("gl-demo-bed-version", "v4"); } catch(e) {}
+  try { localStorage.setItem("gl-demo-bed-version", "v5"); } catch(e) {}
 }
 
 function rotateBedFromModal() {
@@ -2639,19 +2590,42 @@ function renderCalendar() {
 // ===================== CARE =====================
 function getDueTimers() {
   const today = new Date(); today.setHours(0,0,0,0);
-  const results = [];
+  // For each care type, only the most recent real application's nextDate matters,
+  // UNLESS there are scheduled future apps from a course (which have nextDate as their due date)
+  const latestByType = {};
+  const scheduled = [];
+
   careLog.forEach(e => {
     if (!e.nextDate) return;
-    const nd=new Date(e.nextDate); nd.setHours(0,0,0,0);
-    const diff=Math.round((nd-today)/(1000*60*60*24));
-    if (diff<=7) {
-      let cls="ok",label=`In ${diff}d`;
-      if(diff<0){cls="danger";label=`${Math.abs(diff)}d overdue`;}
-      else if(diff<=2){cls="warn";label=`In ${diff}d`;}
-      results.push({name:CARE_LABELS[e.type]||"Care",plants:e.plants,cls,label,diff,id:e.id});
+    if (e.scheduled) {
+      // Scheduled course application — show as upcoming
+      scheduled.push(e);
+    } else {
+      // Real application — track latest per type+plants combo
+      const key = e.type + "|" + (e.plants||"");
+      if (!latestByType[key] || e.date > latestByType[key].date) {
+        latestByType[key] = e;
+      }
     }
   });
-  return results.sort((a,b)=>a.diff-b.diff);
+
+  const results = [];
+  const process = (e) => {
+    const nd = new Date(e.nextDate); nd.setHours(0,0,0,0);
+    const diff = Math.round((nd - today) / (1000*60*60*24));
+    if (diff > 14) return; // only show within 2 weeks
+    let cls = "ok", label = `In ${diff}d`;
+    if (diff < 0) { cls = "danger"; label = `${Math.abs(diff)}d overdue`; }
+    else if (diff <= 2) { cls = "warn"; label = diff === 0 ? "Today" : `In ${diff}d`; }
+    const name = e.scheduled
+      ? `${CARE_LABELS[e.type]||"Care"} — app ${e.appNum} of ${e.appTotal}`
+      : CARE_LABELS[e.type]||"Care";
+    results.push({ name, plants: e.plants, cls, label, diff, id: e.id });
+  };
+
+  Object.values(latestByType).forEach(process);
+  scheduled.forEach(process);
+  return results.sort((a,b) => a.diff - b.diff);
 }
 
 function renderCare() {
@@ -2668,26 +2642,73 @@ function renderCare() {
     </div>`).join("");
   }
 
-  // Care log
+  // Care log — real entries sorted by date desc, scheduled ones shown separately
   const cl = document.getElementById("care-log-list");
-  if (!careLog.length) { cl.innerHTML='<div style="padding:20px 0;color:var(--muted);font-size:13px;text-align:center">No care events logged yet</div>'; return; }
-  cl.innerHTML = careLog.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
-    <div class="entry-row">
-      <div class="entry-emoji">${e.type.startsWith("spray")?"💧":e.type.startsWith("fert")?"🌿":"🔧"}</div>
-      <div class="entry-body">
-        <div class="entry-top">
-          <div><div class="entry-name">${CARE_LABELS[e.type]||"Care"}</div></div>
-          ${e.nextDate?`<div style="font-size:11px;color:var(--muted2)">Next: ${e.nextDate}</div>`:""}
+  const realEntries = careLog.filter(e => !e.scheduled).sort((a,b) => b.date.localeCompare(a.date));
+  const scheduledEntries = careLog.filter(e => e.scheduled).sort((a,b) => a.nextDate.localeCompare(b.nextDate));
+
+  if (!realEntries.length && !scheduledEntries.length) {
+    cl.innerHTML='<div style="padding:20px 0;color:var(--muted);font-size:13px;text-align:center">No care events logged yet</div>';
+    return;
+  }
+
+  let html = "";
+
+  if (scheduledEntries.length) {
+    html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:6px 0 4px">Scheduled</div>`;
+    html += scheduledEntries.map(e => `
+      <div class="entry-row" style="opacity:0.75;border-left:3px solid var(--muted);padding-left:8px">
+        <div class="entry-emoji">${e.type.startsWith("spray")?"💧":e.type.startsWith("fert")?"🌿":"🔧"}</div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <div><div class="entry-name">${CARE_LABELS[e.type]||"Care"} <span style="font-size:11px;font-weight:normal;color:var(--muted)">app ${e.appNum} of ${e.appTotal}</span></div></div>
+            <div style="font-size:11px;color:var(--muted2)">Due: ${e.nextDate}</div>
+          </div>
+          <div class="entry-sub">${e.plants||""}</div>
+          <div class="entry-actions">
+            <button onclick="markCareScheduledDone(${e.id})" style="background:#e8f4e0;color:#2a6a1a;border:1px solid #b0d090;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:Georgia,serif">✓ Mark Done</button>
+            <button class="del" onclick="openDelete(${e.id},'care')">Delete</button>
+          </div>
         </div>
-        <div class="entry-sub">${e.date} · ${e.plants||""}</div>
-        ${e.product?`<div style="font-size:12px;color:var(--muted2);margin-top:2px">${e.product}</div>`:""}
-        ${e.notes?`<div class="entry-note">${e.notes}</div>`:""}
-        ${e.photo?`<img src="${e.photo}" class="entry-photo">`:""}
-        <div class="entry-actions">
-          <button class="del" onclick="openDelete(${e.id},'care')">Delete</button>
+      </div>`).join("");
+  }
+
+  if (realEntries.length) {
+    if (scheduledEntries.length) html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">History</div>`;
+    html += realEntries.map(e => `
+      <div class="entry-row">
+        <div class="entry-emoji">${e.type.startsWith("spray")?"💧":e.type.startsWith("fert")?"🌿":"🔧"}</div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <div><div class="entry-name">${CARE_LABELS[e.type]||"Care"}${e.appTotal>1?` <span style="font-size:11px;font-weight:normal;color:var(--muted)">app ${e.appNum||1} of ${e.appTotal}</span>`:""}</div></div>
+            ${e.nextDate?`<div style="font-size:11px;color:var(--muted2)">Next: ${e.nextDate}</div>`:""}
+          </div>
+          <div class="entry-sub">${e.date} · ${e.plants||""}</div>
+          ${e.product?`<div style="font-size:12px;color:var(--muted2);margin-top:2px">${e.product}</div>`:""}
+          ${e.notes?`<div class="entry-note">${e.notes}</div>`:""}
+          ${e.photo?`<img src="${e.photo}" class="entry-photo">`:""}
+          <div class="entry-actions">
+            <button class="del" onclick="openDelete(${e.id},'care')">Delete</button>
+          </div>
         </div>
-      </div>
-    </div>`).join("");
+      </div>`).join("");
+  }
+
+  cl.innerHTML = html;
+}
+
+function markCareScheduledDone(id) {
+  const idx = careLog.findIndex(e => e.id === id);
+  if (idx < 0) return;
+  const e = careLog[idx];
+  // Convert scheduled entry to a real logged entry with today's date
+  const today = new Date().toISOString().split("T")[0];
+  careLog[idx] = Object.assign({}, e, {
+    scheduled: false,
+    date: today,
+    notes: e.notes.replace("Scheduled — ", "✓ Completed — ")
+  });
+  saveCare(); renderCare(); toast("✓ Application logged!");
 }
 
 // ===================== SETUP WIZARD =====================
@@ -3402,8 +3423,8 @@ function renderAnalytics() {
 
 // ── FULL DATA EXPORT / IMPORT ──
 function exportAppData() {
-  const keys = ["gl-demo-harvests","gl-demo-harvest-photos","gl-demo-care","gl-demo-plants","gl-demo-plant-version",
-    "gl-demo-beds","gl-demo-bed-version","gl-demo-unit","gl-demo-crops","gl-demo-lot-width","gl-demo-lot-depth",
+  const keys = ["gl-demo-harvests","gl-demo-harvest-photos","gl-demo-harvest-version","gl-demo-care","gl-demo-care-version",
+    "gl-demo-plants","gl-demo-plant-version","gl-demo-beds","gl-demo-bed-version","gl-demo-unit","gl-demo-crops","gl-demo-lot-width","gl-demo-lot-depth",
     "gl-demo-garden-name","gl-demo-user-name","gl-demo-setup-done","gl-demo-garden-address",
     "gl-demo-garden-lat","gl-demo-garden-lon","gl-demo-setup-zone","gl-demo-unit"];
   const data = {};
