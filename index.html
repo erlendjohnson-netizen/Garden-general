@@ -887,6 +887,7 @@
       <button class="type-tab" id="atab-entries" onclick="setAnalyticsTab('entries')">Entries</button>
       <button class="type-tab" id="atab-trends" onclick="setAnalyticsTab('trends')">Trends</button>
       <button class="type-tab" id="atab-seasons" onclick="setAnalyticsTab('seasons')">Seasons</button>
+      <button class="type-tab" id="atab-yields" onclick="setAnalyticsTab('yields')">Yields</button>
     </div>
   </div>
 
@@ -3876,6 +3877,134 @@ function renderSeasonsTab(filtered) {
   return html;
 }
 
+// ===================== YIELDS vs BENCHMARKS =====================
+// Home-garden yield benchmarks in lb, per plant or per square foot of bed.
+// "typ" ≈ average expected yield, from LSU AgCenter "Expected Vegetable Garden Yields" (per 100 ft row, converted with
+// its recommended spacing), Cornell Cooperative Extension and UC Master Gardener yield tables.
+// "good" ≈ the upper range those tables give for well-managed, intensively grown plants.
+const YIELD_BENCH = {
+  tomato:{u:"plant",typ:5,good:10}, "tomato-cherry":{u:"plant",typ:9,good:15},
+  pepper:{u:"plant",typ:1.5,good:3}, eggplant:{u:"plant",typ:2.5,good:5}, cucumber:{u:"plant",typ:2,good:4},
+  okra:{u:"plant",typ:1.5,good:3}, squash:{u:"plant",typ:3,good:6}, pumpkin:{u:"plant",typ:8,good:20},
+  watermelon:{u:"plant",typ:20,good:40}, cantaloupe:{u:"plant",typ:6,good:12},
+  corn:{u:"plant",typ:0.5,good:1}, "sweet corn":{u:"plant",typ:0.5,good:1},
+  "sweet potato":{u:"plant",typ:2,good:4}, potato:{u:"plant",typ:2,good:4},
+  broccoli:{u:"plant",typ:1,good:2}, cauliflower:{u:"plant",typ:1.5,good:2.5}, cabbage:{u:"plant",typ:2,good:4},
+  "brussels sprouts":{u:"plant",typ:1.5,good:2.5}, collards:{u:"plant",typ:2.5,good:5}, kale:{u:"plant",typ:2,good:4},
+  "swiss chard":{u:"plant",typ:1.5,good:3}, garlic:{u:"plant",typ:0.1,good:0.2}, strawberry:{u:"plant",typ:0.75,good:1.5},
+  beans:{u:"sqft",typ:0.4,good:0.8}, "long bean":{u:"sqft",typ:0.5,good:1}, "southern peas":{u:"sqft",typ:0.1,good:0.2,note:"shelled"},
+  peas:{u:"sqft",typ:0.4,good:1}, carrot:{u:"sqft",typ:0.75,good:1.5}, beet:{u:"sqft",typ:0.75,good:1.5},
+  turnip:{u:"sqft",typ:1,good:2}, raddish:{u:"sqft",typ:0.3,good:0.6}, spinach:{u:"sqft",typ:0.4,good:0.8},
+  lettuce:{u:"sqft",typ:0.4,good:0.8}, arugula:{u:"sqft",typ:0.3,good:0.6}, "mustard greens":{u:"sqft",typ:0.5,good:1},
+  "bok choy":{u:"sqft",typ:0.5,good:1}, onion:{u:"sqft",typ:0.75,good:1.5},
+};
+const LB = 453.592;
+function yieldBench(crop, variety) {
+  if (crop === "tomato" && /cherry|grape|sungold|super sweet|sweet 100|currant|baby|mushroom basket/i.test(variety||"")) return Object.assign({ kind:"cherry" }, YIELD_BENCH["tomato-cherry"]);
+  return YIELD_BENCH[crop] || null;
+}
+function fmtYield(grams) {
+  const v = grams * UNIT_FACTORS[displayUnit];
+  if (displayUnit === "lb") return v.toFixed(v < 1 ? 2 : 1) + " lb";
+  if (displayUnit === "oz") return v.toFixed(v < 10 ? 1 : 0) + " oz";
+  if (displayUnit === "kg") return v.toFixed(2) + " kg";
+  return Math.round(v) + " g";
+}
+function getYieldOverrides() { try { return JSON.parse(localStorage.getItem(LS+"yield-overrides") || "{}"); } catch(e) { return {}; } }
+function setYieldOverride(key, field, val) {
+  const o = getYieldOverrides(); o[key] = o[key] || {};
+  const n = parseFloat(val);
+  if (isFinite(n) && n > 0) o[key][field] = n; else delete o[key][field];
+  try { localStorage.setItem(LS+"yield-overrides", JSON.stringify(o)); } catch(e) {}
+  renderAnalytics();
+}
+// Plants of this crop/variety that belong to season `year` (fall plantings count toward the next year's harvest)
+function seasonPlants(crop, variety, year, bed) {
+  const g = cropGuide(crop) || {};
+  return plantLog.filter(p => p.crop === crop && p.variety === variety && (!bed || p.bed === bed)).filter(p => {
+    if (g.perennial) return true;
+    const d = p.transplantDate || p.seedDate; if (!d) return true;
+    const y = +d.slice(0,4), m = +d.slice(5,7);
+    return y === +year || (y === +year - 1 && m >= 7);
+  }).reduce((s,p) => s + (p.count || 1), 0);
+}
+// Care applied during the season that mentions this crop, variety or one of its beds
+function seasonCare(year, words) {
+  const ws = words.filter(Boolean).map(w => w.toLowerCase());
+  const tally = {};
+  careLog.forEach(e => {
+    if (e.scheduled || !e.date || e.date.slice(0,4) !== String(year)) return;
+    const hay = ((e.plants||"") + " " + (e.notes||"")).toLowerCase();
+    if (!ws.some(w => hay.includes(w))) return;
+    const k = e.product || CARE_LABELS[e.type] || e.type;
+    tally[k] = (tally[k]||0) + 1;
+  });
+  return Object.entries(tally).sort((a,b) => b[1]-a[1]);
+}
+function renderYieldsTab() {
+  const years = harvestYears();
+  const year = analyticsSeason && analyticsSeason !== "all" ? analyticsSeason : years[years.length-1];
+  const crop = (document.getElementById("af-crop")||{value:""}).value, bedF = (document.getElementById("af-bed")||{value:""}).value;
+  const list = harvests.filter(e => yearOf(e) === year && (!crop || e.crop === crop) && (!bedF || e.bed === bedF));
+  const groups = {};
+  list.forEach(e => {
+    const k = e.crop + "||" + e.variety;
+    const gr = groups[k] = groups[k] || { crop:e.crop, variety:e.variety, grams:0, est:0, beds:{} };
+    const gm = estGrams(e) || 0; gr.grams += gm; if (!isWeighed(e)) gr.est += gm;
+    gr.beds[e.bed||"—"] = (gr.beds[e.bed||"—"]||0) + gm;
+  });
+  const ov = getYieldOverrides();
+  const rows = Object.values(groups).sort((a,b) => b.grams - a.grams).map(r => {
+    const key = year + "|" + r.crop + "|" + r.variety;
+    const b = yieldBench(r.crop, r.variety), o = ov[key] || {};
+    const plants = o.plants || seasonPlants(r.crop, r.variety, year, bedF) || 0;
+    const sp = (cropGuide(r.crop)||{}).sp;
+    const area = b && b.u === "sqft" ? (o.area || (plants && sp ? +(plants * sp*sp / 144).toFixed(1) : 0)) : 0;
+    const denom = b && b.u === "sqft" ? area : plants;
+    const per = denom ? r.grams / denom : null;  // grams per plant or per sq ft
+    let rating = null;
+    if (b && per != null) { const lb = per / LB; rating = lb >= b.good ? "great" : lb >= b.typ ? "typical" : lb >= b.typ*0.5 ? "below" : "low"; }
+    return Object.assign(r, { key, b, plants, area, per, rating, auto: !o.plants && !o.area });
+  });
+  const RATE = { great:["Good yield","#2e7d32","#e3f1df"], typical:["On par","#4a7a32","#eef4e6"], below:["Below typical","#b8860b","#fbf3dc"], low:["Well below","#c4622d","#fdeee8"] };
+  const rated = rows.filter(r => r.rating), atLeast = rated.filter(r => r.rating === "great" || r.rating === "typical").length;
+  let html = `<div class="card"><div class="card-title">${year} yields vs. typical home-garden yields</div>
+    <div style="font-size:12px;color:var(--muted2);line-height:1.6">${+year === new Date().getFullYear() ? `<b>Season still in progress</b> — crops still producing will climb. ` : ""}${rated.length ? `<b>${atLeast} of ${rated.length}</b> compared crops reached typical yield or better. ` : ""}On each bar the dark mark is typical and the green mark is good. Plant counts come from your Plant Tracker — tap a number to correct it. Harvests you didn't log (or estimated from counts) pull these numbers down, so treat gaps with care.</div></div>`;
+  if (!rows.length) return html + '<div style="padding:30px;text-align:center;color:var(--muted)">No harvests logged for this season yet</div>';
+  html += rows.map(r => {
+    const c = getCropByKey(r.crop), b = r.b;
+    const unit = b && b.u === "sqft" ? "sq ft" : "plant";
+    const inp = (field, val, ph) => `<input type="number" inputmode="decimal" min="0" value="${val||""}" placeholder="${ph}" onchange="setYieldOverride('${jsq(r.key)}','${field}',this.value)" style="width:64px;padding:3px 6px;font-size:12px;border:1px solid var(--border2);border-radius:5px">`;
+    let bar = "";
+    if (b && r.per != null) {
+      const max = b.good * 1.5, pos = v => Math.min(100, v / max * 100);
+      const lb = r.per / LB, col = RATE[r.rating][1];
+      bar = `<div style="position:relative;height:10px;background:var(--bg3);border-radius:5px;margin:8px 0 4px">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:${pos(lb)}%;background:${col};border-radius:5px;opacity:.85"></div>
+        <div title="typical" style="position:absolute;left:${pos(b.typ)}%;top:-3px;bottom:-3px;width:2px;background:#555"></div>
+        <div title="good" style="position:absolute;left:${pos(b.good)}%;top:-3px;bottom:-3px;width:2px;background:#2e7d32"></div></div>`;
+    }
+    const bench = b ? `Typical ${fmtYield(b.typ*LB)} · good ${fmtYield(b.good*LB)} per ${unit}${b.kind==="cherry"?" (cherry tomato)":""}${b.note?" ("+b.note+")":""}` : "No benchmark for this crop yet";
+    const amount = b && b.u === "sqft" ? `${inp("area", r.area, "sq ft")} sq ft${r.plants ? ` <span style="color:var(--muted)">(${r.plants} plants)</span>` : ""}` : `${inp("plants", r.plants, "?")} plants`;
+    const bedNames = Object.keys(r.beds).filter(x => x !== "—");
+    const bedLine = bedNames.length > 1 ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">By bed: ${bedNames.map(bn => { const n = seasonPlants(r.crop, r.variety, year, bn); return `${esc(bn)} ${fmtYield(r.beds[bn])}${n && (!b || b.u !== "sqft") ? ` (${fmtYield(r.beds[bn]/n)}/plant)` : ""}`; }).join(" · ")}</div>` : "";
+    const care = seasonCare(year, [c.label, r.variety, ...bedNames]);
+    const careLine = care.length ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">Care logged: ${care.slice(0,5).map(([k,n]) => `${esc(k)} ×${n}`).join(" · ")}</div>` : "";
+    return `<div class="card" style="padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <div style="font-size:15px">${c.emoji||"🌱"} ${esc(r.variety || c.label)} <span style="font-size:11px;color:var(--muted)">${esc(c.label)}</span></div>
+        ${r.rating ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap;color:${RATE[r.rating][1]};background:${RATE[r.rating][2]}">${RATE[r.rating][0]}</span>` : ""}
+      </div>
+      <div style="font-size:13px;margin-top:6px">${fmtYield(r.grams)} harvested${r.est ? ` <span style="color:var(--muted)">(${Math.round(r.est/r.grams*100)}% estimated)</span>` : ""} from ${amount}${r.per != null ? ` = <b>${fmtYield(r.per)} per ${unit}</b>` : ""}</div>
+      ${bar}
+      <div style="font-size:11px;color:var(--muted)">${bench}</div>
+      ${bedLine}${careLine}
+    </div>`;
+  }).join("");
+  html += `<div style="font-size:11px;color:var(--muted);margin:0 16px 16px;line-height:1.5">Benchmarks are adapted from LSU AgCenter, Cornell Cooperative Extension and UC Master Gardener yield tables; "good" is the upper range for well-managed plants. A single season and a few plants can't prove what worked, but repeated differences between beds or care routines are worth acting on.</div>`;
+  return html;
+}
+
 // ===================== CARE =====================
 // Care-related reminders due within two weeks (programs, follow-ups, course applications)
 function getDueTimers() {
@@ -4406,7 +4535,7 @@ let analyticsTab = "summary";
 
 function setAnalyticsTab(t) {
   analyticsTab = t;
-  ["summary","entries","trends","seasons"].forEach(tab => {
+  ["summary","entries","trends","seasons","yields"].forEach(tab => {
     document.getElementById("atab-"+tab).classList.toggle("active", tab===t);
   });
   renderAnalytics();
@@ -4644,6 +4773,8 @@ function renderAnalytics() {
 
   } else if (analyticsTab === "seasons") {
     html += renderSeasonsTab(filtered);
+  } else if (analyticsTab === "yields") {
+    html = renderYieldsTab();
   } else if (analyticsTab === "trends") {
     // ── WEEKLY TOTALS CHART ──
     const weekMap = {};
