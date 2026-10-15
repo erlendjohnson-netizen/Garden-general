@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; img-src 'self' data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self' https://api.open-meteo.com https://archive-api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; img-src 'self' data: blob:;">
 <title>Garden Log</title>
 <style>
   :root {
@@ -721,6 +721,7 @@
       <div class="cal-today-title" id="cal-today-title">This month</div>
       <div id="cal-today-tasks" style="font-size:13px;line-height:1.7;color:var(--muted2)"></div>
     </div>
+    <div class="card" id="frost-box" style="font-size:13px;line-height:1.6"></div>
     <div class="cal-legend">
       <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#4a9aba"></div>Seed indoors</div>
       <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#8fba6a"></div>Transplant</div>
@@ -728,7 +729,7 @@
       <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e85d75"></div>Harvest window</div>
     </div>
     <div class="card" id="cal-crop-list"></div>
-    <div style="font-size:11px;color:var(--muted);margin:0 16px 16px;line-height:1.5">Planting windows are Gulf Coast defaults (zones 8b–9b). Elsewhere, check your local extension service's planting calendar.</div>
+    <div style="font-size:11px;color:var(--muted);margin:0 16px 16px;line-height:1.5">Vegetable and herb windows are worked out from your frost dates using typical extension-service timing — treat them as a starting point and adjust for your own microclimate. Fruit timing (marked Gulf Coast) is regional.</div>
   </div>
 </div>
 
@@ -739,10 +740,13 @@
     <div class="modal-sub">What, where and when. Each step becomes a reminder.</div>
     <div class="field"><label>Crop</label><select id="pl-crop" onchange="plCropChanged()"></select></div>
     <div class="field"><label>Variety</label><select id="pl-variety" onchange="varietySelectChanged(this,'pl-crop')"></select></div>
+    <div class="field"><label>Bed</label><select id="pl-bed" onchange="plFitUpdate()"></select></div>
     <div class="field-row">
-      <div class="field"><label>Bed</label><select id="pl-bed"></select></div>
-      <div class="field" style="flex:0 0 90px"><label>Plants</label><input type="number" inputmode="numeric" min="1" id="pl-qty" placeholder="1"></div>
+      <div class="field"><label>Plants</label><input type="number" inputmode="numeric" min="1" id="pl-qty" placeholder="1" oninput="plSeedHint();plFitUpdate()"></div>
+      <div class="field" id="pl-seeds-wrap"><label>Seeds to start</label><input type="number" inputmode="numeric" min="1" id="pl-seeds"></div>
+      <div class="field"><label>Spacing (in)</label><input type="number" inputmode="decimal" min="1" id="pl-spacing" oninput="plFitUpdate()"></div>
     </div>
+    <div id="pl-fit-hint" style="font-size:12px;color:var(--muted2);margin:-6px 0 12px;line-height:1.5"></div>
     <div class="field"><label>How</label>
       <select id="pl-method" onchange="plMethodChanged()">
         <option value="indoor">Start seeds indoors, then transplant</option>
@@ -750,7 +754,7 @@
         <option value="buy">Buy transplants / plant out</option>
       </select>
     </div>
-    <div id="pl-window-hint" style="font-size:12px;color:var(--muted2);margin:-6px 0 12px"></div>
+    <div id="pl-window-hint" style="font-size:12px;color:var(--muted2);margin:-6px 0 12px;line-height:1.5"></div>
     <div class="field-row">
       <div class="field" id="pl-sow-wrap"><label id="pl-sow-label">Sow date</label><input type="date" id="pl-sow" onchange="plDatesChanged()"></div>
       <div class="field" id="pl-tp-wrap"><label>Transplant date</label><input type="date" id="pl-tp" onchange="plDatesChanged()"></div>
@@ -1393,7 +1397,7 @@ function compressImage(file, maxDim, quality) {
 
 // ===================== STORAGE =====================
 async function loadData() {
-  loadCropRegistry();
+  loadCropRegistry(); mergeLibraryCrops();
   loadPlanData();
   try {
     const h  = localStorage.getItem("gl-demo-harvests");
@@ -2752,6 +2756,274 @@ const DAYS_TO_HARVEST = {
 // Typical days from starting seed indoors to transplant size
 const DAYS_INDOOR = { tomato:42, pepper:56, eggplant:56, basil:28, lettuce:28, kale:35, onion:56 };
 
+// ── CROP GUIDE ──
+// Typical home-garden values from US extension planting guides. Timing is in weeks relative to your
+// average LAST SPRING FROST (negative = before), so the same table works anywhere in the US.
+// sp = spacing in inches (intensive/raised-bed grid), dtm = days from transplant or direct sowing to first harvest,
+// frost = "tender" | "semi" | "hardy", soil = minimum soil °F to germinate, fall = also has a fall planting window.
+const CROP_GUIDE = {
+  tomato:        { sp:24, dtm:70,  frost:"tender", soil:60, indoor:[-8,-6],  tp:[0,3],   fall:true },
+  pepper:        { sp:18, dtm:75,  frost:"tender", soil:65, indoor:[-10,-8], tp:[2,4],   fall:true },
+  eggplant:      { sp:24, dtm:75,  frost:"tender", soil:65, indoor:[-10,-8], tp:[2,4],   fall:true },
+  cucumber:      { sp:12, dtm:55,  frost:"tender", soil:60, indoor:[-4,-3],  tp:[1,4], direct:[1,4], fall:true },
+  okra:          { sp:15, dtm:60,  frost:"tender", soil:65, direct:[3,8] },
+  squash:        { sp:24, dtm:50,  frost:"tender", soil:60, direct:[1,4], fall:true },
+  pumpkin:       { sp:48, dtm:100, frost:"tender", soil:60, direct:[2,4] },
+  corn:          { sp:12, dtm:75,  frost:"tender", soil:55, direct:[1,4] },
+  "sweet corn":  { sp:12, dtm:75,  frost:"tender", soil:55, direct:[1,4] },
+  watermelon:    { sp:36, dtm:85,  frost:"tender", soil:65, direct:[2,4] },
+  cantaloupe:    { sp:30, dtm:80,  frost:"tender", soil:65, direct:[2,4] },
+  beans:         { sp:4,  dtm:55,  frost:"tender", soil:60, direct:[1,4], fall:true },
+  "long bean":   { sp:6,  dtm:60,  frost:"tender", soil:65, direct:[3,7] },
+  "southern peas":{ sp:4, dtm:65,  frost:"tender", soil:65, direct:[3,8] },
+  "sweet potato":{ sp:12, dtm:110, frost:"tender", soil:65, tp:[3,7], note:"plant slips" },
+  potato:        { sp:12, dtm:90,  frost:"semi",   soil:45, tp:[-4,-1], note:"plant seed pieces" },
+  raddish:       { sp:2,  dtm:25,  frost:"hardy",  soil:45, direct:[-6,2], fall:true },
+  carrot:        { sp:3,  dtm:70,  frost:"hardy",  soil:45, direct:[-4,2], fall:true },
+  beet:          { sp:4,  dtm:55,  frost:"hardy",  soil:45, direct:[-4,2], fall:true },
+  turnip:        { sp:4,  dtm:45,  frost:"hardy",  soil:45, direct:[-4,0], fall:true },
+  onion:         { sp:4,  dtm:100, frost:"hardy",  soil:50, tp:[-6,-2], note:"sets or transplants" },
+  garlic:        { sp:6,  dtm:240, frost:"hardy",  soil:45, fallOnly:[-2,4], note:"plant cloves in fall" },
+  lettuce:       { sp:8,  dtm:45,  frost:"semi",   soil:40, indoor:[-8,-6], tp:[-3,1], direct:[-4,2], fall:true },
+  spinach:       { sp:4,  dtm:40,  frost:"hardy",  soil:40, direct:[-6,-2], fall:true },
+  arugula:       { sp:4,  dtm:35,  frost:"hardy",  soil:40, direct:[-4,1], fall:true },
+  kale:          { sp:15, dtm:55,  frost:"hardy",  soil:45, indoor:[-10,-8], tp:[-4,0], direct:[-4,0], fall:true },
+  collards:      { sp:18, dtm:60,  frost:"hardy",  soil:45, indoor:[-10,-8], tp:[-4,0], direct:[-4,0], fall:true },
+  "mustard greens":{ sp:6, dtm:40, frost:"hardy",  soil:45, direct:[-4,0], fall:true },
+  "bok choy":    { sp:8,  dtm:45,  frost:"hardy",  soil:45, direct:[-4,0], fall:true },
+  "swiss chard": { sp:9,  dtm:55,  frost:"semi",   soil:50, direct:[-2,2], fall:true },
+  broccoli:      { sp:18, dtm:65,  frost:"hardy",  soil:45, indoor:[-10,-8], tp:[-4,-2], fall:true },
+  cauliflower:   { sp:18, dtm:70,  frost:"semi",   soil:45, indoor:[-10,-8], tp:[-2,0], fall:true },
+  cabbage:       { sp:15, dtm:70,  frost:"hardy",  soil:45, indoor:[-10,-8], tp:[-4,-2], fall:true },
+  "brussels sprouts":{ sp:24, dtm:100, frost:"hardy", soil:45, indoor:[-10,-8], tp:[-4,-2], fall:true },
+  peas:          { sp:2,  dtm:60,  frost:"hardy",  soil:40, direct:[-6,-2], fall:true },
+  basil:         { sp:12, dtm:30,  frost:"tender", soil:65, indoor:[-6,-4], tp:[1,4], direct:[2,6] },
+  cilantro:      { sp:6,  dtm:40,  frost:"semi",   soil:50, direct:[-4,2], fall:true },
+  dill:          { sp:10, dtm:45,  frost:"semi",   soil:60, direct:[-2,2], fall:true },
+  parsley:       { sp:8,  dtm:70,  frost:"hardy",  soil:50, indoor:[-10,-8], tp:[-2,1], fall:true },
+  chives:        { sp:6,  dtm:60,  frost:"hardy",  soil:60, indoor:[-8,-6], tp:[-2,2], perennial:true },
+  mint:          { sp:18, frost:"hardy",  tp:[-2,4], perennial:true },
+  thyme:         { sp:12, frost:"hardy",  tp:[0,4],  perennial:true },
+  oregano:       { sp:12, frost:"hardy",  tp:[0,4],  perennial:true },
+  sage:          { sp:18, frost:"hardy",  tp:[0,4],  perennial:true },
+  rosemary:      { sp:24, frost:"semi",   tp:[1,4],  perennial:true },
+  lemongrass:    { sp:24, frost:"tender", tp:[2,6],  perennial:true },
+  sunflower:     { sp:18, dtm:75,  frost:"tender", soil:50, direct:[0,4] },
+  // Fruit: spacing only — timing for these depends heavily on region and nursery stock
+  strawberry:    { sp:12, perennial:true }, blackberry:{ sp:36, perennial:true }, blueberry:{ sp:48, perennial:true },
+  fig:{ sp:120, perennial:true }, citrus:{ sp:144, perennial:true }, peach:{ sp:180, perennial:true },
+  avocado:{ sp:240, perennial:true }, mango:{ sp:240, perennial:true }, "dragon fruit":{ sp:60, perennial:true },
+  passionfruit:{ sp:120, perennial:true },
+};
+// Crops added to the library that older saved crop lists don't have yet
+const LIBRARY_CROPS = [
+  { key:"broccoli", label:"Broccoli", emoji:"🥦", color:"#3a7a3a", varieties:["Waltham 29","Packman","Green Magic","Belstar","Di Cicco","Calabrese","Other"] },
+  { key:"cauliflower", label:"Cauliflower", emoji:"🥦", color:"#d8d0b0", varieties:["Snowball","Amazing","Cheddar","Graffiti","Other"] },
+  { key:"cabbage", label:"Cabbage", emoji:"🥬", color:"#7aaa6a", varieties:["Early Jersey Wakefield","Golden Acre","Red Acre","Savoy","Napa","Other"] },
+  { key:"brussels sprouts", label:"Brussels Sprouts", emoji:"🥬", color:"#4a7a3a", varieties:["Long Island Improved","Jade Cross","Diablo","Other"] },
+  { key:"collards", label:"Collards", emoji:"🥬", color:"#2a6a3a", varieties:["Georgia Southern","Vates","Champion","Flash","Other"] },
+  { key:"mustard greens", label:"Mustard Greens", emoji:"🥬", color:"#5a8a2a", varieties:["Southern Giant Curled","Florida Broadleaf","Red Giant","Mizuna","Other"] },
+  { key:"bok choy", label:"Bok Choy", emoji:"🥬", color:"#6aaa5a", varieties:["Joi Choi","Toy Choy","Shanghai Green","Other"] },
+  { key:"spinach", label:"Spinach", emoji:"🥬", color:"#2a7a2a", varieties:["Bloomsdale","Space","Malabar (summer)","Other"] },
+  { key:"swiss chard", label:"Swiss Chard", emoji:"🥬", color:"#c0392b", varieties:["Bright Lights","Fordhook Giant","Ruby Red","Other"] },
+  { key:"arugula", label:"Arugula", emoji:"🥬", color:"#5a9a4a", varieties:["Astro","Rocket","Wild/Sylvetta","Other"] },
+  { key:"beet", label:"Beet", emoji:"🌱", color:"#8e2a4a", varieties:["Detroit Dark Red","Chioggia","Golden","Bull's Blood","Other"] },
+  { key:"turnip", label:"Turnip", emoji:"🌱", color:"#b08ab0", varieties:["Purple Top White Globe","Hakurei","Seven Top (greens)","Other"] },
+  { key:"peas", label:"Peas", emoji:"🫛", color:"#5aaa3a", varieties:["Sugar Snap","Oregon Sugar Pod","Green Arrow","Little Marvel","Other"] },
+  { key:"southern peas", label:"Southern Peas", emoji:"🫘", color:"#8a6a3a", varieties:["Pinkeye Purple Hull","Black-eyed","Crowder","Zipper Cream","Other"] },
+  { key:"pumpkin", label:"Pumpkin", emoji:"🎃", color:"#e8780a", varieties:["Jack O'Lantern","Small Sugar","Atlantic Giant","Seminole","Other"] },
+];
+function cropGuide(key) { return CROP_GUIDE[key] || null; }
+function guideIndoorDays(g) { return g && g.indoor && g.tp ? (g.tp[0] - g.indoor[0]) * 7 : null; }
+
+// ── FROST DATES ──
+// Rough fallback by USDA zone (average last spring / first fall frost, MM-DD)
+const ZONE_FROST = { "3":["05-25","09-15"], "4":["05-15","09-25"], "5":["05-05","10-05"], "6":["04-20","10-20"],
+  "7":["04-05","10-30"], "8":["03-20","11-15"], "9":["02-20","12-05"], "10":["01-30","12-25"], "11":["01-15","12-31"] };
+function getFrostDates() {
+  const last = localStorage.getItem(LS+"frost-last"), first = localStorage.getItem(LS+"frost-first");
+  if (last && first) return { last, first, src: localStorage.getItem(LS+"frost-src") || "" };
+  const z = (getSettings().zone || "").replace(/[ab].*$/,"");
+  const zf = ZONE_FROST[z];
+  return zf ? { last: zf[0], first: zf[1], src: "zone " + z + " estimate", rough: true } : { last:"04-05", first:"10-30", src:"default — set your location", rough: true };
+}
+function frostDate(mmdd, year) { return parseLocalDate(year + "-" + mmdd); }
+function mmdd(d) { return String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+let frostLoading = false;
+// Median last/first 32°F night over the last 10 years of local weather (Open-Meteo historical archive)
+async function ensureFrostDates(force) {
+  const st = getSettings();
+  if (st.lat == null || frostLoading) return false;
+  const locKey = st.lat.toFixed(2) + "," + st.lon.toFixed(2);
+  if (!force && localStorage.getItem(LS+"frost-last") && (localStorage.getItem(LS+"frost-loc") === locKey || localStorage.getItem(LS+"frost-src") === "set by you")) return false;
+  frostLoading = true;
+  try {
+    const y = new Date().getFullYear();
+    // Ten frost seasons, each running Jul 1 → Jun 30 (in the Deep South the "fall" frost often lands in January)
+    const url = "https://archive-api.open-meteo.com/v1/archive?latitude=" + st.lat + "&longitude=" + st.lon +
+      "&start_date=" + (y-11) + "-07-01&end_date=" + (y-1) + "-06-30&daily=temperature_2m_min&temperature_unit=fahrenheit&timezone=auto";
+    const r = await fetch(url); if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    const seasons = {};
+    d.daily.time.forEach((t, i) => {
+      const yr = +t.slice(0,4), mo = +t.slice(5,7), sy = mo >= 7 ? yr : yr - 1;
+      const o = seasons[sy] = seasons[sy] || { last:-1, first:999 };
+      const v = d.daily.temperature_2m_min[i]; if (v == null || v > 32) return;
+      const off = Math.round((parseLocalDate(t) - new Date(sy, 6, 1)) / 864e5);
+      o.last = Math.max(o.last, off); o.first = Math.min(o.first, off);
+    });
+    const S = Object.values(seasons), n = S.length;
+    const lasts = S.map(o=>o.last).sort((a,b)=>a-b), firsts = S.map(o=>o.first).sort((a,b)=>a-b);
+    // "Safe" dates: frost later than `last` (or earlier than `first`) happened in only ~1 of 5 seasons
+    const last = lasts[Math.ceil(0.8*n) - 1], first = firsts[Math.floor(0.2*n)];
+    const toMD = off => mmdd(new Date(2024, 6, 1 + off));
+    if (n >= 5 && last >= 0) {
+      localStorage.setItem(LS+"frost-last", toMD(last));
+      localStorage.setItem(LS+"frost-first", first < 999 ? toMD(first) : "12-31");
+      localStorage.setItem(LS+"frost-src", "from " + n + " winters of local weather (later frost ~1 year in 5)");
+    } else {
+      localStorage.setItem(LS+"frost-last", "01-31"); localStorage.setItem(LS+"frost-first", "12-31");
+      localStorage.setItem(LS+"frost-src", "frost is rare here");
+    }
+    localStorage.setItem(LS+"frost-loc", locKey);
+    return true;
+  } catch(e) { return false; }
+  finally { frostLoading = false; }
+}
+function setFrostDate(which, val) {
+  if (!val) return;
+  const fd = getFrostDates();
+  localStorage.setItem(LS+"frost-last", which === "last" ? val.slice(5) : fd.last);
+  localStorage.setItem(LS+"frost-first", which === "first" ? val.slice(5) : fd.first);
+  localStorage.setItem(LS+"frost-src", "set by you");
+  renderWindows();
+}
+async function recalcFrostDates() {
+  if (getSettings().lat == null) { toast("Set your garden location first"); return; }
+  localStorage.removeItem(LS+"frost-src"); toast("Checking 10 years of local weather…");
+  if (await ensureFrostDates(true)) { toast("✓ Frost dates updated"); renderWindows(); } else toast("⚠️ Couldn't reach the weather archive");
+}
+
+// ── PLANTING WINDOWS from frost dates ──
+// Returns windows for one season year: { indoor:[[start,end]], tp:[...], direct:[...], harvest:[...] } as Date pairs
+function cropWindows(key, year) {
+  const g = cropGuide(key); if (!g) return null;
+  const fd = getFrostDates();
+  let lf = frostDate(fd.last, year), ff = frostDate(fd.first, year);
+  if (fd.last >= "07-01") lf.setFullYear(year - 1);   // last frost fell in the previous December
+  if (fd.first < "07-01") ff.setFullYear(year + 1);   // first frost usually arrives after New Year
+  // Where frost is late or rare, short days and cool nights still end the fall season: plan as if by Dec 15
+  const capFF = new Date(year, 11, 15); if (ff > capFF) ff = capFF;
+  const minLF = new Date(year, 1, 10); if (lf < minLF) lf = minLF;   // before ~Feb 10 soils are still too cold, even where frost is rare
+  const wk = (base, n) => { const d = new Date(base); d.setDate(d.getDate() + n*7); return d; };
+  const day = (base, n) => { const d = new Date(base); d.setDate(d.getDate() + n); return d; };
+  const out = { indoor:[], tp:[], direct:[], harvest:[] };
+  const harvestFrom = (w) => { if (g.dtm) out.harvest.push([day(w[0], g.dtm), day(w[1], g.dtm + 21)]); };
+  if (g.indoor) out.indoor.push([wk(lf, g.indoor[0]), wk(lf, g.indoor[1])]);
+  if (g.tp) { const w = [wk(lf, g.tp[0]), wk(lf, g.tp[1])]; out.tp.push(w); harvestFrom(w); }
+  if (g.direct) { const w = [wk(lf, g.direct[0]), wk(lf, g.direct[1])]; out.direct.push(w); if (!g.tp) harvestFrom(w); }
+  if (g.fallOnly) { const ref = ff > new Date(year, 10, 1) ? new Date(year, 10, 1) : ff;   // garlic still wants fall planting in mild climates
+    const w = [wk(ref, g.fallOnly[0]), wk(ref, g.fallOnly[1])]; out.direct.push(w); harvestFrom(w); }
+  if (g.fall && g.dtm) {
+    const season = (ff - lf) / 864e5;
+    // Hardy crops can mature after the first light frost; tender ones need to finish well before it
+    const endOff = g.frost === "hardy" ? 7 - g.dtm : g.frost === "semi" ? -g.dtm : -35 - g.dtm;
+    if (g.frost !== "tender" || season >= 230) {
+      const end = day(ff, endOff), start = day(end, g.dtm <= 45 ? -42 : -28);
+      const springEnd = g.tp ? wk(lf, g.tp[1]) : g.direct ? wk(lf, g.direct[1]) : lf;
+      if (start > day(springEnd, 21)) {
+        const w = [start, end];
+        if (g.tp) { out.tp.push(w); const ind = guideIndoorDays(g); if (ind) out.indoor.push([day(start, -ind), day(end, -ind)]); }
+        if (g.direct) out.direct.push(w);
+        harvestFrom(w);
+      }
+    }
+  }
+  return out;
+}
+function fmtWin(w) { return MONTH_SHORT[w[0].getMonth()] + " " + w[0].getDate() + "–" + (w[0].getMonth()===w[1].getMonth() ? "" : MONTH_SHORT[w[1].getMonth()] + " ") + w[1].getDate(); }
+
+// ── BED FIT (spacing) ──
+function bedCapacity(bed, sp) {
+  if (!bed || !sp || bed.shape === "house") return null;
+  const wIn = bed.w * 12, lIn = bed.l * 12;
+  if (bed.shape === "oval" || bed.shape === "container") return Math.max(bed.shape === "container" ? 1 : 0, Math.floor(Math.PI/4 * wIn * lIn / (sp*sp)));
+  return Math.floor(wIn / sp) * Math.floor(lIn / sp) || (Math.min(wIn, lIn) >= sp*0.75 ? 1 : 0);
+}
+// Share of the bed (0–1) used by other plantings/plants overlapping [from, to]
+function bedUsedShare(bedName, from, to, exceptId) {
+  const bed = beds.find(b => b.name === bedName); if (!bed) return 0;
+  const area = bed.w * bed.l * 144 * (bed.shape === "oval" ? Math.PI/4 : 1);
+  let used = 0;
+  const overlaps = (a1, a2) => !(a2 < from || a1 > to);
+  plantings.forEach(p => {
+    if (p.bed !== bedName || String(p.id) === String(exceptId)) return;
+    const g = cropGuide(p.crop) || {}; const sp = p.spacing || g.sp; if (!sp) return;
+    const start = p.method === "direct" ? p.sowDate : p.transplantDate; if (!start) return;
+    const end = g.perennial ? "9999-12-31" : addDays(start, (p.dtm || g.dtm || 60) + 45);
+    if (overlaps(start, end)) used += (p.qty || 1) * sp * sp;
+  });
+  const linked = new Set(plantings.map(p => String(p.plantId)));
+  plantLog.forEach(p => {
+    if (p.bed !== bedName || linked.has(String(p.id))) return;
+    const g = cropGuide(p.crop) || {}; if (!g.sp) return;
+    const start = p.transplantDate || p.seedDate || todayStr();
+    const end = g.perennial ? "9999-12-31" : addDays(start, (g.dtm || 60) + 45);
+    if (overlaps(start, end)) used += (p.count || 1) * g.sp * g.sp;
+  });
+  return Math.min(1, used / area);
+}
+function mergeLibraryCrops() {
+  if (localStorage.getItem(LS+"crop-lib") === "1") return;
+  LIBRARY_CROPS.forEach(c => {
+    if (cropRegistry.some(x => x.key === c.key)) return;
+    const i = cropRegistry.findIndex(x => x.key === "other");
+    cropRegistry.splice(i < 0 ? cropRegistry.length : i, 0, { ...c, varieties: [...c.varieties] });
+  });
+  saveCropRegistry();
+  try { localStorage.setItem(LS+"crop-lib", "1"); } catch(e) {}
+}
+function guideDtm(key) { return (cropGuide(key)||{}).dtm || DAYS_TO_HARVEST[key] || ""; }
+
+// ── Planting form helpers ──
+function plSuggestDates() {
+  const crop = document.getElementById("pl-crop").value, m = document.getElementById("pl-method").value;
+  const today = parseLocalDate(todayStr()), y = today.getFullYear();
+  let win = null;
+  for (const yr of [y, y+1]) {
+    const w = cropWindows(crop, yr); if (!w) break;
+    const list = (m === "indoor" ? w.indoor : m === "direct" ? w.direct : w.tp).slice().sort((a,b)=>a[0]-b[0]);
+    win = list.find(x => x[1] >= today); if (win) break;
+  }
+  if (!win) { toast("No typical window for this method"); return; }
+  const start = localDateStr(win[0] > today ? win[0] : today);
+  const g = cropGuide(crop);
+  if (m === "indoor") { document.getElementById("pl-sow").value = start; document.getElementById("pl-tp").value = addDays(start, guideIndoorDays(g) || DAYS_INDOOR[crop] || 42); }
+  else if (m === "direct") document.getElementById("pl-sow").value = start;
+  else document.getElementById("pl-tp").value = start;
+  plDatesChanged();
+}
+function plFitUpdate() {
+  const el = document.getElementById("pl-fit-hint"); if (!el) return;
+  loadBedsIfNeeded();
+  const bed = beds.find(b => b.name === document.getElementById("pl-bed").value);
+  const sp = parseFloat(document.getElementById("pl-spacing").value);
+  const qty = parseInt(document.getElementById("pl-qty").value) || 0;
+  if (!bed || !sp || bed.shape === "house") { el.innerHTML = ""; return; }
+  const cap = bedCapacity(bed, sp);
+  const m = document.getElementById("pl-method").value;
+  const start = (m === "direct" ? document.getElementById("pl-sow").value : document.getElementById("pl-tp").value) || todayStr();
+  const crop = document.getElementById("pl-crop").value, g = cropGuide(crop) || {};
+  const end = g.perennial ? "9999-12-31" : addDays(start, (parseInt(document.getElementById("pl-dtm").value) || g.dtm || 60) + 45);
+  const share = bedUsedShare(bed.name, start, end, document.getElementById("pl-edit-id").value);
+  const free = Math.floor(cap * (1 - share));
+  let txt = `${esc(bed.name)} (${bed.w}×${bed.l} ft) fits about <b>${cap}</b> at ${sp}″ spacing`;
+  if (share > 0.02) txt += ` · other plantings use ~${Math.round(share*100)}% then, leaving room for ~<b>${free}</b>`;
+  const over = qty && qty > free;
+  el.style.color = over ? "var(--red)" : "var(--muted2)";
+  el.innerHTML = txt + (over ? ` — <b>${qty} won't fit</b>` : "");
+}
+
 function windowText(range) { return range ? MONTH_SHORT[range[0]-1] + "–" + MONTH_SHORT[range[1]-1] : ""; }
 
 // ── Program due dates ──
@@ -2824,8 +3096,9 @@ function planSteps(p) {
     steps.push({ step, date: moved && moved > date ? moved : date, label,
       done: p.done && p.done[step], skipped: p.skipped && p.skipped[step] });
   };
-  if (p.method === "indoor") { st("sow", p.sowDate, `Start ${name} seeds indoors`); st("transplant", p.transplantDate, `Transplant ${name}${bed}`); }
-  else if (p.method === "direct") st("sow", p.sowDate, `Direct sow ${name}${bed}`);
+  const seeds = p.seeds ? `${p.seeds} ` : "";
+  if (p.method === "indoor") { st("sow", p.sowDate, `Start ${seeds}${name} seeds indoors`); st("transplant", p.transplantDate, `Transplant ${p.qty ? p.qty + " " : ""}${name}${bed}`); }
+  else if (p.method === "direct") st("sow", p.sowDate, `Direct sow ${name}${p.seeds ? ` (${p.seeds} seeds)` : ""}${bed}`);
   else st("transplant", p.transplantDate, `Plant out ${name}${bed}`);
   const base = p.method === "direct" ? p.sowDate : p.transplantDate;
   if (base && p.dtm) st("harvest", addDays(base, p.dtm), `${name}: first harvest expected`);
@@ -2992,7 +3265,7 @@ function renderPlantings() {
       <div class="entry-body">
         <div class="entry-top"><div class="entry-name">${esc(p.variety||cd.label)}${p.qty?` <span style="font-size:11px;color:var(--muted)">×${p.qty}</span>`:""}</div>
           <button class="chip" onclick="openPlantingModal('${jsq(p.id)}')">Edit</button></div>
-        <div class="entry-sub">${esc(p.bed||"No bed")} · ${p.method==="indoor"?"start indoors":p.method==="direct"?"direct sow":"transplants"}</div>
+        <div class="entry-sub">${esc(p.bed||"No bed")} · ${p.method==="indoor"?"start indoors":p.method==="direct"?"direct sow":"transplants"}${p.seeds?` · ${p.seeds} seeds`:""}${p.spacing?` · ${p.spacing}″ apart`:""}</div>
         <div style="font-size:12px;color:var(--muted2);margin-top:4px;line-height:1.6">${steps}</div>
         ${p.notes?`<div class="entry-note">${esc(p.notes)}</div>`:""}
       </div>
@@ -3047,23 +3320,47 @@ function renderWindows() {
   document.getElementById("cal-month-name").textContent = MONTHS[calMonth-1];
   document.getElementById("cal-today-title").textContent = "What to do in "+MONTHS[calMonth-1];
   document.getElementById("cal-today-tasks").innerHTML = (MONTH_TASKS[calMonth]||[]).map(t=>`• ${esc(t)}`).join("<br>");
+  ensureFrostDates().then(changed => { if (changed) renderWindows(); });
+  const fd = getFrostDates(), y = new Date().getFullYear();
+  const fb = document.getElementById("frost-box");
+  if (fb) fb.innerHTML = `<div class="card-title">Your frost dates</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <label style="flex:1;min-width:130px;font-size:11px;color:var(--muted)">LAST SPRING FROST<input type="date" value="${y}-${fd.last}" onchange="setFrostDate('last',this.value)" style="display:block;width:100%;margin-top:4px"></label>
+      <label style="flex:1;min-width:130px;font-size:11px;color:var(--muted)">FIRST FALL FROST<input type="date" value="${y}-${fd.first}" onchange="setFrostDate('first',this.value)" style="display:block;width:100%;margin-top:4px"></label>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">${frostLoading ? "Checking local weather history…" : esc(fd.src)}${fd.rough ? " — rough" : ""}${fd.last < "02-10" || fd.last >= "07-01" ? ". Spring windows start no earlier than mid-February (soil temperature)" : ""} · <a href="#" onclick="recalcFrostDates();return false" style="color:var(--green)">recalculate</a></div>`;
   const list = document.getElementById("cal-crop-list");
-  const inR = (range, m) => { if(!range) return false; const [s,e] = range; return s>e ? (m>=s||m<=e) : (m>=s&&m<=e); };
+  const cell = d => (d.getMonth())*2 + (d.getDate() > 15 ? 1 : 0);
+  const fill = (cells, wins, color) => (wins||[]).forEach(w => { let i = cell(w[0]); const e = cell(w[1]); for (let n = 0; n < 24; n++) { cells[i] = color; if (i === e) break; i = (i+1) % 24; } });
+  const rows = [];
+  cropRegistry.forEach(c => {
+    const g = cropGuide(c.key);
+    if (g && (g.indoor || g.tp || g.direct || g.fallOnly)) {
+      const w = cropWindows(c.key, y);
+      const cells = Array(24).fill("transparent");
+      fill(cells, w.harvest, "#e85d7588"); fill(cells, w.direct, "#e8a02088"); fill(cells, w.tp, "#8fba6a88"); fill(cells, w.indoor, "#4a9aba88");
+      const txt = [w.indoor.length && "Seed: " + w.indoor.map(fmtWin).join(", "), w.tp.length && (g.perennial ? "Plant: " : "Transplant: ") + w.tp.map(fmtWin).join(", "),
+        w.direct.length && "Sow: " + w.direct.map(fmtWin).join(", ")].filter(Boolean).join(" · ") + (g.note ? " · " + g.note : "");
+      rows.push({ key:c.key, label:c.label, emoji:c.emoji, cells, txt });
+    } else if (CAL_DATA[c.key]) {
+      const data = CAL_DATA[c.key], cells = Array(24).fill("transparent");
+      const mw = r => r ? [[new Date(y, r[0]-1, 1), new Date(y, r[1]-1, 28)]] : [];
+      fill(cells, mw(data.harvest), "#e85d7588"); fill(cells, mw(data.direct), "#e8a02088"); fill(cells, mw(data.transplant), "#8fba6a88"); fill(cells, mw(data.seedIndoor), "#4a9aba88");
+      const txt = [data.seedIndoor&&"Seed: "+windowText(data.seedIndoor), data.transplant&&"Plant: "+windowText(data.transplant), data.direct&&"Sow: "+windowText(data.direct), data.harvest&&"Harvest: "+windowText(data.harvest)].filter(Boolean).join(" · ") + " · Gulf Coast";
+      rows.push({ key:c.key, label:c.label, emoji:c.emoji, cells, txt });
+    }
+  });
+  rows.forEach(r => r.active = r.cells[(calMonth-1)*2] !== "transparent" || r.cells[(calMonth-1)*2+1] !== "transparent");
+  rows.sort((a,b) => (b.active?1:0) - (a.active?1:0));
   let html = '<div class="card-title">Planting windows</div>';
-  Object.entries(CAL_DATA).forEach(([key,data]) => {
-    const planned = plantings.some(p=>p.crop===key) || plantLog.some(p=>p.crop===key);
-    const active = inR(data.seedIndoor,calMonth)||inR(data.transplant,calMonth)||inR(data.direct,calMonth)||inR(data.harvest,calMonth);
-    const cells = Array.from({length:12},(_,i)=>i+1).map(m => {
-      let bg="transparent";
-      if(inR(data.harvest,m))bg="#e85d7588"; if(inR(data.direct,m))bg="#e8a02088";
-      if(inR(data.transplant,m))bg="#8fba6a88"; if(inR(data.seedIndoor,m))bg="#4a9aba88";
-      return `<div style="flex:1;height:8px;background:${bg};${m===calMonth?"box-shadow:0 0 0 1px var(--green)":""}"></div>`;
-    }).join("");
-    html += `<div class="cal-crop-timeline" style="opacity:${active?1:0.45}">
-      <div class="cal-crop-label"><span>${data.emoji} ${data.label}${planned?` <span style="color:var(--green);font-size:10px">✓ in your plan</span>`:""}</span>
-        <button class="chip" style="font-size:10px;padding:1px 8px" onclick="setPlanTab('plantings');openPlantingModal(null,'${jsq(key)}')">+ Plan</button></div>
-      <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">${cells}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">${[data.seedIndoor&&"Seed: "+windowText(data.seedIndoor), data.transplant&&"Plant: "+windowText(data.transplant), data.direct&&"Sow: "+windowText(data.direct), data.harvest&&"Harvest: "+windowText(data.harvest)].filter(Boolean).join(" · ")}</div>
+  rows.forEach(r => {
+    const planned = plantings.some(p=>p.crop===r.key) || plantLog.some(p=>p.crop===r.key);
+    const bar = r.cells.map((bg,i) => `<div style="flex:1;height:8px;background:${bg};${Math.floor(i/2)===calMonth-1?"box-shadow:0 0 0 1px var(--green)":""}"></div>`).join("");
+    html += `<div class="cal-crop-timeline" style="opacity:${r.active?1:0.45}">
+      <div class="cal-crop-label"><span>${r.emoji||"🌱"} ${esc(r.label)}${planned?` <span style="color:var(--green);font-size:10px">✓ in your plan</span>`:""}</span>
+        <button class="chip" style="font-size:10px;padding:1px 8px" onclick="setPlanTab('plantings');openPlantingModal(null,'${jsq(r.key)}')">+ Plan</button></div>
+      <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">${bar}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${esc(r.txt)}</div>
     </div>`;
   });
   list.innerHTML = html;
@@ -3082,21 +3379,37 @@ function openPlantingModal(editId, cropKey) {
   if (p) setSelectValue("pl-variety", p.variety);
   if (p) setSelectValue("pl-bed", p.bed);
   document.getElementById("pl-qty").value = p ? (p.qty||"") : "";
-  document.getElementById("pl-method").value = p ? p.method : (CAL_DATA[document.getElementById("pl-crop").value]||{}).direct ? "direct" : "indoor";
+  document.getElementById("pl-seeds").value = p ? (p.seeds||"") : "";
+  const g0 = cropGuide(document.getElementById("pl-crop").value);
+  document.getElementById("pl-spacing").value = p ? (p.spacing || (g0||{}).sp || "") : ((g0||{}).sp || "");
+  document.getElementById("pl-method").value = p ? p.method : plDefaultMethod(document.getElementById("pl-crop").value);
   document.getElementById("pl-sow").value = p ? (p.sowDate||"") : "";
   document.getElementById("pl-tp").value = p ? (p.transplantDate||"") : "";
-  document.getElementById("pl-dtm").value = p ? (p.dtm||"") : (DAYS_TO_HARVEST[document.getElementById("pl-crop").value] || "");
+  document.getElementById("pl-dtm").value = p ? (p.dtm||"") : guideDtm(document.getElementById("pl-crop").value);
   document.getElementById("pl-repeat").value = "0";
   document.getElementById("pl-repeat").parentElement.style.display = p ? "none" : "";
   document.getElementById("pl-notes").value = p ? (p.notes||"") : "";
   plMethodChanged();
   document.getElementById("planting-modal").classList.add("open");
+  ensureFrostDates().then(changed => { if (changed) plMethodChanged(); });
+}
+function plDefaultMethod(crop) {
+  const g = cropGuide(crop);
+  if (g) return g.direct && !g.indoor ? "direct" : g.indoor ? "indoor" : g.tp || g.perennial ? "buy" : "direct";
+  return (CAL_DATA[crop]||{}).direct ? "direct" : "indoor";
+}
+// Suggest ~50% extra seeds for indoor starts (germination + culling), ~2× for direct sowing
+function plSeedHint() {
+  const q = parseInt(document.getElementById("pl-qty").value), m = document.getElementById("pl-method").value;
+  document.getElementById("pl-seeds").placeholder = q ? String(Math.ceil(q * (m === "direct" ? 2 : 1.5))) : "";
 }
 
 function plCropChanged() {
   const crop = document.getElementById("pl-crop").value;
   fillVarietySelect("pl-variety", crop);
-  document.getElementById("pl-dtm").value = DAYS_TO_HARVEST[crop] || "";
+  document.getElementById("pl-dtm").value = guideDtm(crop);
+  document.getElementById("pl-spacing").value = (cropGuide(crop)||{}).sp || "";
+  document.getElementById("pl-method").value = plDefaultMethod(crop);
   plMethodChanged();
 }
 
@@ -3105,9 +3418,19 @@ function plMethodChanged() {
   document.getElementById("pl-sow-wrap").style.display = m === "buy" ? "none" : "";
   document.getElementById("pl-tp-wrap").style.display = m === "direct" ? "none" : "";
   document.getElementById("pl-sow-label").textContent = m === "indoor" ? "Start seeds" : "Sow date";
+  document.getElementById("pl-seeds-wrap").style.display = m === "buy" ? "none" : "";
+  plSeedHint();
   const crop = document.getElementById("pl-crop").value, cd = CAL_DATA[crop];
   const hint = document.getElementById("pl-window-hint");
-  if (cd) {
+  const w = cropWindows(crop, new Date().getFullYear());
+  if (w && (w.indoor.length || w.tp.length || w.direct.length)) {
+    const fd = getFrostDates(), parts = [];
+    if (m === "indoor" && w.indoor.length) parts.push("start seeds " + w.indoor.map(fmtWin).join(" or "));
+    if (m !== "direct" && w.tp.length) parts.push((m === "buy" ? "plant out " : "transplant ") + w.tp.map(fmtWin).join(" or "));
+    if (m === "direct" && w.direct.length) parts.push("direct sow " + w.direct.map(fmtWin).join(" or "));
+    hint.innerHTML = parts.length ? `Typical for your area: ${esc(parts.join("; "))} · <a href="#" onclick="plSuggestDates();return false" style="color:var(--green)">use next window</a>`
+      : "Not usually grown this way — try another method";
+  } else if (cd) {
     const parts = [];
     if (m === "indoor" && cd.seedIndoor) parts.push("start seeds " + windowText(cd.seedIndoor));
     if (m !== "direct" && cd.transplant) parts.push("transplant " + windowText(cd.transplant));
@@ -3122,10 +3445,11 @@ function plDatesChanged() {
   const m = document.getElementById("pl-method").value;
   const crop = document.getElementById("pl-crop").value;
   const sow = document.getElementById("pl-sow").value, tpEl = document.getElementById("pl-tp");
-  if (m === "indoor" && sow && !tpEl.value) tpEl.value = addDays(sow, DAYS_INDOOR[crop] || 42);
+  if (m === "indoor" && sow && !tpEl.value) tpEl.value = addDays(sow, guideIndoorDays(cropGuide(crop)) || DAYS_INDOOR[crop] || 42);
   const base = m === "direct" ? sow : tpEl.value;
   const dtm = parseInt(document.getElementById("pl-dtm").value);
   document.getElementById("pl-harvest-hint").textContent = base && dtm ? "First harvest around " + fmtShortDate(addDays(base, dtm)) : "";
+  plFitUpdate();
 }
 
 function savePlanting() {
@@ -3139,6 +3463,8 @@ function savePlanting() {
     variety: document.getElementById("pl-variety").value,
     bed: document.getElementById("pl-bed").value,
     qty: parseInt(document.getElementById("pl-qty").value) || null,
+    seeds: m === "buy" ? null : (parseInt(document.getElementById("pl-seeds").value) || null),
+    spacing: parseFloat(document.getElementById("pl-spacing").value) || null,
     method: m,
     sowDate: m === "buy" ? "" : sow,
     transplantDate: m === "direct" ? "" : tp,
