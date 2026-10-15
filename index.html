@@ -2156,22 +2156,38 @@ function setMapTab(t) {
   }
 }
 
+// Extent of everything on the map (lot outline + all beds/houses), in px at zoom 1
+function mapExtent() {
+  var FT=18;
+  var minX=Infinity, minY=Infinity, maxX=0, maxY=0;
+  if (lotWidth>0) { minX=0; minY=0; maxX=lotWidth*FT; maxY=(lotDepth||lotWidth)*FT; }
+  (beds||[]).forEach(function(b){
+    var pw=Math.max(9,b.w*FT), ph=Math.max(9,b.l*FT);
+    minX=Math.min(minX,b.x); minY=Math.min(minY,b.y);
+    maxX=Math.max(maxX,b.x+pw); maxY=Math.max(maxY,b.y+ph);
+  });
+  if (!isFinite(minX)) { minX=0; minY=0; maxX=600; maxY=400; }
+  return {minX:minX, minY:minY, maxX:maxX, maxY:maxY};
+}
+
 function fitCanvasToBeds() {
-  var FT=18, MARGIN=80;
+  var MARGIN=80, PAD=30;
   var viewport=document.getElementById("map-viewport");
   var canvas=document.getElementById("map-canvas");
   if(!viewport||!canvas) return;
-  // Full lot dimensions at zoom=1
-  var logW=(lotWidth>0?lotWidth*FT:600)+MARGIN*2;
-  var logH=(lotDepth>0?lotDepth*FT:400)+MARGIN*2;
-  // Viewport size
+  loadBedsIfNeeded();
+  var e=mapExtent();
+  var bw=(e.maxX-e.minX)+PAD*2, bh=(e.maxY-e.minY)+PAD*2;
   var vw=viewport.clientWidth||300;
   var vh=viewport.clientHeight||420;
-  // Fit zoom so entire lot fits
-  var newZoom = Math.min(vw/logW, vh/logH) * 0.92;
-  mapZoom = Math.max(0.1, Math.min(3.0, newZoom));
+  // Fit zoom so every bed (and the lot, if set) is visible
+  mapZoom = Math.max(0.1, Math.min(3.0, Math.min(vw/bw, vh/bh)));
   renderMap();
-  setTimeout(function(){viewport.scrollLeft=0;viewport.scrollTop=0;},60);
+  setTimeout(function(){
+    var cw=(e.maxX-e.minX)*mapZoom, ch=(e.maxY-e.minY)*mapZoom;
+    viewport.scrollLeft=Math.max(0,(e.minX+MARGIN)*mapZoom - Math.max(0,(vw-cw)/2));
+    viewport.scrollTop =Math.max(0,(e.minY+MARGIN)*mapZoom - Math.max(0,(vh-ch)/2));
+  },60);
 }
 
 // ===================== GARDEN MAP =====================
@@ -2336,8 +2352,11 @@ function renderMap() {
   if (!canvas) return;
   const lotW_px = lotWidth>0 ? Math.round(lotWidth*FT) : 600;
   const lotH_px = lotDepth>0 ? Math.round(lotDepth*FT) : 400;
-  const totalW = (lotW_px + MARGIN*2) * mapZoom;
-  const totalH = (lotH_px + MARGIN*2) * mapZoom;
+  // Canvas (and its grid) must cover every bed, not just the lot outline
+  const ext = mapExtent();
+  const viewport = document.getElementById("map-viewport");
+  const totalW = Math.max((Math.max(lotWidth>0?lotW_px:0, ext.maxX) + MARGIN*2) * mapZoom, viewport ? viewport.clientWidth : 0);
+  const totalH = Math.max((Math.max(lotDepth>0?lotH_px:0, ext.maxY) + MARGIN*2) * mapZoom, viewport ? viewport.clientHeight : 0);
   canvas.style.width  = Math.round(totalW) + "px";
   canvas.style.height = Math.round(totalH) + "px";
 
