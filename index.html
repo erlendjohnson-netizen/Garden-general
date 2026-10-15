@@ -1915,6 +1915,7 @@ function submitHarvest() {
   if (editId) { harvests = harvests.map(e=>e.id===editId?entry:e); }
   else { harvests.push(entry); }
   saveHarvests(); toast(hasW ? "✓ Harvest logged!" : "✓ Logged (count only)"); cancelAdd(); renderLog(); renderDashboard();
+  harvestFeedback(entry);
 }
 
 function submitCare() {
@@ -3949,8 +3950,8 @@ function renderYieldsTab() {
   const groups = {};
   list.forEach(e => {
     const k = e.crop + "||" + e.variety;
-    const gr = groups[k] = groups[k] || { crop:e.crop, variety:e.variety, grams:0, est:0, beds:{} };
-    const gm = estGrams(e) || 0; gr.grams += gm; if (!isWeighed(e)) gr.est += gm;
+    const gr = groups[k] = groups[k] || { crop:e.crop, variety:e.variety, grams:0, est:0, beds:{}, list:[] };
+    gr.list.push(e); const gm = estGrams(e) || 0; gr.grams += gm; if (!isWeighed(e)) gr.est += gm;
     gr.beds[e.bed||"—"] = (gr.beds[e.bed||"—"]||0) + gm;
   });
   const ov = getYieldOverrides();
@@ -3990,6 +3991,8 @@ function renderYieldsTab() {
     const bedLine = bedNames.length > 1 ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">By bed: ${bedNames.map(bn => { const n = seasonPlants(r.crop, r.variety, year, bn); return `${esc(bn)} ${fmtYield(r.beds[bn])}${n && (!b || b.u !== "sqft") ? ` (${fmtYield(r.beds[bn]/n)}/plant)` : ""}`; }).join(" · ")}</div>` : "";
     const care = seasonCare(year, [c.label, r.variety, ...bedNames]);
     const careLine = care.length ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">Care logged: ${care.slice(0,5).map(([k,n]) => `${esc(k)} ×${n}`).join(" · ")}</div>` : "";
+    const fs = fruitStats(r.list), fref = fruitSizeRef(r.crop, r.variety), ftr = fruitTrend(r.list);
+    const fruitLine = fs ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">Avg fruit: <b>${fmtFruit(fs.avg)}</b> from ${fs.n} weighed${fref ? ` · typical ${fmtFruitRange(fref)}` : ""}${ftr ? ` · early ${fmtFruit(ftr[0].s.avg)} → mid ${fmtFruit(ftr[1].s.avg)} → late ${fmtFruit(ftr[2].s.avg)}` : ""}</div>` : "";
     return `<div class="card" style="padding:12px 14px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
         <div style="font-size:15px">${c.emoji||"🌱"} ${esc(r.variety || c.label)} <span style="font-size:11px;color:var(--muted)">${esc(c.label)}</span></div>
@@ -3998,11 +4001,79 @@ function renderYieldsTab() {
       <div style="font-size:13px;margin-top:6px">${fmtYield(r.grams)} harvested${r.est ? ` <span style="color:var(--muted)">(${Math.round(r.est/r.grams*100)}% estimated)</span>` : ""} from ${amount}${r.per != null ? ` = <b>${fmtYield(r.per)} per ${unit}</b>` : ""}</div>
       ${bar}
       <div style="font-size:11px;color:var(--muted)">${bench}</div>
-      ${bedLine}${careLine}
+      ${fruitLine}${bedLine}${careLine}
     </div>`;
   }).join("");
   html += `<div style="font-size:11px;color:var(--muted);margin:0 16px 16px;line-height:1.5">Benchmarks are adapted from LSU AgCenter, Cornell Cooperative Extension and UC Master Gardener yield tables; "good" is the upper range for well-managed plants. A single season and a few plants can't prove what worked, but repeated differences between beds or care routines are worth acting on.</div>`;
   return html;
+}
+
+// ===================== FRUIT SIZE =====================
+// Typical weight of one harvested fruit/root/pod, in grams [low, high].
+// Tomatoes from seed-catalog descriptions (Johnny's, Hoss, Sakata, Urban Farmer) and Wikipedia; "≈" entries are
+// approximate typical ranges where catalogs don't publish a weight.
+const FRUIT_SIZE = {
+  "tomato|earlygirl":[110,230], "tomato|lemonboy":[170,230], "tomato|hossinator":[230,340], "tomato|redsnapper":[230,340],
+  "tomato|mushroombasket":[230,450], "tomato|supersweet100":[15,20], "tomato|sungold":[10,15,"≈"], "tomato|barryscrazycherry":[10,20,"≈"],
+  "tomato|norfolkpurple":[15,30,"≈"], "tomato|cherokeepurple":[280,450,"≈"], "tomato|brandywine":[340,680,"≈"], "tomato|roma":[60,110,"≈"],
+  "tomato|sanmarzano":[60,110,"≈"], "tomato|celebrity":[200,280,"≈"], "tomato|betterboy":[280,450,"≈"],
+  "pepper|jalapeno":[15,30,"≈"], "pepper|serrano":[5,10,"≈"], "pepper|habanero":[7,15,"≈"], "pepper|scotchbonnet":[8,15,"≈"],
+  "pepper|shishito":[4,8,"≈"], "pepper|padron":[4,8,"≈"], "pepper|banana":[40,80,"≈"], "pepper|bananapepper":[40,80,"≈"], "pepper|fatali":[5,10,"≈"],
+  "pepper|bell":[120,200,"≈"], "pepper|cayenne":[5,15,"≈"], "pepper|poblano":[50,100,"≈"], "pepper|thai":[1,3,"≈"],
+  "cucumber|beitalpha":[80,150,"≈"], "cucumber|merlin":[60,120,"≈"], "strawberry|festival":[15,25,"≈"],
+  "raddish|frenchb":[10,20,"≈"], "raddish|frenchbreakfast":[10,20,"≈"], "raddish|watermelon":[100,250,"≈"],
+};
+const FRUIT_SIZE_CROP = { okra:[10,20], eggplant:[150,400], cucumber:[100,250], squash:[150,300], strawberry:[12,25], fig:[25,50], blueberry:[1,3], blackberry:[5,10] };
+function normVar(v) { return String(v||"").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,""); }
+function fruitSizeRef(crop, variety) {
+  const r = FRUIT_SIZE[crop + "|" + normVar(variety)];
+  if (r) return { lo:r[0], hi:r[1], approx: r[2] === "≈", level:"variety" };
+  if (crop === "tomato") { const b = yieldBench(crop, variety); return b && b.kind === "cherry" ? { lo:10, hi:20, approx:true, level:"type" } : null; }
+  const c = FRUIT_SIZE_CROP[crop]; return c ? { lo:c[0], hi:c[1], approx:true, level:"crop" } : null;
+}
+// Average grams per item from weighed+counted harvests
+function fruitStats(list) {
+  const w = list.filter(e => isWeighed(e) && e.count > 0);
+  const n = w.reduce((s,e) => s + e.count, 0), g = w.reduce((s,e) => s + e.weight, 0);
+  return n ? { n, avg: g / n, entries: w.length } : null;
+}
+function fmtFruit(g) {
+  if (displayUnit === "lb" || displayUnit === "oz") { const oz = g * UNIT_FACTORS.oz; return (oz < 1 ? oz.toFixed(2) : oz.toFixed(1)) + " oz"; }
+  return (g < 10 ? g.toFixed(1) : Math.round(g)) + " g";
+}
+function fmtFruitRange(r) { return `${r.approx ? "≈" : ""}${fmtFruit(r.lo)}–${fmtFruit(r.hi)}`; }
+// Early / mid / late thirds of the season (by harvest date), to show whether fruit shrank or grew
+function fruitTrend(list) {
+  const w = list.filter(e => isWeighed(e) && e.count > 0).sort((a,b) => a.date.localeCompare(b.date));
+  if (w.length < 6) return null;
+  const t = Math.ceil(w.length / 3), parts = [w.slice(0,t), w.slice(t,2*t), w.slice(2*t)];
+  return parts.map(p => ({ s: fruitStats(p), from: p[0].date, to: p[p.length-1].date }));
+}
+// Feedback card shown right after logging a weighed + counted harvest
+function harvestFeedback(e) {
+  if (!isWeighed(e) || !(e.count > 0)) return;
+  const per = e.weight / e.count, y = yearOf(e);
+  const same = harvests.filter(h => h.crop === e.crop && h.variety === e.variety && h.id !== e.id);
+  const season = fruitStats(same.filter(h => yearOf(h) === y));
+  const lastYear = fruitStats(same.filter(h => yearOf(h) === String(+y - 1)));
+  const ref = fruitSizeRef(e.crop, e.variety);
+  const c = getCropByKey(e.crop), lines = [];
+  if (season && season.n >= 3) {
+    const d = Math.round((per - season.avg) / season.avg * 100);
+    lines.push(`Your ${y} average: ${fmtFruit(season.avg)} (${season.n} fruit) — this pick is ${Math.abs(d) < 5 ? "about the same" : (d > 0 ? d + "% bigger" : -d + "% smaller")}`);
+  } else lines.push(`First weighed fruit of ${esc(e.variety || c.label)} this season`);
+  if (lastYear) lines.push(`Last year: ${fmtFruit(lastYear.avg)}`);
+  if (ref) lines.push(`Typical for ${ref.level === "variety" ? esc(e.variety) : ref.level === "type" ? "cherry tomatoes" : c.label.toLowerCase()}: ${fmtFruitRange(ref)}${per < ref.lo * 0.8 ? " — <b>running small</b>" : per > ref.hi * 1.2 ? " — <b>running large</b>" : ""}`);
+  let el = document.getElementById("harvest-feedback");
+  if (!el) {
+    el = document.createElement("div"); el.id = "harvest-feedback";
+    el.style.cssText = "position:fixed;left:12px;right:12px;bottom:84px;max-width:460px;margin:0 auto;background:#fff;border:1px solid var(--border2);border-left:4px solid var(--green);border-radius:10px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.18);z-index:290;font-size:13px;line-height:1.5;cursor:pointer";
+    el.onclick = () => el.remove();
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<div style="font-size:15px;margin-bottom:4px">${c.emoji||"🌱"} <b>${fmtFruit(per)}</b> per fruit <span style="font-size:11px;color:var(--muted)">${esc(e.variety||c.label)} · ${e.count} fruit, ${fmtYield(e.weight)} total</span></div>
+    ${lines.map(l => `<div style="color:var(--muted2)">${l}</div>`).join("")}<div style="font-size:10px;color:var(--muted);margin-top:4px">tap to close</div>`;
+  clearTimeout(el._t); el._t = setTimeout(() => el.remove(), 12000);
 }
 
 // ===================== CARE =====================
