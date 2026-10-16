@@ -2132,9 +2132,9 @@ let lotDepth = parseFloat(localStorage.getItem("gl-demo-lot-depth")) || 0;
 function saveLotDimensions() {
   const w = parseFloat(document.getElementById("lot-width").value) || 60;
   const d = parseFloat(document.getElementById("lot-depth").value) || 120;
-  lotWidth = w; lotDepth = d;
-  localStorage.setItem("gl-demo-lot-width", w);
-  localStorage.setItem("gl-demo-lot-depth", d);
+  lotWidth = Math.min(w, d); lotDepth = Math.max(w, d);   // long side always runs up–down on the map
+  localStorage.setItem("gl-demo-lot-width", lotWidth);
+  localStorage.setItem("gl-demo-lot-depth", lotDepth);
   drawLotCanvas();
 }
 
@@ -4794,7 +4794,8 @@ function bindLotTraceDrag() {
 }
 function lotTraceUse() {
   if (lotTrace.pts.length !== 4) { toast("Find your address first"); return; }
-  const S = lotTraceSides(), w = Math.round((S[0] + S[2]) / 2), d = Math.round((S[1] + S[3]) / 2);
+  const S = lotTraceSides(), a = Math.round((S[0] + S[2]) / 2), b = Math.round((S[1] + S[3]) / 2);
+  const w = Math.min(a, b), d = Math.max(a, b);   // long side runs up–down on the garden map
   if (lotTrace.fromSetup) {
     document.getElementById("setup-lot-w").value = w; document.getElementById("setup-lot-d").value = d;
   } else {
@@ -5142,7 +5143,8 @@ function finishSetup() {
   localStorage.setItem(LS+"garden-address", setupData.address||"");
   if(setupData.lat != null) { localStorage.setItem(LS+"garden-lat", setupData.lat); localStorage.setItem(LS+"garden-lon", setupData.lon); }
   if(setupData.lotW) {
-    lotWidth = setupData.lotW; lotDepth = setupData.lotD||setupData.lotW;
+    const a = setupData.lotW, b = setupData.lotD||setupData.lotW;
+    lotWidth = Math.min(a, b); lotDepth = Math.max(a, b);   // long side up–down
     localStorage.setItem(LS+"lot-width", lotWidth); localStorage.setItem(LS+"lot-depth", lotDepth);
   }
   displayUnit = unit;
