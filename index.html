@@ -28,7 +28,7 @@
 
   /* NAV */
   .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #ffffff; border-top: 2px solid var(--border); display: flex; z-index: 100; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
-  .nav-btn { flex: 1; padding: 10px 0 14px; background: none; border: none; color: var(--muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; }
+  .nav-btn { flex: 1; padding: 10px 0 14px; background: none; border: none; color: var(--muted); font-size: 9px; letter-spacing: 0.3px; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; }
   .nav-btn.active { color: var(--green); }
   .nav-btn svg { width: 20px; height: 20px; }
 
@@ -527,6 +527,15 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- ===== BEDS ===== -->
+<div class="view" id="view-beds">
+  <div class="header">
+    <div><div class="header-title">Beds</div><div class="header-sub">Tap a bed to lay it out</div></div>
+    <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="showBedSetup()">+ Add Bed</button>
+  </div>
+  <div style="padding:10px 14px 90px" id="beds-list"></div>
 </div>
 
 <!-- ===== GARDEN MAP ===== -->
@@ -1160,6 +1169,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
     Map
   </button>
+  <button class="nav-btn" onclick="showView('beds',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="14" width="18" height="7" rx="1.5"/><circle cx="8" cy="7.5" r="1"/><circle cx="13" cy="7.5" r="1"/><circle cx="8" cy="17.5" r="1"/></svg>
+    Beds
+  </button>
   <button class="nav-btn" onclick="showView('calendar',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     Plan
@@ -1524,7 +1537,10 @@ function showView(v, btn) {
   document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("active"));
   document.getElementById("view-"+v).classList.add("active");
-  if (btn) btn.classList.add("active");
+  // Highlight the matching nav button (works even when callers pass a button by position)
+  const nb = [...document.querySelectorAll(".nav-btn")].find(b => (b.getAttribute("onclick") || "").includes("showView('" + v + "'"));
+  if (nb) nb.classList.add("active"); else if (btn) btn.classList.add("active");
+  if (v === "beds") renderBedsTab();
   if (v === "dashboard") renderDashboard();
   if (v === "log") renderLog();
   if (v === "map") { renderMap(); setTimeout(fitCanvasToBeds, 350); }
@@ -2329,7 +2345,7 @@ function showBedSetup(editId) {
   });
 }
 
-function closeBedModal() { document.getElementById("bed-modal").classList.remove("open"); }
+function closeBedModal() { document.getElementById("bed-modal").classList.remove("open"); refreshBedsTab(); }
 
 function selectBedColor(el) {
   selectedBedColor = el.dataset.color;
@@ -2343,7 +2359,9 @@ function saveBed() {
   const editId = document.getElementById("bed-edit-id").value;
   const canvas = document.getElementById("map-canvas");
   const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  const prev = editId ? beds.find(b=>b.id===editId) : null;
   const entry = {
+    ...(prev || {}),   // keep any other saved fields (rotation, layout extras)
     id: editId || ("bed-"+Date.now()),
     name, 
     w: parseFloat(document.getElementById("bed-w").value)||4,
@@ -2351,8 +2369,8 @@ function saveBed() {
     shape: document.getElementById("bed-shape").value,
     color: selectedBedColor,
     notes: document.getElementById("bed-notes").value,
-    x: editId ? beds.find(b=>b.id===editId)?.x||20 : Math.round(cw/2-40),
-    y: editId ? beds.find(b=>b.id===editId)?.y||20 : Math.round(ch/2-40),
+    x: editId ? beds.find(b=>b.id===editId)?.x||20 : (cw ? Math.round(cw/2-40) : 20),
+    y: editId ? beds.find(b=>b.id===editId)?.y||20 : (ch ? Math.round(ch/2-40) : 20),
   };
   if (editId) {
     // Harvests and plants reference beds by name — carry a rename through to them
@@ -3259,7 +3277,7 @@ function completePlantingStep(id, step, date) {
 }
 
 function refreshPlanViews() {
-  renderPlan(); renderCare(); renderDashboard();
+  renderPlan(); renderCare(); renderDashboard(); refreshBedsTab();
   if (document.getElementById("view-map").classList.contains("active")) renderMap();
 }
 
@@ -4569,6 +4587,85 @@ function bindLayoutDrag(items) {
   };
   svg.onpointerup = svg.onpointercancel = () => { if (!layoutDrag) return; layoutDrag = null; savePlantings(); savePlants(); renderBedLayout(); };
 }
+
+// ===================== BEDS TAB =====================
+// Every bed as a card: a to-scale picture of what's in it today, how full it is, what's next, and edit/lay-out buttons.
+let bedsFilter = "beds";
+function bedPreview(bed) {
+  const sb = layoutBed, sd = layoutDate; layoutBed = bed; layoutDate = todayStr();
+  let items = [];
+  try { items = layoutItems(); ensureLayout(items); } finally { layoutBed = sb; layoutDate = sd; }
+  const W = bed.w * 12, L = bed.l * 12, swap = L > W, dw = swap ? L : W, dh = swap ? W : L;   // long side horizontal
+  const P = (x, y) => swap ? [y, x] : [x, y];
+  const oval = bed.shape === "oval" || bed.shape === "container";
+  let s = `<svg viewBox="-1 -1 ${dw + 2} ${dh + 2}" style="width:100%;max-height:120px;display:block" preserveAspectRatio="xMidYMid meet">
+    <defs><clipPath id="bp-${esc(bed.id)}">${oval ? `<ellipse cx="${dw/2}" cy="${dh/2}" rx="${dw/2}" ry="${dh/2}"/>` : `<rect width="${dw}" height="${dh}" rx="2"/>`}</clipPath></defs>
+    ${oval ? `<ellipse cx="${dw/2}" cy="${dh/2}" rx="${dw/2}" ry="${dh/2}" fill="#efe6d2"/>` : `<rect width="${dw}" height="${dh}" rx="2" fill="#efe6d2"/>`}
+    <g clip-path="url(#bp-${esc(bed.id)})">`;
+  for (let g = 12; g < dw; g += 12) s += `<line x1="${g}" y1="0" x2="${g}" y2="${dh}" stroke="#d6c9aa" stroke-width="0.4"/>`;
+  for (let g = 12; g < dh; g += 12) s += `<line x1="0" y1="${g}" x2="${dw}" y2="${g}" stroke="#d6c9aa" stroke-width="0.4"/>`;
+  items.forEach(it => {
+    const c = getCropByKey(it.crop), col = c.color || "#4a7a32", ghost = it.kind === "tracked";
+    if (it.sp <= PATCH_SP) {
+      const r = it.src.layout[0]; if (!r) return;
+      const [x, y] = P(r.x, r.y), [w, h] = swap ? [r.h, r.w] : [r.w, r.h];
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${col}" fill-opacity="${ghost ? .18 : .32}" stroke="${col}" stroke-width="0.6"/>
+        <text x="${x + w/2}" y="${y + h/2}" font-size="${Math.max(3, Math.min(8, Math.min(w, h) / 2.5))}" text-anchor="middle" dominant-baseline="central">${c.emoji || "🌱"}</text>`;
+    } else it.src.layout.forEach(pt => {
+      const [x, y] = P(pt.x, pt.y);
+      s += `<circle cx="${x}" cy="${y}" r="${it.sp/2}" fill="${col}" fill-opacity="${ghost ? .16 : .3}" stroke="${col}" stroke-width="0.6"/>
+        <text x="${x}" y="${y}" font-size="${Math.max(3, Math.min(14, it.sp / 2.6))}" text-anchor="middle" dominant-baseline="central">${c.emoji || "🌱"}</text>`;
+    });
+  });
+  s += `</g>${oval ? `<ellipse cx="${dw/2}" cy="${dh/2}" rx="${dw/2}" ry="${dh/2}" fill="none" stroke="#8a7a4a" stroke-width="0.8"/>` : `<rect width="${dw}" height="${dh}" rx="2" fill="none" stroke="#8a7a4a" stroke-width="0.8"/>`}</svg>`;
+  return { svg: s, items };
+}
+// A "tree spot" is a bed holding a single perennial and no plantings — kept in its own group so veg beds stay easy to scan
+function isTreeSpot(bed, items) {
+  return !plantings.some(p => p.bed === bed.name) && items.length === 1 && isPerennialCrop(items[0].crop) && items[0].qty <= 1;
+}
+function setBedsFilter(f) { bedsFilter = f; renderBedsTab(); }
+function renderBedsTab() {
+  const el = document.getElementById("beds-list"); if (!el) return;
+  loadBedsIfNeeded();
+  const t = todayStr();
+  const cards = beds.filter(b => b.shape !== "house").map(b => {
+    const { svg, items } = bedPreview(b);
+    const tree = isTreeSpot(b, items);
+    const used = bedUsedShare(b.name, t, t);
+    const next = plantings.filter(p => p.bed === b.name && plantingStart(p) > t).sort((a, c) => plantingStart(a).localeCompare(plantingStart(c)))[0];
+    const n = items.reduce((s, it) => s + (it.qty || 1), 0);
+    return { b, svg, items, tree, used, next, n };
+  }).sort((a, z) => a.b.name.localeCompare(z.b.name));
+  const nBeds = cards.filter(c => !c.tree).length, nTrees = cards.length - nBeds;
+  const shown = cards.filter(c => bedsFilter === "all" || (bedsFilter === "trees") === c.tree);
+  const tabs = `<div class="type-tabs" style="margin-bottom:10px">
+      <button class="type-tab${bedsFilter==="beds"?" active":""}" onclick="setBedsFilter('beds')">Beds &amp; planters (${nBeds})</button>
+      <button class="type-tab${bedsFilter==="trees"?" active":""}" onclick="setBedsFilter('trees')">Trees &amp; single plants (${nTrees})</button>
+      <button class="type-tab${bedsFilter==="all"?" active":""}" onclick="setBedsFilter('all')">All</button></div>`;
+  const shapeName = { rect:"rectangle", oval:"oval / round", container:"container", row:"in-ground row" };
+  el.innerHTML = tabs + (shown.map(c => {
+    const { b } = c, id = "'" + jsq(String(b.id)) + "'", nm = "'" + jsq(b.name) + "'";
+    const pct = Math.round(c.used * 100), barCol = pct >= 95 ? "#c0392b" : pct >= 70 ? "#e8a020" : "var(--green)";
+    const crops = [...new Map(c.items.map(it => [it.label, it])).values()].slice(0, 6).map(it => `${getCropByKey(it.crop).emoji || "🌱"} ${esc(it.label)}${it.qty > 1 ? ` ×${it.qty}` : ""}`).join(" · ");
+    return `<div class="card" style="padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+        <div><div style="font-size:16px;color:var(--green)"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(b.color || "#4a7a32")};margin-right:6px"></span>${esc(b.name)}</div>
+          <div style="font-size:11px;color:var(--muted)">${b.w} × ${b.l} ft · ${shapeName[b.shape] || b.shape}${c.n ? ` · ${c.n} plant${c.n > 1 ? "s" : ""} now` : " · empty now"}</div></div>
+        <button class="chip" onclick="showBedSetup(${id})">✎ Edit</button></div>
+      <div onclick="openBedLayout(${nm})" style="cursor:pointer;background:#faf6ec;border-radius:6px;padding:6px">${c.svg}</div>
+      ${c.tree ? "" : `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:var(--muted)">
+        <div style="flex:1;height:6px;background:#eee6d6;border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${barCol}"></div></div>${pct}% of space used</div>`}
+      ${crops ? `<div style="font-size:12px;margin-top:6px">${crops}</div>` : ""}
+      ${c.next ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">Next: ${getCropByKey(c.next.crop).emoji || "🌱"} ${esc(c.next.variety || getCropByKey(c.next.crop).label)} · ${fmtShortDate(plantingStart(c.next))}</div>` : ""}
+      ${b.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${esc(b.notes)}</div>` : ""}
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-primary" style="flex:1;font-size:13px" onclick="openBedLayout(${nm})">Lay out bed</button>
+        <button class="btn btn-secondary" style="flex:1;font-size:13px" onclick="setPlanTab('plantings');openPlantingModal(null,null,${nm})">+ Planting</button></div>
+    </div>`;
+  }).join("") || `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px">No ${bedsFilter === "trees" ? "trees or single plants" : "beds"} yet.</div>`);
+}
+function refreshBedsTab() { const v = document.getElementById("view-beds"); if (v && v.classList.contains("active")) renderBedsTab(); }
 
 // ===================== TRACE LOT ON SATELLITE =====================
 // Shows satellite imagery around your address; drag the four corners onto your lot lines and the app measures it.
