@@ -1574,6 +1574,8 @@ function renderDashboard() {
   const alerts = document.getElementById("dash-alerts");
   let ah = "";
   const tStr = todayStr();
+  const mc = missingCount();
+  if (mc) ah += `<div class="alert alert-warn" style="cursor:pointer" onclick="openMissingModal()">🧩 ${mc} item${mc>1?"s":""} missing details (planting dates, tree ages, beds) — <b>tap to fill in</b></div>`;
   alerts.innerHTML = ah;
 
   // Logging nudge + quick-log shortcuts
@@ -4239,6 +4241,75 @@ function renderTimelineTab() {
   <div class="card"><div class="card-title">What the data shows</div>
     ${obs.map(o => `<div style="font-size:13px;line-height:1.55;margin-bottom:8px">• ${o}</div>`).join("")}
     <div style="font-size:11px;color:var(--muted);line-height:1.5">These are patterns in your own records, not proof of cause. The same pattern showing up season after season is what's worth acting on.</div></div>`;
+}
+
+// ===================== FILL IN MISSING DETAILS =====================
+// Finds plants and settings with gaps that weaken the yield, age and planning tools, and lets you fix them in place.
+function isPerennialCrop(key) { const g = cropGuide(key); return !!(g && g.perennial); }
+function plantGaps(p) {
+  const gaps = [];
+  if (isPerennialCrop(p.crop)) {
+    if (!p.transplantDate) gaps.push("date");
+    if (!("plantedAge" in p)) gaps.push("age");
+  } else if (!p.transplantDate && !p.seedDate) gaps.push("date");
+  if (!p.bed || p.bed === "Other") gaps.push("bed");
+  return gaps;
+}
+function settingGaps() {
+  const st = getSettings(), out = [];
+  if (st.lat == null) out.push({ k:"loc", t:"Garden location isn't set — weather, frost dates and planting windows need it.", btn:`<button class="chip" onclick="closeModal('missing-modal');openSetup(true)">Set location</button>` });
+  else if (getFrostDates().rough) out.push({ k:"frost", t:"Frost dates are a rough zone estimate.", btn:`<button class="chip" onclick="recalcFrostDates().then(()=>openMissingModal())">Use local weather</button>` });
+  if (!(lotWidth > 0)) out.push({ k:"lot", t:"Lot size isn't set (optional) — it adds a property outline on the map.", btn:"" });
+  return out;
+}
+function missingCount() { return plantLog.filter(p => plantGaps(p).length).length + settingGaps().filter(g => g.k !== "lot").length; }
+function updatePlantField(id, field, val) {
+  const p = plantLog.find(x => String(x.id) === String(id)); if (!p) return;
+  if (field === "plantedAge") p.plantedAge = val === "" ? null : +val;
+  else if (field === "count") p.count = parseInt(val) || 1;
+  else p[field] = val;
+  savePlants();
+  const row = document.getElementById("mrow-" + id);
+  if (row) { const left = plantGaps(p).length; row.style.borderLeftColor = left ? "#e8a020" : "var(--green)"; }
+}
+function openMissingModal() {
+  loadBedsIfNeeded();
+  let el = document.getElementById("missing-modal");
+  if (!el) {
+    el = document.createElement("div"); el.className = "modal-bg"; el.id = "missing-modal";
+    el.innerHTML = `<div class="modal" style="max-height:88vh;overflow-y:auto"><div class="modal-title">Fill in missing details</div>
+      <div class="modal-sub">Changes save as you go. Planting dates and ages make yield comparisons fair — a young tree isn't graded like a mature one.</div>
+      <div id="missing-body"></div>
+      <div class="btn-row"><button class="btn btn-primary" style="flex:1" onclick="closeModal('missing-modal');renderDashboard()">Done</button></div></div>`;
+    document.body.appendChild(el);
+  }
+  const bedOpts = sel => `<option value="">Choose bed…</option>` + beds.filter(b => b.shape !== "house").map(b => `<option value="${esc(b.name)}"${sel===b.name?" selected":""}>${esc(b.name)}</option>`).join("");
+  const ageSel = v => `<select onchange="updatePlantField(ID,'plantedAge',this.value)" style="font-size:12px;padding:4px">
+      <option value=""${v==null?" selected":""}>Age when planted: not sure</option><option value="0"${v===0?" selected":""}>Seed, cutting or bare-root</option>
+      <option value="1"${v===1?" selected":""}>1 gal or smaller (~1 yr)</option><option value="2"${v===2?" selected":""}>3–5 gal (~2 yr)</option><option value="3"${v===3?" selected":""}>7 gal+ (3+ yr)</option></select>`;
+  const rows = plantLog.filter(p => plantGaps(p).length).sort((a,b) => (isPerennialCrop(b.crop) - isPerennialCrop(a.crop)) || a.crop.localeCompare(b.crop));
+  const sg = settingGaps();
+  let html = "";
+  if (sg.length) html += `<div class="card-title" style="margin-top:6px">Garden</div>` + sg.map(g => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>${g.t}</span>${g.btn}</div>`).join("");
+  if (rows.length) {
+    html += `<div class="card-title" style="margin-top:14px">Plants (${rows.length})</div>`;
+    html += rows.map(p => {
+      const c = getCropByKey(p.crop), per = isPerennialCrop(p.crop), gaps = plantGaps(p), id = "'" + jsq(String(p.id)) + "'";
+      return `<div id="mrow-${esc(String(p.id))}" style="border-left:3px solid #e8a020;padding:8px 0 8px 10px;margin-bottom:8px;background:var(--bg2,#faf8f3);border-radius:4px">
+        <div style="font-size:14px">${c.emoji||"🌱"} ${esc(p.variety || c.label)} <span style="font-size:11px;color:var(--muted)">${esc(c.label)}${per ? " · perennial" : ""}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;font-size:12px">
+          <label style="display:flex;align-items:center;gap:4px">${per ? "Planted in ground" : "Planted / transplanted"} <input type="date" value="${p.transplantDate || ""}" onchange="updatePlantField(${id},'transplantDate',this.value)" style="font-size:12px;padding:3px"></label>
+          ${per ? ageSel(p.plantedAge).replace("ID", id) : ""}
+          <select onchange="updatePlantField(${id},'bed',this.value)" style="font-size:12px;padding:4px">${bedOpts(p.bed)}</select>
+          <label style="display:flex;align-items:center;gap:4px">Plants <input type="number" min="1" value="${p.count||1}" onchange="updatePlantField(${id},'count',this.value)" style="width:54px;font-size:12px;padding:3px"></label>
+        </div>
+        <div style="font-size:11px;color:#b8860b;margin-top:4px">Missing: ${gaps.map(g => g === "date" ? "planting date" : g === "age" ? "age when planted" : "bed").join(", ")}</div>
+      </div>`;
+    }).join("");
+  }
+  if (!rows.length && !sg.length) html = '<div style="padding:24px 0;text-align:center;color:var(--muted)">Nothing missing — every plant has its dates, age and bed. 🌱</div>';
+  document.getElementById("missing-body").innerHTML = html;
+  el.classList.add("open");
 }
 
 // ===================== CARE =====================
