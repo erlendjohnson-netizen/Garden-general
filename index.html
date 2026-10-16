@@ -5046,7 +5046,7 @@ function setupBedRenumber() {
 }
 function setupBedCount(d) {
   const box = document.getElementById("setup-beds");
-  if (d > 0) { box.insertAdjacentHTML("beforeend", setupBedRow({ shape: "rect" })); setupBedRenumber(); const r = box.lastElementChild; r.querySelector(".sb-w").focus({ preventScroll: true }); r.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  if (d > 0) { box.insertAdjacentHTML("beforeend", setupBedRow({ shape: "rect" })); setupBedRenumber(); }
   else if (box.lastElementChild) { box.lastElementChild.remove(); setupBedRenumber(); }
 }
 function setupRemoveBed(btn) { btn.closest(".sb-row").remove(); setupBedRenumber(); }
