@@ -482,8 +482,18 @@
       </div>
       <div class="field"><label>Count / Plants</label><input type="number" id="p-count" placeholder="1"></div>
       <div class="field-row">
-        <div class="field"><label>Seed Start Date</label><input type="date" id="p-seed-date"></div>
-        <div class="field"><label>Transplant Date</label><input type="date" id="p-transplant-date"></div>
+        <div class="field" id="p-seed-wrap"><label>Seed Start Date</label><input type="date" id="p-seed-date"></div>
+        <div class="field"><label id="p-tp-label">Transplant Date</label><input type="date" id="p-transplant-date"></div>
+      </div>
+      <div class="field" id="p-age-wrap" style="display:none"><label>Size / age when planted</label>
+        <select id="p-planted-age">
+          <option value="">Not sure</option>
+          <option value="0">Seed, cutting, runner or bare-root start</option>
+          <option value="1">Small pot (1 gal or less) · about 1 year old</option>
+          <option value="2">3–5 gal pot · about 2 years old</option>
+          <option value="3">7 gal or larger · 3+ years old</option>
+        </select>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Fruit plants take years to reach a full crop — this lets yield comparisons account for age.</div>
       </div>
       <div class="field"><label>Status</label>
         <select id="p-status">
@@ -1794,6 +1804,7 @@ function resetAddForm() {
   document.getElementById("p-count").value="";
   document.getElementById("p-seed-date").value="";
   document.getElementById("p-transplant-date").value="";
+  document.getElementById("p-planted-age").value="";
   document.getElementById("p-status").value="planned";
   document.getElementById("p-notes").value="";
   updateVarieties(); updatePlantVarieties(); updateCareTimer(true);
@@ -1813,6 +1824,14 @@ function updateVarieties() {
 function updatePlantVarieties() {
   const crop = document.getElementById("p-crop").value;
   fillVarietySelect("p-variety", crop);
+  plantFormPerennial();
+}
+// Trees, bushes and other perennials: ask when they went in the ground and how old they were
+function plantFormPerennial() {
+  const g = cropGuide(document.getElementById("p-crop").value), per = !!(g && g.perennial);
+  document.getElementById("p-seed-wrap").style.display = per ? "none" : "";
+  document.getElementById("p-tp-label").textContent = per ? "Planted in ground" : "Transplant Date";
+  document.getElementById("p-age-wrap").style.display = per ? "" : "none";
 }
 
 function bumpCount(d) {
@@ -1979,6 +1998,7 @@ function submitPlant() {
     count: parseInt(document.getElementById("p-count").value)||1,
     seedDate: document.getElementById("p-seed-date").value,
     transplantDate: document.getElementById("p-transplant-date").value,
+    plantedAge: document.getElementById("p-planted-age").value === "" ? null : +document.getElementById("p-planted-age").value,
     status: document.getElementById("p-status").value,
     notes: document.getElementById("p-notes").value.trim(),
     photo: photoData.p
@@ -2032,6 +2052,7 @@ function startEdit(id, type) {
     document.getElementById("p-count").value=e.count||1;
     document.getElementById("p-seed-date").value=e.seedDate||"";
     document.getElementById("p-transplant-date").value=e.transplantDate||"";
+    document.getElementById("p-planted-age").value = e.plantedAge == null ? "" : String(e.plantedAge);
     document.getElementById("p-status").value=e.status||"planned";
     document.getElementById("p-notes").value=e.notes||"";
     showPhoto("p", e.photo);
@@ -3930,12 +3951,12 @@ function yieldBench(crop, variety) {
   if (f) return Object.assign({ u:"plant", fruit:true }, f);
   return YIELD_BENCH[crop] || null;
 }
-// Age in years of the oldest planting of this crop/variety (from the Plant Tracker), or null
+// Age in years of the oldest planting of this crop/variety (time in the ground + age when planted), or null
 function plantAgeYears(crop, variety, year) {
-  const ds = plantLog.filter(p => p.crop === crop && p.variety === variety).map(p => p.transplantDate || p.seedDate).filter(Boolean).sort();
-  if (!ds.length) return null;
   const end = +year < new Date().getFullYear() ? new Date(+year, 11, 31) : new Date();
-  return Math.max(0, (end - parseLocalDate(ds[0])) / 31557600000);
+  const ages = plantLog.filter(p => p.crop === crop && p.variety === variety && (p.transplantDate || p.seedDate))
+    .map(p => Math.max(0, (end - parseLocalDate(p.transplantDate || p.seedDate)) / 31557600000) + (p.plantedAge || 0));
+  return ages.length ? Math.max(...ages) : null;
 }
 function fmtYield(grams) {
   const v = grams * UNIT_FACTORS[displayUnit];
@@ -4019,7 +4040,7 @@ function renderYieldsTab() {
         <div title="typical" style="position:absolute;left:${pos(b.typ)}%;top:-3px;bottom:-3px;width:2px;background:#555"></div>
         <div title="good" style="position:absolute;left:${pos(b.good)}%;top:-3px;bottom:-3px;width:2px;background:#2e7d32"></div></div>`;
     }
-    const bench = b ? `${b.approx ? "≈ " : ""}Typical ${b.approxTyp ? "≈" : ""}${fmtYield(b.typ*LB)} · good ${fmtYield(b.good*LB)} per ${b.fruit ? `plant at full bearing (around year ${b.mature})` : unit}${b.kind==="cherry"?" (cherry tomato)":""}${b.note?" ("+b.note+")":""}${b.fruit && r.age != null ? ` · yours: ${r.age < 1 ? "under 1 year" : r.age.toFixed(1) + " yr"} in the ground` : ""}` : "No standard benchmark for this crop";
+    const bench = b ? `${b.approx ? "≈ " : ""}Typical ${b.approxTyp ? "≈" : ""}${fmtYield(b.typ*LB)} · good ${fmtYield(b.good*LB)} per ${b.fruit ? `plant at full bearing (around year ${b.mature})` : unit}${b.kind==="cherry"?" (cherry tomato)":""}${b.note?" ("+b.note+")":""}${b.fruit && r.age != null ? ` · yours: ${r.age < 1 ? "under 1 year" : r.age.toFixed(1) + " yr"} old` : ""}` : "No standard benchmark for this crop";
     const amount = b && b.u === "sqft" ? `${inp("area", r.area, "sq ft")} sq ft${r.plants ? ` <span style="color:var(--muted)">(${r.plants} plants)</span>` : ""}` : `${inp("plants", r.plants, "?")} plants`;
     const bedNames = Object.keys(r.beds).filter(x => x !== "—");
     const bedLine = bedNames.length > 1 ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">By bed: ${bedNames.map(bn => { const n = seasonPlants(r.crop, r.variety, year, bn); return `${esc(bn)} ${fmtYield(r.beds[bn])}${n && (!b || b.u !== "sqft") ? ` (${fmtYield(r.beds[bn]/n)}/plant)` : ""}`; }).join(" · ")}</div>` : "";
