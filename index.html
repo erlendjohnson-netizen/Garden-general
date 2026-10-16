@@ -4280,12 +4280,23 @@ function settingGaps() {
 function missingCount() { return plantLog.filter(p => plantGaps(p).length).length + settingGaps().filter(g => g.k !== "lot").length; }
 function updatePlantField(id, field, val) {
   const p = plantLog.find(x => String(x.id) === String(id)); if (!p) return;
-  if (field === "plantedAge") p.plantedAge = val === "" ? null : +val;
+  if (field === "plantedAge") { if (val === "") delete p.plantedAge; else p.plantedAge = val === "ns" ? null : +val; }
   else if (field === "count") p.count = parseInt(val) || 1;
   else p[field] = val;
   savePlants();
-  const row = document.getElementById("mrow-" + id);
-  if (row) { const left = plantGaps(p).length; row.style.borderLeftColor = left ? "#e8a020" : "var(--green)"; }
+  refreshMissingRow(p);
+}
+// Update one checklist row, the remaining count and the Dashboard banner right away
+function refreshMissingRow(p) {
+  const row = document.getElementById("mrow-" + p.id), gaps = plantGaps(p);
+  if (row) {
+    row.style.borderLeftColor = isGone(p) ? "#999" : gaps.length ? "#e8a020" : "var(--green)";
+    const m = row.querySelector(".mrow-missing");
+    if (m) { m.style.color = gaps.length ? "#b8860b" : "var(--green)"; m.textContent = isGone(p) ? "Marked " + p.status : gaps.length ? "Missing: " + gaps.map(g => g === "date" ? "planting date" : g === "age" ? "age when planted" : "bed").join(", ") : "✓ Complete"; }
+  }
+  const left = document.getElementById("missing-left"), n = missingCount();
+  if (left) left.textContent = n ? n + " item" + (n > 1 ? "s" : "") + " left" : "All done ✓";
+  renderDashboard();
 }
 function openMissingModal() {
   loadBedsIfNeeded();
@@ -4300,7 +4311,7 @@ function openMissingModal() {
   }
   const bedOpts = sel => `<option value="">Choose bed…</option>` + beds.filter(b => b.shape !== "house").map(b => `<option value="${esc(b.name)}"${sel===b.name?" selected":""}>${esc(b.name)}</option>`).join("");
   const ageSel = v => `<select onchange="updatePlantField(ID,'plantedAge',this.value)" style="font-size:12px;padding:4px">
-      <option value=""${v==null?" selected":""}>Age when planted: not sure</option><option value="0"${v===0?" selected":""}>Seed, cutting or bare-root</option>
+      <option value=""${v===undefined?" selected":""}>Age when planted?</option><option value="ns"${v===null?" selected":""}>Not sure</option><option value="0"${v===0?" selected":""}>Seed, cutting or bare-root</option>
       <option value="1"${v===1?" selected":""}>1 gal or smaller (~1 yr)</option><option value="2"${v===2?" selected":""}>3–5 gal (~2 yr)</option><option value="3"${v===3?" selected":""}>7 gal+ (3+ yr)</option></select>`;
   const rows = plantLog.filter(p => plantGaps(p).length).sort((a,b) => (isPerennialCrop(b.crop) - isPerennialCrop(a.crop)) || a.crop.localeCompare(b.crop));
   const sg = settingGaps();
@@ -4319,12 +4330,13 @@ function openMissingModal() {
           <label style="display:flex;align-items:center;gap:4px">Plants <input type="number" min="1" value="${p.count||1}" onchange="updatePlantField(${id},'count',this.value)" style="width:54px;font-size:12px;padding:3px"></label>
           <button class="chip" style="font-size:10px;padding:1px 8px" onclick="markPlantGone(${id},'died')">Died</button><button class="chip" style="font-size:10px;padding:1px 8px" onclick="markPlantGone(${id},'removed')">Removed</button>
         </div>
-        <div style="font-size:11px;color:#b8860b;margin-top:4px">Missing: ${gaps.map(g => g === "date" ? "planting date" : g === "age" ? "age when planted" : "bed").join(", ")}</div>
+        <div class="mrow-missing" style="font-size:11px;color:#b8860b;margin-top:4px">Missing: ${gaps.map(g => g === "date" ? "planting date" : g === "age" ? "age when planted" : "bed").join(", ")}</div>
       </div>`;
     }).join("");
   }
   if (!rows.length && !sg.length) html += '<div style="padding:24px 0;text-align:center;color:var(--muted)">Nothing missing — every plant has its dates, age and bed. 🌱</div>';
-  document.getElementById("missing-body").innerHTML = html;
+  const n0 = missingCount();
+  document.getElementById("missing-body").innerHTML = `<div id="missing-left" style="font-size:12px;color:var(--muted2);margin-bottom:6px">${n0 ? n0 + " item" + (n0 > 1 ? "s" : "") + " left" : "All done ✓"}</div>` + html;
   el.classList.add("open");
 }
 
@@ -4342,7 +4354,8 @@ function markPlantGone(id, how) {
   const p = plantLog.find(x => String(x.id) === String(id)); if (!p) return;
   if (!confirm(`Mark ${p.variety || getCropByKey(p.crop).label} as ${how}? It stays in your records (harvests, yields) but leaves the bed.`)) return;
   p.status = how; p.endDate = todayStr(); savePlants();
-  const row = document.getElementById("mrow-" + id); if (row) { row.style.opacity = .4; row.style.borderLeftColor = "#999"; }
+  const row = document.getElementById("mrow-" + id); if (row) row.style.opacity = .4;
+  refreshMissingRow(p);
   toast(how === "died" ? "Marked as died" : "Marked as removed");
 }
 function addPlantFromChecklist() { closeModal("missing-modal"); showView("add", document.querySelectorAll(".nav-btn")[2]); setAddType("plant"); }
@@ -5444,6 +5457,7 @@ function renderAll() {
   calMonth = new Date().getMonth()+1;
   // init cal sub-views
   renderDashboard(); renderLog(); renderMap(); setTimeout(function(){if(document.getElementById("view-map").classList.contains("active"))fitCanvasToBeds();},400); renderCalendar(); renderCare(); populateAnalyticsFilters();
+  ensureFrostDates().then(changed => { if (changed) renderDashboard(); });   // replace a rough zone estimate with local frost dates
 }
 
 loadData();
