@@ -3049,8 +3049,17 @@ function mergeLibraryCrops() {
     const i = cropRegistry.findIndex(x => x.key === "other");
     cropRegistry.splice(i < 0 ? cropRegistry.length : i, 0, { ...c, varieties: [...c.varieties] }); changed = true;
   });
+  // Same for the built-in crops: lists saved by older versions could be missing common ones like lettuce
+  let dseen = null; try { dseen = JSON.parse(localStorage.getItem(LS+"crop-def-seen") || "null"); } catch(e) {}
+  dseen = dseen || [];
+  DEFAULT_CROPS.forEach(c => {
+    if (dseen.includes(c.key)) return; dseen.push(c.key);
+    if (cropRegistry.some(x => x.key === c.key)) return;
+    const i = cropRegistry.findIndex(x => x.key === "other");
+    cropRegistry.splice(i < 0 ? cropRegistry.length : i, 0, { ...c, varieties: [...c.varieties] }); changed = true;
+  });
   if (changed) saveCropRegistry();
-  try { localStorage.setItem(LS+"crop-lib-seen", JSON.stringify(seen)); } catch(e) {}
+  try { localStorage.setItem(LS+"crop-lib-seen", JSON.stringify(seen)); localStorage.setItem(LS+"crop-def-seen", JSON.stringify(dseen)); } catch(e) {}
 }
 function guideDtm(key) { return (cropGuide(key)||{}).dtm || DAYS_TO_HARVEST[key] || ""; }
 
@@ -3688,7 +3697,8 @@ function openGoogleCal(kind, id, step) {
 // ── Shared select fillers, with "add new variety" built in ──
 function fillCropSelect(id) {
   const el = document.getElementById(id); if (!el) return;
-  el.innerHTML = cropRegistry.map(c=>`<option value="${esc(c.key)}">${c.emoji} ${esc(c.label)}</option>`).join("");
+  const list = cropRegistry.slice().sort((a,b) => (a.key==="other") - (b.key==="other") || a.label.localeCompare(b.label));   // A–Z, Other last
+  el.innerHTML = list.map(c=>`<option value="${esc(c.key)}">${c.emoji} ${esc(c.label)}</option>`).join("");
 }
 function fillBedSelect(id) {
   loadBedsIfNeeded();
