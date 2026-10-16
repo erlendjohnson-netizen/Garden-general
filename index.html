@@ -888,6 +888,7 @@
       <button class="type-tab" id="atab-trends" onclick="setAnalyticsTab('trends')">Trends</button>
       <button class="type-tab" id="atab-seasons" onclick="setAnalyticsTab('seasons')">Seasons</button>
       <button class="type-tab" id="atab-yields" onclick="setAnalyticsTab('yields')">Yields</button>
+      <button class="type-tab" id="atab-timeline" onclick="setAnalyticsTab('timeline')">Timeline</button>
     </div>
   </div>
 
@@ -3900,9 +3901,41 @@ const YIELD_BENCH = {
   "bok choy":{u:"sqft",typ:0.5,good:1}, onion:{u:"sqft",typ:0.75,good:1.5},
 };
 const LB = 453.592;
+// Fruit plants, per plant/tree/vine at full bearing ("mature" = years from planting to a full crop).
+// Blackberry: UF/IFAS HS104 (~3 lb/plant full crop; 1.5–4 lb reported). Southern highbush blueberry: UGA B1413
+// (~5.8 lb/bush at year 4, range 4.6–6.9). Rabbiteye: LSU AgCenter (10+ lb/bush mature, 30+ possible).
+// Strawberry: NC State (0.5–1 lb/plant). Peach: Penn State (3–5 bushels at 10+ years, 48 lb/bushel).
+// Mango, avocado, limes, kumquat, passionfruit: UF/IFAS tropical fruit yield estimates (South Florida).
+// Dragon fruit: UF/IFAS HS303 (~220 lb from a 3–4-year-old trellised plant). "≈" = estimate where no
+// extension figure exists (fig from Mississippi State budget assumptions; satsuma, Meyer lemon, navel).
+const FRUIT_BENCH = {
+  blackberry:{typ:3,good:4,mature:3}, "blueberry-rabbiteye":{typ:10,good:20,mature:6}, "blueberry-shb":{typ:5,good:7,mature:4},
+  strawberry:{typ:0.75,good:1.5,mature:1}, peach:{typ:144,good:240,mature:10}, mango:{typ:200,good:300,mature:8},
+  avocado:{typ:150,good:275,mature:8}, passionfruit:{typ:50,good:100,mature:2}, "dragon fruit":{typ:100,good:220,mature:4,approxTyp:true},
+  fig:{typ:15,good:30,mature:4,approx:true},
+  "citrus-satsuma":{typ:50,good:100,mature:8,approx:true}, "citrus-meyer":{typ:30,good:60,mature:5,approx:true},
+  "citrus-navel":{typ:40,good:100,mature:8,approx:true}, "citrus-persianlime":{typ:450,good:600,mature:8},
+  "citrus-keylime":{typ:70,good:100,mature:6}, "citrus-kumquat":{typ:40,good:50,mature:6}, citrus:{typ:50,good:100,mature:8,approx:true},
+};
+const RABBITEYE = /alapaha|ochlockonee|climax|premier|brightwell|tifblue|powderblue|rabbiteye|vernon|titan|pink lemonade/i;
 function yieldBench(crop, variety) {
-  if (crop === "tomato" && /cherry|grape|sungold|super sweet|sweet 100|currant|baby|mushroom basket/i.test(variety||"")) return Object.assign({ kind:"cherry" }, YIELD_BENCH["tomato-cherry"]);
+  const v = variety || "", nv = normVar(v);
+  if (crop === "tomato" && /cherry|grape|sungold|super ?sweet|sweet 100|currant/i.test(v)) return Object.assign({ kind:"cherry" }, YIELD_BENCH["tomato-cherry"]);
+  let f = null;
+  if (crop === "blueberry") f = FRUIT_BENCH[RABBITEYE.test(v) ? "blueberry-rabbiteye" : "blueberry-shb"];
+  else if (crop === "citrus") f = FRUIT_BENCH[/satsuma|clementine|mandarin|tangerine/.test(nv) ? "citrus-satsuma" : /meyer/.test(nv) ? "citrus-meyer"
+    : /navel|caracara|hamlin|valencia|orange/.test(nv) ? "citrus-navel" : /persian|tahiti/.test(nv) ? "citrus-persianlime" : /key|mexican/.test(nv) ? "citrus-keylime"
+    : /kumquat|calamondin/.test(nv) ? "citrus-kumquat" : "citrus"];
+  else f = FRUIT_BENCH[crop];
+  if (f) return Object.assign({ u:"plant", fruit:true }, f);
   return YIELD_BENCH[crop] || null;
+}
+// Age in years of the oldest planting of this crop/variety (from the Plant Tracker), or null
+function plantAgeYears(crop, variety, year) {
+  const ds = plantLog.filter(p => p.crop === crop && p.variety === variety).map(p => p.transplantDate || p.seedDate).filter(Boolean).sort();
+  if (!ds.length) return null;
+  const end = +year < new Date().getFullYear() ? new Date(+year, 11, 31) : new Date();
+  return Math.max(0, (end - parseLocalDate(ds[0])) / 31557600000);
 }
 function fmtYield(grams) {
   const v = grams * UNIT_FACTORS[displayUnit];
@@ -3963,11 +3996,12 @@ function renderYieldsTab() {
     const area = b && b.u === "sqft" ? (o.area || (plants && sp ? +(plants * sp*sp / 144).toFixed(1) : 0)) : 0;
     const denom = b && b.u === "sqft" ? area : plants;
     const per = denom ? r.grams / denom : null;  // grams per plant or per sq ft
-    let rating = null;
+    let rating = null; const age = b && b.mature ? plantAgeYears(r.crop, r.variety, year) : null;
     if (b && per != null) { const lb = per / LB; rating = lb >= b.good ? "great" : lb >= b.typ ? "typical" : lb >= b.typ*0.5 ? "below" : "low"; }
-    return Object.assign(r, { key, b, plants, area, per, rating, auto: !o.plants && !o.area });
+    if ((rating === "below" || rating === "low") && age != null && age < b.mature) rating = "young";
+    return Object.assign(r, { key, b, plants, area, per, rating, age, auto: !o.plants && !o.area });
   });
-  const RATE = { great:["Good yield","#2e7d32","#e3f1df"], typical:["On par","#4a7a32","#eef4e6"], below:["Below typical","#b8860b","#fbf3dc"], low:["Well below","#c4622d","#fdeee8"] };
+  const RATE = { great:["Good yield","#2e7d32","#e3f1df"], typical:["On par","#4a7a32","#eef4e6"], below:["Below typical","#b8860b","#fbf3dc"], low:["Well below","#c4622d","#fdeee8"], young:["Still maturing","#4a6a8a","#e8eef5"] };
   const rated = rows.filter(r => r.rating), atLeast = rated.filter(r => r.rating === "great" || r.rating === "typical").length;
   let html = `<div class="card"><div class="card-title">${year} yields vs. typical home-garden yields</div>
     <div style="font-size:12px;color:var(--muted2);line-height:1.6">${+year === new Date().getFullYear() ? `<b>Season still in progress</b> — crops still producing will climb. ` : ""}${rated.length ? `<b>${atLeast} of ${rated.length}</b> compared crops reached typical yield or better. ` : ""}On each bar the dark mark is typical and the green mark is good. Plant counts come from your Plant Tracker — tap a number to correct it. Harvests you didn't log (or estimated from counts) pull these numbers down, so treat gaps with care.</div></div>`;
@@ -3985,7 +4019,7 @@ function renderYieldsTab() {
         <div title="typical" style="position:absolute;left:${pos(b.typ)}%;top:-3px;bottom:-3px;width:2px;background:#555"></div>
         <div title="good" style="position:absolute;left:${pos(b.good)}%;top:-3px;bottom:-3px;width:2px;background:#2e7d32"></div></div>`;
     }
-    const bench = b ? `Typical ${fmtYield(b.typ*LB)} · good ${fmtYield(b.good*LB)} per ${unit}${b.kind==="cherry"?" (cherry tomato)":""}${b.note?" ("+b.note+")":""}` : "No benchmark for this crop yet";
+    const bench = b ? `${b.approx ? "≈ " : ""}Typical ${b.approxTyp ? "≈" : ""}${fmtYield(b.typ*LB)} · good ${fmtYield(b.good*LB)} per ${b.fruit ? `plant at full bearing (around year ${b.mature})` : unit}${b.kind==="cherry"?" (cherry tomato)":""}${b.note?" ("+b.note+")":""}${b.fruit && r.age != null ? ` · yours: ${r.age < 1 ? "under 1 year" : r.age.toFixed(1) + " yr"} in the ground` : ""}` : "No standard benchmark for this crop";
     const amount = b && b.u === "sqft" ? `${inp("area", r.area, "sq ft")} sq ft${r.plants ? ` <span style="color:var(--muted)">(${r.plants} plants)</span>` : ""}` : `${inp("plants", r.plants, "?")} plants`;
     const bedNames = Object.keys(r.beds).filter(x => x !== "—");
     const bedLine = bedNames.length > 1 ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">By bed: ${bedNames.map(bn => { const n = seasonPlants(r.crop, r.variety, year, bn); return `${esc(bn)} ${fmtYield(r.beds[bn])}${n && (!b || b.u !== "sqft") ? ` (${fmtYield(r.beds[bn]/n)}/plant)` : ""}`; }).join(" · ")}</div>` : "";
@@ -4023,7 +4057,7 @@ const FRUIT_SIZE = {
   "cucumber|beitalpha":[80,150,"≈"], "cucumber|merlin":[60,120,"≈"], "strawberry|festival":[15,25,"≈"],
   "raddish|frenchb":[10,20,"≈"], "raddish|frenchbreakfast":[10,20,"≈"], "raddish|watermelon":[100,250,"≈"],
 };
-const FRUIT_SIZE_CROP = { okra:[10,20], eggplant:[150,400], cucumber:[100,250], squash:[150,300], strawberry:[12,25], fig:[25,50], blueberry:[1,3], blackberry:[5,10] };
+const FRUIT_SIZE_CROP = { okra:[10,20], eggplant:[150,400], cucumber:[100,250], squash:[150,300], strawberry:[12,25], fig:[25,50], blueberry:[1,3], blackberry:[6,12] };
 function normVar(v) { return String(v||"").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,""); }
 function fruitSizeRef(crop, variety) {
   const r = FRUIT_SIZE[crop + "|" + normVar(variety)];
@@ -4074,6 +4108,116 @@ function harvestFeedback(e) {
   el.innerHTML = `<div style="font-size:15px;margin-bottom:4px">${c.emoji||"🌱"} <b>${fmtFruit(per)}</b> per fruit <span style="font-size:11px;color:var(--muted)">${esc(e.variety||c.label)} · ${e.count} fruit, ${fmtYield(e.weight)} total</span></div>
     ${lines.map(l => `<div style="color:var(--muted2)">${l}</div>`).join("")}<div style="font-size:10px;color:var(--muted);margin-top:4px">tap to close</div>`;
   clearTimeout(el._t); el._t = setTimeout(() => el.remove(), 12000);
+}
+
+// ===================== SEASON TIMELINE =====================
+// Harvests, fruit size, weather and care for one crop/variety on one chart, plus plain-language observations.
+let timelinePick = "";
+const wxCache = {};
+// Daily min/max °F for a season from the Open-Meteo archive (cached; the archive runs ~5 days behind)
+async function loadSeasonWeather(year) {
+  const st = getSettings(); if (st.lat == null) return null;
+  const key = LS + "wx-" + year + "-" + st.lat.toFixed(2) + "," + st.lon.toFixed(2);
+  if (wxCache[key]) return wxCache[key];
+  const isPast = +year < new Date().getFullYear();
+  try { const c = JSON.parse(localStorage.getItem(key) || "null"); if (c && (isPast || c.fetched === todayStr())) return (wxCache[key] = c); } catch(e) {}
+  const end = isPast ? year + "-12-31" : addDays(todayStr(), -6);
+  try {
+    const r = await fetch("https://archive-api.open-meteo.com/v1/archive?latitude=" + st.lat + "&longitude=" + st.lon + "&start_date=" + year + "-01-01&end_date=" + end +
+      "&daily=temperature_2m_min,temperature_2m_max&temperature_unit=fahrenheit&timezone=auto");
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const out = { fetched: todayStr(), days: {} };
+    d.daily.time.forEach((t, i) => { out.days[t] = [d.daily.temperature_2m_min[i], d.daily.temperature_2m_max[i]]; });
+    try { localStorage.setItem(key, JSON.stringify(out)); } catch(e) {}
+    return (wxCache[key] = out);
+  } catch(e) { return null; }
+}
+const HEAT_SET_CROPS = ["tomato", "pepper", "eggplant", "beans", "long bean", "southern peas"];
+function renderTimelineTab() {
+  const years = harvestYears();
+  const year = analyticsSeason && analyticsSeason !== "all" ? analyticsSeason : years[years.length-1];
+  const hs = harvests.filter(e => yearOf(e) === year);
+  const opts = {};
+  hs.forEach(e => { opts[e.crop] = opts[e.crop] || { label: getCropByKey(e.crop).label, emoji: getCropByKey(e.crop).emoji, g:0, vars:{} }; const g = estGrams(e)||0; opts[e.crop].g += g; opts[e.crop].vars[e.variety] = (opts[e.crop].vars[e.variety]||0) + g; });
+  const crops = Object.entries(opts).sort((a,b) => b[1].g - a[1].g);
+  if (!crops.length) return '<div style="padding:30px;text-align:center;color:var(--muted)">No harvests logged for this season yet</div>';
+  if (!timelinePick || !hs.some(e => timelinePick === e.crop + "||" || timelinePick === e.crop + "||" + e.variety)) timelinePick = crops[0][0] + "||";
+  const [pc, pv] = timelinePick.split("||");
+  const sel = `<select onchange="timelinePick=this.value;renderAnalytics()" class="season-select" style="max-width:100%">${crops.map(([k,o]) =>
+    `<option value="${esc(k)}||"${timelinePick===k+"||"?" selected":""}>${o.emoji||"🌱"} ${esc(o.label)} — all</option>` +
+    Object.entries(o.vars).sort((a,b)=>b[1]-a[1]).map(([v]) => `<option value="${esc(k+"||"+v)}"${timelinePick===k+"||"+v?" selected":""}>&nbsp;&nbsp;${esc(v)}</option>`).join("")).join("")}</select>`;
+  const list = hs.filter(e => e.crop === pc && (!pv || e.variety === pv)).sort((a,b) => a.date.localeCompare(b.date));
+  const c = getCropByKey(pc), label = pv || c.label;
+  // Care that mentions this crop/variety or a bed it was harvested from
+  const words = [c.label, pv, ...new Set(list.map(e => e.bed).filter(b => b && b !== "Other"))].filter(Boolean).map(w => w.toLowerCase());
+  const care = careLog.filter(e => !e.scheduled && e.date && e.date.slice(0,4) === year && words.some(w => ((e.plants||"") + " " + (e.notes||"")).toLowerCase().includes(w)));
+  // Weekly buckets
+  const wk = d => weekOfYear(d);
+  const first = Math.max(1, Math.min(wk(list[0].date), ...care.map(e => wk(e.date))) - 2), last = Math.min(53, wk(list[list.length-1].date) + 2);
+  const W = {}; for (let w = first; w <= last; w++) W[w] = { g:0, n:0, wg:0, care:[] };
+  list.forEach(e => { const b = W[wk(e.date)]; if (!b) return; b.g += estGrams(e)||0; if (isWeighed(e) && e.count) { b.n += e.count; b.wg += e.weight; } });
+  care.forEach(e => { const b = W[wk(e.date)]; if (b) b.care.push(e); });
+  const wx = wxCache[LS + "wx-" + year + "-" + (getSettings().lat||0).toFixed(2) + "," + (getSettings().lon||0).toFixed(2)];
+  if (!wx && getSettings().lat != null) loadSeasonWeather(year).then(r => { if (r && analyticsTab === "timeline") renderAnalytics(); });
+  const hotNights = {}, hotDays = {};
+  if (wx) Object.entries(wx.days).forEach(([d, [mn, mx]]) => { if (d.slice(0,4) !== year) return; const w = wk(d); if (mn != null && mn >= 75) hotNights[w] = (hotNights[w]||0) + 1; if (mx != null && mx >= 95) hotDays[w] = (hotDays[w]||0) + 1; });
+  // Chart
+  const weeks = Object.keys(W).map(Number), Wd = 340, H = 170, padL = 6, padR = 6, top = 14, bot = 30;
+  const bw = (Wd - padL - padR) / weeks.length, maxG = Math.max(...weeks.map(w => W[w].g), 1);
+  const sizes = weeks.map(w => W[w].n ? W[w].wg / W[w].n : null), maxS = Math.max(...sizes.filter(Boolean), 1);
+  const x = i => padL + i * bw, yG = g => top + (H - top - bot) * (1 - g / maxG), yS = s => top + (H - top - bot) * (1 - s / maxS / 1.15);
+  let svg = `<svg viewBox="0 0 ${Wd} ${H}" style="width:100%;height:auto;display:block">`;
+  weeks.forEach((w, i) => { if (hotNights[w]) svg += `<rect x="${x(i)}" y="${top}" width="${bw}" height="${H-top-bot}" fill="#e85d75" opacity="${0.08 + 0.05*hotNights[w]}"><title>${hotNights[w]} night(s) ≥75°F</title></rect>`; });
+  weeks.forEach((w, i) => { if (W[w].g) svg += `<rect x="${x(i)+bw*0.15}" y="${yG(W[w].g)}" width="${bw*0.7}" height="${H-bot-yG(W[w].g)}" fill="${c.color||"#4a7a32"}" opacity=".75" rx="1.5"><title>Week ${w}: ${fmtYield(W[w].g)}</title></rect>`; });
+  const pts = sizes.map((s, i) => s ? `${x(i)+bw/2},${yS(s)}` : null).filter(Boolean);
+  if (pts.length > 1) svg += `<polyline points="${pts.join(" ")}" fill="none" stroke="#333" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+  sizes.forEach((s, i) => { if (s) svg += `<circle cx="${x(i)+bw/2}" cy="${yS(s)}" r="2.5" fill="#333"><title>${fmtFruit(s)} per fruit</title></circle>`; });
+  weeks.forEach((w, i) => { if (hotDays[w]) svg += `<text x="${x(i)+bw/2}" y="${top-3}" font-size="8" text-anchor="middle" fill="#c4622d">☀</text>`; });
+  weeks.forEach((w, i) => { W[w].care.forEach((e, k) => { const col = e.type.startsWith("spray") ? "#4a9aba" : e.type.startsWith("fert") ? "#4a7a32" : "#8a7a4a";
+    svg += `<path d="M${x(i)+bw/2} ${H-bot+4+k*6} l3 5 h-6z" fill="${col}"><title>${esc(fmtShortDate(e.date) + " · " + (e.product || CARE_LABELS[e.type] || e.type))}</title></path>`; }); });
+  const mStart = new Date(+year, 0, 1);
+  weeks.forEach((w, i) => { const d = new Date(mStart); d.setDate(1 + (w-1)*7); if (d.getDate() <= 7) svg += `<text x="${x(i)}" y="${H-4}" font-size="8" fill="#888">${MONTH_SHORT[d.getMonth()]}</text>`; });
+  svg += `</svg>`;
+  // Observations
+  const obs = [];
+  const ft = fruitTrend(list);
+  if (ft) { const a = ft[0].s.avg, z = ft[2].s.avg, ch = Math.round((z - a) / a * 100);
+    if (Math.abs(ch) >= 15) obs.push(`Fruit ${ch < 0 ? "got smaller" : "got bigger"} over the season: ${fmtFruit(a)} early → ${fmtFruit(z)} late (${ch > 0 ? "+" : ""}${ch}%).`); }
+  const ref = fruitSizeRef(pc, pv); const fsAll = fruitStats(list);
+  if (ref && fsAll && pv) { if (fsAll.avg < ref.lo * 0.8) obs.push(`Average fruit (${fmtFruit(fsAll.avg)}) is well under the typical ${fmtFruitRange(ref)} for ${esc(pv)}.`); else if (fsAll.avg >= ref.lo) obs.push(`Average fruit (${fmtFruit(fsAll.avg)}) is within or above the typical ${fmtFruitRange(ref)}.`); }
+  // Gaps in logging (3+ weeks with nothing between active weeks)
+  const active = weeks.filter(w => W[w].g > 0);
+  for (let i = 1; i < active.length; i++) if (active[i] - active[i-1] >= 4) { const d1 = new Date(mStart), d2 = new Date(mStart); d1.setDate(1 + active[i-1]*7); d2.setDate(1 + (active[i]-2)*7);
+    obs.push(`No harvests logged ${fmtShortDate(localDateStr(d1))}–${fmtShortDate(localDateStr(d2))}. If that was a logging break rather than a real gap, totals for this stretch are missing.`); }
+  // Hot nights followed by a drop in fruit count 3–5 weeks later (fruit-set crops only)
+  if (wx && HEAT_SET_CROPS.includes(pc)) {
+    const hotWeeks = weeks.filter(w => (hotNights[w]||0) >= 4);
+    if (hotWeeks.length) {
+      const h0 = hotWeeks[0], cnt = w => W[w] ? W[w].n || 0 : 0;
+      const before = [h0-2, h0-1, h0].reduce((s,w) => s + cnt(w), 0), after = [h0+3, h0+4, h0+5].reduce((s,w) => s + cnt(w), 0);
+      const d = new Date(mStart); d.setDate(1 + (h0-1)*7);
+      const loggedAfter = [h0+3, h0+4, h0+5].some(w => W[w] && W[w].g > 0);
+      if (before >= 10 && loggedAfter && after < before * 0.6) obs.push(`Nights stayed at or above 75°F from about ${fmtShortDate(localDateStr(d))}, and fruit counts 3–5 weeks later fell ${Math.round((1 - after/before)*100)}%. That pattern fits heat-blocked fruit set — flowers that open during hot nights often don't set fruit — though other causes are possible.`);
+      else obs.push(`${hotWeeks.length} week(s) had 4+ nights at or above 75°F (shaded). ${c.label} sets fruit poorly in those conditions, so watch for a dip in fruit count a few weeks after.`);
+    }
+  }
+  // Care cadence: per product, count and the last application, and long gaps during harvest
+  const byProd = {}; care.forEach(e => { const k = e.product || CARE_LABELS[e.type] || e.type; (byProd[k] = byProd[k] || []).push(e.date); });
+  const careTxt = Object.entries(byProd).sort((a,b) => b[1].length - a[1].length).map(([k, ds]) => { ds.sort(); return `${esc(k)} ×${ds.length} (${fmtShortDate(ds[0])}${ds.length > 1 ? "–" + fmtShortDate(ds[ds.length-1]) : ""})`; });
+  if (careTxt.length) obs.push(`Care logged for these plants: ${careTxt.slice(0,6).join(" · ")}.`);
+  else obs.push(`No care logged that mentions ${esc(label)} or its beds. Naming the crop or bed in the care entry's "plants" field links it here.`);
+  return `<div class="card"><div class="card-title">${year} season timeline</div>${sel}
+    <div style="margin-top:10px">${svg}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:var(--muted);margin-top:4px">
+      <span><i style="display:inline-block;width:9px;height:9px;background:${c.color||"#4a7a32"};opacity:.75"></i> harvest/week</span>
+      <span>●┄ avg fruit size</span><span><i style="display:inline-block;width:9px;height:9px;background:#e85d75;opacity:.3"></i> nights ≥75°F</span>
+      <span style="color:#c4622d">☀ days ≥95°F</span><span><span style="color:#4a9aba">▲</span> spray <span style="color:#4a7a32">▲</span> feed <span style="color:#8a7a4a">▲</span> other care</span></div>
+    ${getSettings().lat == null ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">Set your garden location to add weather.</div>' : !wx ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">Loading weather…</div>' : ""}
+  </div>
+  <div class="card"><div class="card-title">What the data shows</div>
+    ${obs.map(o => `<div style="font-size:13px;line-height:1.55;margin-bottom:8px">• ${o}</div>`).join("")}
+    <div style="font-size:11px;color:var(--muted);line-height:1.5">These are patterns in your own records, not proof of cause. The same pattern showing up season after season is what's worth acting on.</div></div>`;
 }
 
 // ===================== CARE =====================
@@ -4606,7 +4750,7 @@ let analyticsTab = "summary";
 
 function setAnalyticsTab(t) {
   analyticsTab = t;
-  ["summary","entries","trends","seasons","yields"].forEach(tab => {
+  ["summary","entries","trends","seasons","yields","timeline"].forEach(tab => {
     document.getElementById("atab-"+tab).classList.toggle("active", tab===t);
   });
   renderAnalytics();
@@ -4846,6 +4990,8 @@ function renderAnalytics() {
     html += renderSeasonsTab(filtered);
   } else if (analyticsTab === "yields") {
     html = renderYieldsTab();
+  } else if (analyticsTab === "timeline") {
+    html = renderTimelineTab();
   } else if (analyticsTab === "trends") {
     // ── WEEKLY TOTALS CHART ──
     const weekMap = {};
