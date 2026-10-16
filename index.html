@@ -1091,13 +1091,14 @@
       <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Your beds</h2>
       <p style="font-size:13px;color:#7a6e58;text-align:center;margin-bottom:14px">Raised beds, in-ground plots and big containers. Sizes let the app tell you how many plants fit. You can skip this and add them on the Map later.</p>
       <div id="setup-existing-beds" style="font-size:12px;color:#7a6e58;margin-bottom:8px"></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        <button class="chip" onclick="setupAddBed('Raised bed',4,8,'rect')">+ 4×8 raised bed</button>
-        <button class="chip" onclick="setupAddBed('Raised bed',3,6,'rect')">+ 3×6 raised bed</button>
-        <button class="chip" onclick="setupAddBed('In-ground plot',10,10,'rect')">+ In-ground plot</button>
-        <button class="chip" onclick="setupAddBed('Container',2,2,'container')">+ Container</button>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:4px 0 14px">
+        <span style="font-size:15px;color:#2a4a1a">How many beds?</span>
+        <button class="chip" style="font-size:18px;padding:2px 14px" onclick="setupBedCount(-1)">−</button>
+        <span id="setup-bed-count" style="font-size:22px;min-width:26px;text-align:center;color:#2a4a1a">0</span>
+        <button class="chip" style="font-size:18px;padding:2px 14px" onclick="setupBedCount(1)">+</button>
       </div>
       <div id="setup-beds"></div>
+      <button class="btn btn-secondary btn-full" style="font-size:13px" onclick="setupBedCount(1)">+ Add another bed</button>
       <div style="display:flex;gap:10px;margin-top:14px">
         <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
         <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
@@ -4684,7 +4685,7 @@ function traceFtPerPx() { return 156543.03392 * Math.cos(lotTrace.lat * Math.PI 
 function openLotTrace(fromSetup) {
   const st = getSettings();
   const lat = fromSetup && setupData.lat != null ? setupData.lat : st.lat, lon = fromSetup && setupData.lat != null ? setupData.lon : st.lon;
-  lotTrace = { fromSetup: !!fromSetup, z: 19, lat: lat != null ? lat : 39.5, lon: lon != null ? lon : -98.35, pts: [], noLoc: lat == null };
+  lotTrace = { fromSetup: !!fromSetup, z: 19, lat: lat != null ? lat : 39.5, lon: lon != null ? lon : -98.35, pts: [], sel: null, noLoc: lat == null };
   if (lotTrace.noLoc) lotTrace.z = 4;
   let el = document.getElementById("lot-trace");
   if (!el) { el = document.createElement("div"); el.id = "lot-trace"; el.style.cssText = "position:fixed;inset:0;z-index:600;background:#faf8f3;display:flex;flex-direction:column"; document.body.appendChild(el); }
@@ -4692,7 +4693,7 @@ function openLotTrace(fromSetup) {
   const addr = (fromSetup ? setupData.address : st.address) || "";
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#fff;border-bottom:1px solid var(--border)">
-      <div><div style="font-size:17px;color:var(--green)">Trace your lot</div><div style="font-size:11px;color:var(--muted)">Drag the 4 white corners onto your property lines</div></div>
+      <div><div style="font-size:17px;color:var(--green)">Trace your lot</div><div style="font-size:11px;color:var(--muted)">Tap a corner to select it, then drag to move it onto your property line</div></div>
       <button onclick="closeLotTrace()" style="background:none;border:none;font-size:26px;cursor:pointer;color:#7a6e58">×</button></div>
     <div style="display:flex;gap:6px;padding:8px 14px;background:#fff;border-bottom:1px solid var(--border)">
       <input id="lt-addr" value="${esc(addr)}" placeholder="Street address, city, state" style="flex:1;font-size:14px;padding:7px">
@@ -4702,7 +4703,7 @@ function openLotTrace(fromSetup) {
       <div id="lt-info" style="font-size:13px;margin-bottom:8px"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="chip" onclick="lotTraceZoom(1)">＋ Zoom</button><button class="chip" onclick="lotTraceZoom(-1)">－ Zoom</button>
-        <button class="chip" onclick="lotTrace.pts=[];renderLotTrace(true)">Reset corners</button>
+        <button class="chip" onclick="lotTrace.pts=[];lotTrace.sel=null;renderLotTrace(true)">Reset corners</button>
         <button class="btn btn-primary" style="flex:1;min-width:150px" onclick="lotTraceUse()">Use these dimensions</button></div>
       <div style="font-size:10px;color:var(--muted);margin-top:6px">Imagery © Esri, Maxar, Earthstar Geographics. Satellite photos can be offset by a few feet — treat the result as close, not survey-exact.</div>
     </div>`;
@@ -4715,7 +4716,7 @@ async function lotTraceFind() {
   document.getElementById("lt-info").textContent = "Looking up address…";
   const g = await geocodePlace(q);
   if (!g) { document.getElementById("lt-info").textContent = "Couldn't find that address — try adding the city and state."; return; }
-  Object.assign(lotTrace, { lat: g.lat, lon: g.lon, z: 19, pts: [], noLoc: false });
+  Object.assign(lotTrace, { lat: g.lat, lon: g.lon, z: 19, pts: [], sel: null, noLoc: false });
   renderLotTrace(true);
 }
 function lotTraceZoom(d) {
@@ -4751,11 +4752,16 @@ function drawLotTrace() {
   let h = `<polygon points="${P.map(p => p.join(",")).join(" ")}" fill="rgba(255,235,120,.18)" stroke="#ffe066" stroke-width="2.5"/>`;
   P.forEach((a, i) => { const b = P[(i + 1) % 4], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
     h += `<text x="${mx}" y="${my}" fill="#fff" stroke="#000" stroke-width="3" paint-order="stroke" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${Math.round(S[i])} ft${i === 0 ? " (front)" : ""}</text>`; });
-  P.forEach((p, i) => { h += `<circle data-k="${i}" cx="${p[0]}" cy="${p[1]}" r="13" fill="#fff" fill-opacity=".9" stroke="#2f7a2a" stroke-width="3" style="cursor:move;pointer-events:auto;touch-action:none"/>`; });
+  P.forEach((p, i) => { const on = lotTrace.sel === i;
+    h += `<circle data-k="${i}" cx="${p[0]}" cy="${p[1]}" r="${on ? 17 : 13}" fill="${on ? "#ff9f1c" : "#fff"}" fill-opacity=".95" stroke="${on ? "#fff" : "#2f7a2a"}" stroke-width="3" style="cursor:pointer;pointer-events:auto"/>`;
+    if (on) h += `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="#fff" pointer-events="none"/>`; });
   svg.innerHTML = h;
+  // While a corner is selected the map stops scrolling, so a drag only moves that corner
+  const map = document.getElementById("lt-map");
+  if (map) { map.style.touchAction = lotTrace.sel != null ? "none" : "pan-x pan-y"; map.style.overflow = lotTrace.sel != null ? "hidden" : "auto"; }
   const w = (S[0] + S[2]) / 2, d = (S[1] + S[3]) / 2, area = lotTraceArea();
   const info = document.getElementById("lt-info");
-  if (info) info.innerHTML = `Lot about <b>${Math.round(w)} × ${Math.round(d)} ft</b> (width × depth) · ${Math.round(area).toLocaleString()} sq ft${area > 43560 * 0.1 ? ` · ${(area / 43560).toFixed(2)} acres` : ""}. Put the first edge (labeled front) along the street.`;
+  if (info) info.innerHTML = (lotTrace.sel != null ? `<div style="color:#c46a00;margin-bottom:4px"><b>Corner ${lotTrace.sel + 1} selected</b> — drag anywhere to move it · tap the map to let go</div>` : `<div style="color:var(--muted);margin-bottom:4px">Tap a corner to select it.</div>`) + `Lot about <b>${Math.round(w)} × ${Math.round(d)} ft</b> (width × depth) · ${Math.round(area).toLocaleString()} sq ft${area > 43560 * 0.1 ? ` · ${(area / 43560).toFixed(2)} acres` : ""}. Put the first edge (labeled front) along the street.`;
 }
 function lotTraceArea() {   // shoelace formula in feet
   const fpp = traceFtPerPx(), P = lotTrace.pts.map(lotTracePx).map(([x, y]) => [x * fpp, y * fpp]);
@@ -4763,16 +4769,26 @@ function lotTraceArea() {   // shoelace formula in feet
 }
 function bindLotTraceDrag() {
   const map = document.getElementById("lt-map"); if (!map || map._bound) return; map._bound = true;
-  let k = -1;
+  // Tap a corner to select it (map scrolling pauses), then drag anywhere: the corner follows your finger's movement,
+  // so the finger never hides it. A tap without dragging lets go of the corner.
+  let drag = null;
   const move = e => {
-    if (k < 0) return;
-    const r = document.getElementById("lt-svg").getBoundingClientRect(), x = e.clientX - r.left + lotTrace.ox, y = e.clientY - r.top + lotTrace.oy;
-    lotTrace.pts[k] = traceUnproject(x, y, lotTrace.z); drawLotTrace(); e.preventDefault();
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 4) drag.moved = true;
+    if (drag.moved) { lotTrace.pts[lotTrace.sel] = traceUnproject(drag.p[0] + dx + lotTrace.ox, drag.p[1] + dy + lotTrace.oy, lotTrace.z); drawLotTrace(); }
+    e.preventDefault();
   };
-  const up = () => { k = -1; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
+  const up = () => {
+    if (drag && !drag.moved) { lotTrace.sel = null; drawLotTrace(); }
+    drag = null; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
+  };
   map.addEventListener("pointerdown", e => {
-    if (!e.target.dataset || e.target.dataset.k == null) return;
-    k = +e.target.dataset.k; e.preventDefault();
+    const k = e.target.dataset && e.target.dataset.k != null ? +e.target.dataset.k : null;
+    if (k != null && k !== lotTrace.sel) { lotTrace.sel = k; drawLotTrace(); e.preventDefault(); return; }
+    if (lotTrace.sel == null) return;   // nothing selected: let the map scroll normally
+    drag = { x: e.clientX, y: e.clientY, p: lotTracePx(lotTrace.pts[lotTrace.sel]), moved: false };
+    e.preventDefault();
     window.addEventListener("pointermove", move, { passive: false }); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
   });
 }
@@ -4911,6 +4927,7 @@ function showSetupStep(n) {
 }
 
 async function nextSetupStep() {
+  if (setupStep === 6 && !setupBedsValid()) return;
   // Collect data from current step
   if(setupStep===1) setupData.name = document.getElementById("setup-name").value.trim();
   if(setupStep===2) setupData.gardenName = document.getElementById("setup-garden-name").value.trim();
@@ -4999,24 +5016,54 @@ async function detectSetupLocation() {
 const SETUP_BED_COLORS = ["#5a7a32", "#8a6a3a", "#3a6a5a", "#7a5a2a", "#4a7a32", "#6a5a3a"];
 function setupRowsRead() {
   setupData.newBeds = [...document.querySelectorAll("#setup-beds .sb-row")].map(r => ({
-    name: r.querySelector(".sb-name").value.trim(), w: parseFloat(r.querySelector(".sb-w").value) || 0,
+    name: r.querySelector(".sb-name").value.trim() || r.querySelector(".sb-title").textContent, w: parseFloat(r.querySelector(".sb-w").value) || 0,
     l: parseFloat(r.querySelector(".sb-l").value) || 0, shape: r.querySelector(".sb-shape").value })).filter(b => b.name && b.w && b.l);
   setupData.newPerennials = [...document.querySelectorAll("#setup-perennials .sp-row")].map(r => ({
     crop: r.querySelector(".sp-crop").value, variety: r.querySelector(".sp-var").value.trim(), count: parseInt(r.querySelector(".sp-count").value) || 1,
     date: r.querySelector(".sp-date").value, age: r.querySelector(".sp-age").value, bed: r.querySelector(".sp-bed").value })).filter(t => t.crop);
 }
+// One card per bed: name, width × length, shape, with quick-size buttons
 function setupBedRow(b) {
-  return `<div class="sb-row" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-    <input class="sb-name" value="${esc(b.name)}" placeholder="Bed name" style="flex:1 1 140px;font-size:14px;padding:6px">
-    <input class="sb-w" type="number" inputmode="decimal" value="${b.w || ""}" placeholder="W" style="width:54px;font-size:14px;padding:6px"> ×
-    <input class="sb-l" type="number" inputmode="decimal" value="${b.l || ""}" placeholder="L" style="width:54px;font-size:14px;padding:6px"> ft
-    <select class="sb-shape" style="font-size:13px;padding:5px"><option value="rect"${b.shape==="rect"?" selected":""}>Rectangle</option><option value="oval"${b.shape==="oval"?" selected":""}>Round/oval</option><option value="container"${b.shape==="container"?" selected":""}>Container</option></select>
-    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--red);font-size:18px;cursor:pointer">×</button></div>`;
+  const pre = (w, l, s, t) => `<button class="chip" style="font-size:11px;padding:2px 8px" onclick="setupBedPreset(this,${w},${l},'${s}')">${t}</button>`;
+  return `<div class="sb-row" style="border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#fff">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <b class="sb-title" style="font-size:14px;color:#2a4a1a;font-weight:normal"></b>
+      <button onclick="setupRemoveBed(this)" style="background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;line-height:1" title="Remove">×</button></div>
+    <input class="sb-name" value="${esc(b.name || "")}" placeholder="Name (optional), e.g. Back raised bed" style="width:100%;font-size:14px;padding:7px;margin-bottom:8px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:13px">
+      <label style="flex:1;display:flex;align-items:center;gap:4px">Width <input class="sb-w" type="number" inputmode="decimal" min="0" step="0.5" value="${b.w || ""}" style="width:100%;font-size:15px;padding:6px"> ft</label>
+      <label style="flex:1;display:flex;align-items:center;gap:4px">Length <input class="sb-l" type="number" inputmode="decimal" min="0" step="0.5" value="${b.l || ""}" style="width:100%;font-size:15px;padding:6px"> ft</label></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <select class="sb-shape" style="font-size:13px;padding:5px"><option value="rect"${b.shape==="rect"?" selected":""}>Rectangle</option><option value="oval"${b.shape==="oval"?" selected":""}>Round/oval</option><option value="container"${b.shape==="container"?" selected":""}>Container</option><option value="row"${b.shape==="row"?" selected":""}>In-ground row</option></select>
+      ${pre(4,8,"rect","4×8")}${pre(3,6,"rect","3×6")}${pre(4,4,"rect","4×4")}${pre(2,2,"container","pot")}</div>
+    <div class="sb-warn" style="font-size:12px;color:var(--red);margin-top:4px"></div></div>`;
 }
-function setupAddBed(name, w, l, shape) {
-  setupRowsRead();
-  const n = (setupData.newBeds || []).filter(b => b.name.startsWith(name)).length + beds.filter(b => b.name.startsWith(name)).length;
-  document.getElementById("setup-beds").insertAdjacentHTML("beforeend", setupBedRow({ name: n ? name + " " + (n + 1) : name, w, l, shape }));
+function setupBedBase() { return beds.filter(b => /^Bed \d+$/.test(b.name)).length; }
+function setupBedRenumber() {
+  const rows = [...document.querySelectorAll("#setup-beds .sb-row")], base = setupBedBase();
+  rows.forEach((r, i) => { r.querySelector(".sb-title").textContent = "Bed " + (base + i + 1); });
+  const c = document.getElementById("setup-bed-count"); if (c) c.textContent = rows.length;
+}
+function setupBedCount(d) {
+  const box = document.getElementById("setup-beds");
+  if (d > 0) { box.insertAdjacentHTML("beforeend", setupBedRow({ shape: "rect" })); setupBedRenumber(); const r = box.lastElementChild; r.querySelector(".sb-w").focus({ preventScroll: true }); r.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  else if (box.lastElementChild) { box.lastElementChild.remove(); setupBedRenumber(); }
+}
+function setupRemoveBed(btn) { btn.closest(".sb-row").remove(); setupBedRenumber(); }
+function setupBedPreset(btn, w, l, shape) {
+  const r = btn.closest(".sb-row"); r.querySelector(".sb-w").value = w; r.querySelector(".sb-l").value = l; r.querySelector(".sb-shape").value = shape; r.querySelector(".sb-warn").textContent = "";
+}
+function setupAddBed(name, w, l, shape) { setupBedCount(1); const r = document.getElementById("setup-beds").lastElementChild; r.querySelector(".sb-name").value = name || ""; setupBedPreset(r.querySelector(".chip"), w, l, shape); }
+// Block Continue when a bed has only one dimension, so nothing is silently dropped
+function setupBedsValid() {
+  let ok = true;
+  document.querySelectorAll("#setup-beds .sb-row").forEach(r => {
+    const w = parseFloat(r.querySelector(".sb-w").value) || 0, l = parseFloat(r.querySelector(".sb-l").value) || 0, named = r.querySelector(".sb-name").value.trim();
+    const warn = (w && !l) || (!w && l) || (named && !w && !l) ? "Add both width and length (or remove this bed)." : "";
+    r.querySelector(".sb-warn").textContent = warn; if (warn) ok = false;
+  });
+  if (!ok) toast("A bed is missing its size");
+  return ok;
 }
 function setupBedNames() { setupRowsRead(); return [...beds.filter(b => b.shape !== "house").map(b => b.name), ...(setupData.newBeds || []).map(b => b.name)]; }
 function setupPerennialRow(t) {
@@ -5040,8 +5087,9 @@ function setupStepShown(n) {
   if (n === 6) {
     loadBedsIfNeeded();
     const real = beds.filter(b => b.shape !== "house");
-    document.getElementById("setup-existing-beds").textContent = real.length ? `Already on your map: ${real.map(b => b.name).join(", ")}. Add more below.` : "";
-    if (!document.querySelector("#setup-beds .sb-row") && !real.length) setupAddBed("Raised bed", 4, 8, "rect");
+    document.getElementById("setup-existing-beds").textContent = real.length ? `Already on your map: ${real.map(b => b.name).join(", ")}. Add any others below.` : "";
+    if (!document.querySelector("#setup-beds .sb-row") && !real.length) setupBedCount(1);
+    setupBedRenumber();
   }
   if (n === 7 && !document.querySelector("#setup-perennials .sp-row")) document.getElementById("setup-perennials").innerHTML = "";
 }
