@@ -1468,8 +1468,8 @@ function loadHarvestPhotos() {
     });
   } catch(e) {}
 }
-function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){} }
-function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){} }
+function saveCare() { try { localStorage.setItem("gl-demo-care", JSON.stringify(careLog)); } catch(e){ toast("⚠️ Couldn't save — this app's storage on your phone is full"); } }
+function savePlants() { try { localStorage.setItem("gl-demo-plants", JSON.stringify(plantLog)); } catch(e){ toast("⚠️ Couldn't save — this app's storage on your phone is full"); } }
 
 function seedHarvests() {
   harvests = [];
@@ -5460,6 +5460,13 @@ function renderAll() {
   ensureFrostDates().then(changed => { if (changed) renderDashboard(); });   // replace a rough zone estimate with local frost dates
 }
 
+// If the app is open in two places (e.g. the installed app and a browser tab), pick up changes saved by the other one
+// so this copy never saves an out-of-date list over them.
+window.addEventListener("storage", e => {
+  if (!e.key || !e.key.startsWith("gl-")) return;
+  clearTimeout(window._syncTimer);
+  window._syncTimer = setTimeout(() => { bedsLoaded = false; loadData(); if (document.getElementById("missing-modal")?.classList.contains("open")) openMissingModal(); }, 250);
+});
 loadData();
 showSetupIfNeeded();
 
