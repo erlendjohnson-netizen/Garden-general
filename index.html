@@ -3980,6 +3980,10 @@ function fmtYield(grams) {
   if (displayUnit === "kg") return v.toFixed(2) + " kg";
   return Math.round(v) + " g";
 }
+// Estimates for counted-only harvests come from your own average weight per fruit for that variety (or crop)
+function yieldIncludeEst() { try { return localStorage.getItem(LS+"yield-est") !== "0"; } catch(e) { return true; } }
+function setYieldIncludeEst(on) { try { localStorage.setItem(LS+"yield-est", on ? "1" : "0"); } catch(e) {} renderAnalytics(); }
+const ESTFILL = col => `background:repeating-linear-gradient(135deg, ${col}cc 0 3px, ${col}44 3px 6px)`;
 function getYieldOverrides() { try { return JSON.parse(localStorage.getItem(LS+"yield-overrides") || "{}"); } catch(e) { return {}; } }
 function setYieldOverride(key, field, val) {
   const o = getYieldOverrides(); o[key] = o[key] || {};
@@ -4021,7 +4025,7 @@ function renderYieldsTab() {
   list.forEach(e => {
     const k = e.crop + "||" + e.variety;
     const gr = groups[k] = groups[k] || { crop:e.crop, variety:e.variety, grams:0, est:0, beds:{}, list:[] };
-    gr.list.push(e); const gm = estGrams(e) || 0; gr.grams += gm; if (!isWeighed(e)) gr.est += gm;
+    gr.list.push(e); const gm = estGrams(e) || 0; gr.grams += gm; if (!isWeighed(e)) { gr.est += gm; if (estGrams(e) == null) gr.noBasis = (gr.noBasis || 0) + 1; }
     gr.beds[e.bed||"—"] = (gr.beds[e.bed||"—"]||0) + gm;
   });
   const ov = getYieldOverrides();
@@ -4032,7 +4036,8 @@ function renderYieldsTab() {
     const sp = (cropGuide(r.crop)||{}).sp;
     const area = b && b.u === "sqft" ? (o.area || (plants && sp ? +(plants * sp*sp / 144).toFixed(1) : 0)) : 0;
     const denom = b && b.u === "sqft" ? area : plants;
-    const per = denom ? r.grams / denom : null;  // grams per plant or per sq ft
+    const used = yieldIncludeEst() ? r.grams : r.grams - r.est;   // with or without estimates for counted-only harvests
+    const per = denom ? used / denom : null;  // grams per plant or per sq ft
     let rating = null; const age = b && b.mature ? plantAgeYears(r.crop, r.variety, year) : null;
     if (b && per != null) { const lb = per / LB; rating = lb >= b.good ? "great" : lb >= b.typ ? "typical" : lb >= b.typ*0.5 ? "below" : "low"; }
     if ((rating === "below" || rating === "low") && age != null && age < b.mature) rating = "young";
@@ -4041,6 +4046,7 @@ function renderYieldsTab() {
   const RATE = { great:["Good yield","#2e7d32","#e3f1df"], typical:["On par","#4a7a32","#eef4e6"], below:["Below typical","#b8860b","#fbf3dc"], low:["Well below","#c4622d","#fdeee8"], young:["Still maturing","#4a6a8a","#e8eef5"] };
   const rated = rows.filter(r => r.rating), atLeast = rated.filter(r => r.rating === "great" || r.rating === "typical").length;
   let html = `<div class="card"><div class="card-title">${year} yields vs. typical home-garden yields</div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px"><input type="checkbox" ${yieldIncludeEst() ? "checked" : ""} onchange="setYieldIncludeEst(this.checked)"> Include estimates for counted-only harvests <span style="display:inline-block;width:22px;height:9px;border-radius:3px;${ESTFILL("#4a7a32")}"></span></label>
     <div style="font-size:12px;color:var(--muted2);line-height:1.6">${+year === new Date().getFullYear() ? `<b>Season still in progress</b> — crops still producing will climb. ` : ""}${rated.length ? `<b>${atLeast} of ${rated.length}</b> compared crops reached typical yield or better. ` : ""}On each bar the dark mark is typical and the green mark is good. Plant counts come from your Plant Tracker — tap a number to correct it. Harvests you didn't log (or estimated from counts) pull these numbers down, so treat gaps with care.</div></div>`;
   if (!rows.length) return html + '<div style="padding:30px;text-align:center;color:var(--muted)">No harvests logged for this season yet</div>';
   html += rows.map(r => {
@@ -4051,8 +4057,10 @@ function renderYieldsTab() {
     if (b && r.per != null) {
       const max = b.good * 1.5, pos = v => Math.min(100, v / max * 100);
       const lb = r.per / LB, col = RATE[r.rating][1];
-      bar = `<div style="position:relative;height:10px;background:var(--bg3);border-radius:5px;margin:8px 0 4px">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:${pos(lb)}%;background:${col};border-radius:5px;opacity:.85"></div>
+      const estShare = yieldIncludeEst() && r.grams ? r.est / r.grams : 0, wPos = pos(lb) * (1 - estShare);
+      bar = `<div style="position:relative;height:10px;background:var(--bg3);border-radius:5px;margin:8px 0 4px;overflow:visible">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:${wPos}%;background:${col};border-radius:5px 0 0 5px;opacity:.85"></div>
+        ${estShare ? `<div title="estimated from counts" style="position:absolute;left:${wPos}%;top:0;bottom:0;width:${pos(lb) - wPos}%;${ESTFILL(col)};border-radius:0 5px 5px 0"></div>` : ""}
         <div title="typical" style="position:absolute;left:${pos(b.typ)}%;top:-3px;bottom:-3px;width:2px;background:#555"></div>
         <div title="good" style="position:absolute;left:${pos(b.good)}%;top:-3px;bottom:-3px;width:2px;background:#2e7d32"></div></div>`;
     }
@@ -4069,7 +4077,7 @@ function renderYieldsTab() {
         <div style="font-size:15px">${c.emoji||"🌱"} ${esc(r.variety || c.label)} <span style="font-size:11px;color:var(--muted)">${esc(c.label)}</span></div>
         ${r.rating ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap;color:${RATE[r.rating][1]};background:${RATE[r.rating][2]}">${RATE[r.rating][0]}</span>` : ""}
       </div>
-      <div style="font-size:13px;margin-top:6px">${fmtYield(r.grams)} harvested${r.est ? ` <span style="color:var(--muted)">(${Math.round(r.est/r.grams*100)}% estimated)</span>` : ""} from ${amount}${r.per != null ? ` = <b>${fmtYield(r.per)} per ${unit}</b>` : ""}</div>
+      <div style="font-size:13px;margin-top:6px">${r.est ? (yieldIncludeEst() ? `<b>${fmtYield(r.grams)}</b> harvested <span style="color:var(--muted);font-size:12px">(${fmtYield(r.grams - r.est)} weighed + ≈${fmtYield(r.est)} estimated)</span>` : `<b>${fmtYield(r.grams - r.est)}</b> weighed <span style="color:var(--muted);font-size:12px">(≈${fmtYield(r.est)} more estimated, not counted)</span>`) : `<b>${fmtYield(r.grams)}</b> harvested`}${r.noBasis ? ` <span style="color:var(--muted);font-size:11px">· ${r.noBasis} counted-only pick${r.noBasis > 1 ? "s" : ""} couldn't be estimated (no weighed ones yet)</span>` : ""} from ${amount}${r.per != null ? ` = <b>${fmtYield(r.per)} per ${unit}</b>` : ""}</div>
       ${bar}
       <div style="font-size:11px;color:var(--muted)">${bench}</div>
       ${fruitLine}${bedLine}${careLine}
