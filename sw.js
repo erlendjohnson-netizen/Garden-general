@@ -1,6 +1,6 @@
 // Garden Log service worker — lets the app open offline and be installed.
 // Bump VERSION whenever index.html changes so phones pick up the new build.
-const VERSION = "garden-log-v5";
+const VERSION = "garden-log-v6";
 const SHELL = ["./", "index.html", "manifest.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png"];
 
