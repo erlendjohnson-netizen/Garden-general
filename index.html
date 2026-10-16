@@ -505,6 +505,8 @@
           <option value="fruiting">Fruiting</option>
           <option value="harvesting">Harvesting</option>
           <option value="dormant">Dormant/Done</option>
+          <option value="died">Died</option>
+          <option value="removed">Removed / pulled</option>
         </select>
       </div>
       <div class="field"><label>Notes</label><textarea id="p-notes" placeholder="Source, observations..."></textarea></div>
@@ -2005,7 +2007,8 @@ function submitPlant() {
     notes: document.getElementById("p-notes").value.trim(),
     photo: photoData.p
   };
-  if (editId && editType==="plant") { plantLog=plantLog.map(e=>e.id===editId?entry:e); }
+  if (isGone(entry)) { const prev = plantLog.find(e => e.id === editId); entry.endDate = (prev && prev.endDate) || todayStr(); }
+  if (editId && editType==="plant") { plantLog=plantLog.map(e=>e.id===editId?Object.assign({}, e, entry):e); }
   else { plantLog.push(entry); }
   savePlants(); toast(editId ? "✓ Plant updated" : "✓ Plant added!"); showView("map", document.querySelectorAll(".nav-btn")[3]);
 }
@@ -2377,7 +2380,7 @@ function renderMap() {
   const FT = 18, MARGIN = 80;
   const bedHarvestTotals = {}, bedPlants = {};
   harvests.forEach(e => { bedHarvestTotals[e.bed]=(bedHarvestTotals[e.bed]||0)+wOf(e); });
-  plantLog.forEach(p => { if(!bedPlants[p.bed])bedPlants[p.bed]=[]; bedPlants[p.bed].push(p); });
+  plantLog.forEach(p => { if (isGone(p)) return; if(!bedPlants[p.bed])bedPlants[p.bed]=[]; bedPlants[p.bed].push(p); });
   const canvas = document.getElementById("map-canvas");
   if (!canvas) return;
   const lotW_px = lotWidth>0 ? Math.round(lotWidth*FT) : 600;
@@ -2460,6 +2463,9 @@ function renderMap() {
         // Wire buttons
         document.getElementById("bed-btn-rotate").onclick = function() { window.rotBed(b.id); };
         document.getElementById("bed-btn-edit").onclick = function() { showBedSetup(b.id); };
+        let lb = document.getElementById("bed-btn-layout");
+        if (!lb) { lb = document.getElementById("bed-btn-edit").cloneNode(true); lb.id = "bed-btn-layout"; lb.textContent = "Layout"; document.getElementById("bed-btn-edit").after(lb); }
+        lb.onclick = function() { openBedLayout(b.name); };
         document.getElementById("bed-btn-delete").onclick = function() { deleteBed(b.id); };
         document.getElementById("bed-action-close").onclick = function() {
           selectedBedId = null; renderMap();
@@ -2839,7 +2845,7 @@ const CROP_GUIDE = {
   strawberry:    { sp:12, perennial:true }, blackberry:{ sp:36, perennial:true }, blueberry:{ sp:48, perennial:true },
   fig:{ sp:120, perennial:true }, citrus:{ sp:144, perennial:true }, peach:{ sp:180, perennial:true },
   avocado:{ sp:240, perennial:true }, mango:{ sp:240, perennial:true }, "dragon fruit":{ sp:60, perennial:true },
-  passionfruit:{ sp:120, perennial:true },
+  passionfruit:{ sp:120, perennial:true }, "pineapple guava":{ sp:120, perennial:true },
 };
 // Crops added to the library that older saved crop lists don't have yet
 const LIBRARY_CROPS = [
@@ -2858,6 +2864,7 @@ const LIBRARY_CROPS = [
   { key:"peas", label:"Peas", emoji:"🫛", color:"#5aaa3a", varieties:["Sugar Snap","Oregon Sugar Pod","Green Arrow","Little Marvel","Other"] },
   { key:"southern peas", label:"Southern Peas", emoji:"🫘", color:"#8a6a3a", varieties:["Pinkeye Purple Hull","Black-eyed","Crowder","Zipper Cream","Other"] },
   { key:"pumpkin", label:"Pumpkin", emoji:"🎃", color:"#e8780a", varieties:["Jack O'Lantern","Small Sugar","Atlantic Giant","Seminole","Other"] },
+  { key:"pineapple guava", label:"Pineapple Guava", emoji:"🥝", color:"#6a8a3a", varieties:["Seedling","Coolidge","Nazemetz","Apollo","Mammoth","Other"] },
 ];
 function cropGuide(key) { return CROP_GUIDE[key] || null; }
 function guideIndoorDays(g) { return g && g.indoor && g.tp ? (g.tp[0] - g.indoor[0]) * 7 : null; }
@@ -2991,7 +2998,7 @@ function bedUsedShare(bedName, from, to, exceptId) {
   });
   const linked = new Set(plantings.map(p => String(p.plantId)));
   plantLog.forEach(p => {
-    if (p.bed !== bedName || linked.has(String(p.id))) return;
+    if (p.bed !== bedName || linked.has(String(p.id)) || isGone(p)) return;
     const g = cropGuide(p.crop) || {}; if (!g.sp) return;
     const start = p.transplantDate || p.seedDate || todayStr();
     const end = g.perennial ? "9999-12-31" : addDays(start, (g.dtm || 60) + 45);
@@ -3000,14 +3007,18 @@ function bedUsedShare(bedName, from, to, exceptId) {
   return Math.min(1, used / area);
 }
 function mergeLibraryCrops() {
-  if (localStorage.getItem(LS+"crop-lib") === "1") return;
+  // Adds library crops the saved crop list doesn't have yet, once each (so crops you delete stay deleted)
+  let seen = null; try { seen = JSON.parse(localStorage.getItem(LS+"crop-lib-seen") || "null"); } catch(e) {}
+  if (!seen) seen = localStorage.getItem(LS+"crop-lib") === "1" ? LIBRARY_CROPS.filter(c => c.key !== "pineapple guava").map(c => c.key) : [];
+  let changed = false;
   LIBRARY_CROPS.forEach(c => {
+    if (seen.includes(c.key)) return; seen.push(c.key);
     if (cropRegistry.some(x => x.key === c.key)) return;
     const i = cropRegistry.findIndex(x => x.key === "other");
-    cropRegistry.splice(i < 0 ? cropRegistry.length : i, 0, { ...c, varieties: [...c.varieties] });
+    cropRegistry.splice(i < 0 ? cropRegistry.length : i, 0, { ...c, varieties: [...c.varieties] }); changed = true;
   });
-  saveCropRegistry();
-  try { localStorage.setItem(LS+"crop-lib", "1"); } catch(e) {}
+  if (changed) saveCropRegistry();
+  try { localStorage.setItem(LS+"crop-lib-seen", JSON.stringify(seen)); } catch(e) {}
 }
 function guideDtm(key) { return (cropGuide(key)||{}).dtm || DAYS_TO_HARVEST[key] || ""; }
 
@@ -3047,7 +3058,8 @@ function plFitUpdate() {
   if (share > 0.02) txt += ` · other plantings use ~${Math.round(share*100)}% then, leaving room for ~<b>${free}</b>`;
   const over = qty && qty > free;
   el.style.color = over ? "var(--red)" : "var(--muted2)";
-  el.innerHTML = txt + (over ? ` — <b>${qty} won't fit</b>` : "");
+  el.innerHTML = txt + (over ? ` — <b>${qty} won't fit</b>` : "") +
+    (document.getElementById("pl-edit-id").value ? ` · <a href="#" onclick="closeModal('planting-modal');openBedLayout('${jsq(bed.name)}','${start}');return false" style="color:var(--green)">lay out ›</a>` : "");
 }
 
 function windowText(range) { return range ? MONTH_SHORT[range[0]-1] + "–" + MONTH_SHORT[range[1]-1] : ""; }
@@ -3290,7 +3302,7 @@ function renderPlantings() {
       <div class="entry-emoji">${cd.emoji||"🌱"}</div>
       <div class="entry-body">
         <div class="entry-top"><div class="entry-name">${esc(p.variety||cd.label)}${p.qty?` <span style="font-size:11px;color:var(--muted)">×${p.qty}</span>`:""}</div>
-          <button class="chip" onclick="openPlantingModal('${jsq(p.id)}')">Edit</button></div>
+          <span style="white-space:nowrap">${p.bed && p.bed !== "Other" ? `<button class="chip" onclick="openBedLayout('${jsq(p.bed)}','${plantingStart(p)||""}')">Layout</button> ` : ""}<button class="chip" onclick="openPlantingModal('${jsq(p.id)}')">Edit</button></span></div>
         <div class="entry-sub">${esc(p.bed||"No bed")} · ${p.method==="indoor"?"start indoors":p.method==="direct"?"direct sow":"transplants"}${p.seeds?` · ${p.seeds} seeds`:""}${p.spacing?` · ${p.spacing}″ apart`:""}</div>
         <div style="font-size:12px;color:var(--muted2);margin-top:4px;line-height:1.6">${steps}</div>
         ${p.notes?`<div class="entry-note">${esc(p.notes)}</div>`:""}
@@ -3393,7 +3405,7 @@ function renderWindows() {
 }
 
 // ── Planting form ──
-function openPlantingModal(editId, cropKey) {
+function openPlantingModal(editId, cropKey, bedName) {
   const p = editId ? plantings.find(x => String(x.id) === String(editId)) : null;
   document.getElementById("planting-modal-title").textContent = p ? "Edit planting" : "Plan a planting";
   document.getElementById("pl-edit-id").value = p ? p.id : "";
@@ -3403,7 +3415,7 @@ function openPlantingModal(editId, cropKey) {
   setSelectValue("pl-crop", p ? p.crop : (cropKey || "tomato"));
   fillVarietySelect("pl-variety", document.getElementById("pl-crop").value);
   if (p) setSelectValue("pl-variety", p.variety);
-  if (p) setSelectValue("pl-bed", p.bed);
+  if (p) setSelectValue("pl-bed", p.bed); else if (bedName) setSelectValue("pl-bed", bedName);
   document.getElementById("pl-qty").value = p ? (p.qty||"") : "";
   document.getElementById("pl-seeds").value = p ? (p.seeds||"") : "";
   const g0 = cropGuide(document.getElementById("pl-crop").value);
@@ -3930,12 +3942,13 @@ const LB = 453.592;
 // Strawberry: NC State (0.5–1 lb/plant). Peach: Penn State (3–5 bushels at 10+ years, 48 lb/bushel).
 // Mango, avocado, limes, kumquat, passionfruit: UF/IFAS tropical fruit yield estimates (South Florida).
 // Dragon fruit: UF/IFAS HS303 (~220 lb from a 3–4-year-old trellised plant). "≈" = estimate where no
-// extension figure exists (fig from Mississippi State budget assumptions; satsuma, Meyer lemon, navel).
+// extension figure exists (fig from Mississippi State budget assumptions; satsuma, Meyer lemon, navel; pineapple guava
+// from UF/IFAS HS1424 orchard yields of 15–20 t/ha at 8–10 years, converted at typical spacing).
 const FRUIT_BENCH = {
   blackberry:{typ:3,good:4,mature:3}, "blueberry-rabbiteye":{typ:10,good:20,mature:6}, "blueberry-shb":{typ:5,good:7,mature:4},
   strawberry:{typ:0.75,good:1.5,mature:1}, peach:{typ:144,good:240,mature:10}, mango:{typ:200,good:300,mature:8},
   avocado:{typ:150,good:275,mature:8}, passionfruit:{typ:50,good:100,mature:2}, "dragon fruit":{typ:100,good:220,mature:4,approxTyp:true},
-  fig:{typ:15,good:30,mature:4,approx:true},
+  fig:{typ:15,good:30,mature:4,approx:true}, "pineapple guava":{typ:20,good:45,mature:9,approx:true},
   "citrus-satsuma":{typ:50,good:100,mature:8,approx:true}, "citrus-meyer":{typ:30,good:60,mature:5,approx:true},
   "citrus-navel":{typ:40,good:100,mature:8,approx:true}, "citrus-persianlime":{typ:450,good:600,mature:8},
   "citrus-keylime":{typ:70,good:100,mature:6}, "citrus-kumquat":{typ:40,good:50,mature:6}, citrus:{typ:50,good:100,mature:8,approx:true},
@@ -3979,6 +3992,7 @@ function setYieldOverride(key, field, val) {
 function seasonPlants(crop, variety, year, bed) {
   const g = cropGuide(crop) || {};
   return plantLog.filter(p => p.crop === crop && p.variety === variety && (!bed || p.bed === bed)).filter(p => {
+    if (isGone(p) && p.endDate && p.endDate.slice(0,4) < String(year)) return false;
     if (g.perennial) return true;
     const d = p.transplantDate || p.seedDate; if (!d) return true;
     const y = +d.slice(0,4), m = +d.slice(5,7);
@@ -4080,7 +4094,7 @@ const FRUIT_SIZE = {
   "cucumber|beitalpha":[80,150,"≈"], "cucumber|merlin":[60,120,"≈"], "strawberry|festival":[15,25,"≈"],
   "raddish|frenchb":[10,20,"≈"], "raddish|frenchbreakfast":[10,20,"≈"], "raddish|watermelon":[100,250,"≈"],
 };
-const FRUIT_SIZE_CROP = { okra:[10,20], eggplant:[150,400], cucumber:[100,250], squash:[150,300], strawberry:[12,25], fig:[25,50], blueberry:[1,3], blackberry:[6,12] };
+const FRUIT_SIZE_CROP = { okra:[10,20], eggplant:[150,400], cucumber:[100,250], squash:[150,300], strawberry:[12,25], fig:[25,50], blueberry:[1,3], blackberry:[6,12], "pineapple guava":[28,57] };
 function normVar(v) { return String(v||"").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,""); }
 function fruitSizeRef(crop, variety) {
   const r = FRUIT_SIZE[crop + "|" + normVar(variety)];
@@ -4248,6 +4262,7 @@ function renderTimelineTab() {
 function isPerennialCrop(key) { const g = cropGuide(key); return !!(g && g.perennial); }
 function plantGaps(p) {
   const gaps = [];
+  if (isGone(p)) return gaps;
   if (isPerennialCrop(p.crop)) {
     if (!p.transplantDate) gaps.push("date");
     if (!("plantedAge" in p)) gaps.push("age");
@@ -4289,7 +4304,7 @@ function openMissingModal() {
       <option value="1"${v===1?" selected":""}>1 gal or smaller (~1 yr)</option><option value="2"${v===2?" selected":""}>3–5 gal (~2 yr)</option><option value="3"${v===3?" selected":""}>7 gal+ (3+ yr)</option></select>`;
   const rows = plantLog.filter(p => plantGaps(p).length).sort((a,b) => (isPerennialCrop(b.crop) - isPerennialCrop(a.crop)) || a.crop.localeCompare(b.crop));
   const sg = settingGaps();
-  let html = "";
+  let html = `<div style="margin:2px 0 8px"><button class="chip" onclick="addPlantFromChecklist()">+ Add a plant</button></div>`;
   if (sg.length) html += `<div class="card-title" style="margin-top:6px">Garden</div>` + sg.map(g => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>${g.t}</span>${g.btn}</div>`).join("");
   if (rows.length) {
     html += `<div class="card-title" style="margin-top:14px">Plants (${rows.length})</div>`;
@@ -4302,14 +4317,193 @@ function openMissingModal() {
           ${per ? ageSel(p.plantedAge).replace("ID", id) : ""}
           <select onchange="updatePlantField(${id},'bed',this.value)" style="font-size:12px;padding:4px">${bedOpts(p.bed)}</select>
           <label style="display:flex;align-items:center;gap:4px">Plants <input type="number" min="1" value="${p.count||1}" onchange="updatePlantField(${id},'count',this.value)" style="width:54px;font-size:12px;padding:3px"></label>
+          <button class="chip" style="font-size:10px;padding:1px 8px" onclick="markPlantGone(${id},'died')">Died</button><button class="chip" style="font-size:10px;padding:1px 8px" onclick="markPlantGone(${id},'removed')">Removed</button>
         </div>
         <div style="font-size:11px;color:#b8860b;margin-top:4px">Missing: ${gaps.map(g => g === "date" ? "planting date" : g === "age" ? "age when planted" : "bed").join(", ")}</div>
       </div>`;
     }).join("");
   }
-  if (!rows.length && !sg.length) html = '<div style="padding:24px 0;text-align:center;color:var(--muted)">Nothing missing — every plant has its dates, age and bed. 🌱</div>';
+  if (!rows.length && !sg.length) html += '<div style="padding:24px 0;text-align:center;color:var(--muted)">Nothing missing — every plant has its dates, age and bed. 🌱</div>';
   document.getElementById("missing-body").innerHTML = html;
   el.classList.add("open");
+}
+
+// ===================== PLANT LIFECYCLE =====================
+function isGone(p) { return p.status === "died" || p.status === "removed"; }
+// Was this tracked plant in the ground on `date` (YYYY-MM-DD)?
+function plantActiveOn(p, date) {
+  if (isGone(p) && (!p.endDate || p.endDate <= date)) return false;
+  const start = p.transplantDate || p.seedDate; if (start && start > date) return false;
+  const g = cropGuide(p.crop) || {};
+  if (g.perennial || !start) return true;
+  return addDays(start, (g.dtm || 60) + 45) >= date;
+}
+function markPlantGone(id, how) {
+  const p = plantLog.find(x => String(x.id) === String(id)); if (!p) return;
+  if (!confirm(`Mark ${p.variety || getCropByKey(p.crop).label} as ${how}? It stays in your records (harvests, yields) but leaves the bed.`)) return;
+  p.status = how; p.endDate = todayStr(); savePlants();
+  const row = document.getElementById("mrow-" + id); if (row) { row.style.opacity = .4; row.style.borderLeftColor = "#999"; }
+  toast(how === "died" ? "Marked as died" : "Marked as removed");
+}
+function addPlantFromChecklist() { closeModal("missing-modal"); showView("add", document.querySelectorAll(".nav-btn")[2]); setAddType("plant"); }
+
+// ===================== BED LAYOUT =====================
+// A bed drawn to scale; each planned or tracked plant is a circle the size of its spacing, dense crops are patches.
+let layoutBed = null, layoutDate = null, layoutDrag = null;
+const PATCH_SP = 6;  // crops spaced this close or closer are drawn as one patch
+function plantingStart(p) { return p.method === "direct" ? p.sowDate : p.transplantDate; }
+function plantingEnd(p) { const g = cropGuide(p.crop) || {}; const s = plantingStart(p); return g.perennial ? "9999-12-31" : addDays(s, (p.dtm || g.dtm || 60) + 45); }
+// Everything in the bed on the chosen date: plantings (planned) + Plant Tracker entries not linked to a planting
+function layoutItems() {
+  const d = layoutDate, items = [];
+  plantings.forEach(p => {
+    const s = plantingStart(p);
+    if (p.bed !== layoutBed.name || !s || s > d || plantingEnd(p) < d) return;
+    items.push({ src:p, kind:"plan", crop:p.crop, label:p.variety || getCropByKey(p.crop).label, qty:p.qty || 1, sp:p.spacing || (cropGuide(p.crop)||{}).sp || 12 });
+  });
+  const linked = new Set(plantings.map(p => String(p.plantId)));
+  plantLog.forEach(p => {
+    if (p.bed !== layoutBed.name || linked.has(String(p.id)) || !plantActiveOn(p, d)) return;
+    items.push({ src:p, kind:"tracked", crop:p.crop, label:p.variety || getCropByKey(p.crop).label, qty:p.count || 1, sp:(cropGuide(p.crop)||{}).sp || 12 });
+  });
+  return items;
+}
+// Bed is stored as w × l feet; draw the long side vertically so it scrolls on a phone
+function layoutDims() { const W = layoutBed.w * 12, L = layoutBed.l * 12; return W > L ? { swap:true, dw:L, dh:W } : { swap:false, dw:W, dh:L }; }
+function toDisp(x, y) { return layoutDims().swap ? [y, x] : [x, y]; }
+function fromDisp(x, y) { return layoutDims().swap ? [y, x] : [x, y]; }
+// Make sure each item has positions: circles get one point per plant, patches get one rectangle
+function ensureLayout(items) {
+  const W = layoutBed.w * 12, L = layoutBed.l * 12;
+  const taken = [];
+  items.forEach(it => (it.src.layout || []).forEach(pt => taken.push({ x:pt.x, y:pt.y, r:it.sp/2 })));
+  const free = (x, y, r) => x - r >= -0.01 && y - r >= -0.01 && x + r <= W + 0.01 && y + r <= L + 0.01 && taken.every(t => Math.hypot(t.x - x, t.y - y) >= (t.r + r) * 0.95);
+  let changed = false;
+  items.forEach(it => {
+    it.src.layout = it.src.layout || [];
+    if (it.sp <= PATCH_SP) {
+      if (!it.src.layout.length || it.src.layout[0].w == null) {
+        const area = it.qty * it.sp * it.sp, w = Math.min(W, Math.max(it.sp, Math.sqrt(area))), h = Math.min(L, Math.max(it.sp, area / w));
+        it.src.layout = [{ x:0, y:0, w, h }]; changed = true;
+      }
+      return;
+    }
+    if (it.src.layout.length > it.qty) { it.src.layout.length = it.qty; changed = true; }
+    const r = it.sp / 2;
+    while (it.src.layout.length < it.qty) {
+      let spot = null;
+      for (let y = r; y <= L - r + 0.01 && !spot; y += Math.max(3, it.sp / 2)) for (let x = r; x <= W - r + 0.01; x += Math.max(3, it.sp / 2)) if (free(x, y, r)) { spot = { x, y }; break; }
+      if (!spot) spot = r * 2 > Math.min(W, L) ? { x: W/2, y: L/2 } : { x: r, y: r };   // wider than the bed: center it; otherwise no room left
+      it.src.layout.push(spot); taken.push({ x:spot.x, y:spot.y, r }); changed = true;
+    }
+  });
+  if (changed) { savePlantings(); savePlants(); }
+}
+function autoArrangeBed() {
+  layoutItems().forEach(it => { it.src.layout = []; });
+  renderBedLayout(); toast("Re-arranged by spacing");
+}
+function openBedLayout(bedName, date) {
+  loadBedsIfNeeded();
+  layoutBed = beds.find(b => b.name === bedName); if (!layoutBed) { toast("Bed not found"); return; }
+  if (date) layoutDate = date;
+  else {
+    const t = todayStr(), starts = plantings.filter(p => p.bed === bedName && plantingStart(p)).map(p => [plantingStart(p), plantingEnd(p)]);
+    const now = starts.some(([s,e]) => s <= t && e >= t), next = starts.map(x => x[0]).filter(s => s > t).sort()[0];
+    layoutDate = now || !next ? t : next;
+  }
+  let el = document.getElementById("bed-layout");
+  if (!el) {
+    el = document.createElement("div"); el.id = "bed-layout";
+    el.style.cssText = "position:fixed;inset:0;z-index:250;background:var(--bg,#faf8f3);display:flex;flex-direction:column";
+    document.body.appendChild(el);
+  }
+  el.style.display = "flex";
+  renderBedLayout();
+}
+function closeBedLayout() { const el = document.getElementById("bed-layout"); if (el) el.style.display = "none"; refreshPlanViews(); }
+function layoutGroup(it, i, j, over) {
+  const c = getCropByKey(it.crop), col = c.color || "#4a7a32", ghost = it.kind === "tracked";
+  if (it.sp <= PATCH_SP) {
+    const r = it.src.layout[0]; const [x, y] = toDisp(r.x, r.y), [w, h] = layoutDims().swap ? [r.h, r.w] : [r.w, r.h];
+    const n = Math.floor(r.w * r.h / (it.sp * it.sp));
+    return `<g data-i="${i}" data-j="0" style="cursor:move">
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${col}" fill-opacity="${ghost ? .15 : .3}" stroke="${col}" stroke-width="0.6" stroke-dasharray="${ghost ? "2 1.5" : ""}" rx="1.5"/>
+      <text x="${x + w/2}" y="${y + h/2}" font-size="${Math.min(5, Math.max(2.6, Math.min(w, h)/4))}" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${c.emoji||"🌱"} ~${n}</text>
+      <rect data-resize="1" x="${x + w - 3}" y="${y + h - 3}" width="4" height="4" fill="#fff" stroke="${col}" stroke-width="0.5" style="cursor:nwse-resize"/></g>`;
+  }
+  const pt = it.src.layout[j], [x, y] = toDisp(pt.x, pt.y);
+  return `<g data-i="${i}" data-j="${j}" style="cursor:move"><circle cx="${x}" cy="${y}" r="${it.sp/2}" fill="${col}" fill-opacity="${ghost ? .12 : .28}" stroke="${over ? "#111" : col}" stroke-width="${over ? 1.3 : 0.6}" stroke-dasharray="${over ? "1.6 1" : ghost ? "2 1.5" : ""}"/>
+    <text x="${x}" y="${y}" font-size="${Math.min(8, Math.max(3, it.sp/3))}" text-anchor="middle" dominant-baseline="central" pointer-events="none">${c.emoji||"🌱"}</text></g>`;
+}
+function renderBedLayout() {
+  const el = document.getElementById("bed-layout"); if (!el || !layoutBed) return;
+  const items = layoutItems(); ensureLayout(items);
+  const { dw, dh } = layoutDims(), W = layoutBed.w * 12, L = layoutBed.l * 12;
+  // Dates where the bed's contents change, for quick jumping
+  const marks = [...new Set(plantings.filter(p => p.bed === layoutBed.name && plantingStart(p)).flatMap(p => [plantingStart(p), plantingEnd(p) < "9999" ? addDays(plantingEnd(p), 1) : null]).filter(Boolean))].sort().slice(0, 8);
+  // Overlap check between circles
+  const pts = []; items.forEach((it, i) => { if (it.sp > PATCH_SP) it.src.layout.forEach((pt, j) => pts.push({ i, j, x:pt.x, y:pt.y, r:it.sp/2 })); });
+  const bad = new Set();
+  for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) if (Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y) < (pts[a].r + pts[b].r) * 0.85) { bad.add(pts[a].i + "-" + pts[a].j); bad.add(pts[b].i + "-" + pts[b].j); }
+  const pad = 2;
+  let svg = `<svg id="bl-svg" viewBox="${-pad} ${-pad} ${dw + pad*2} ${dh + pad*2}" style="width:100%;height:auto;display:block;touch-action:none;user-select:none">
+    <defs><clipPath id="bl-clip"><rect x="0" y="0" width="${dw}" height="${dh}" rx="2"/></clipPath></defs>
+    <rect x="0" y="0" width="${dw}" height="${dh}" fill="#efe6d2" rx="2"/><g clip-path="url(#bl-clip)">`;
+  for (let g = 12; g < dw; g += 12) svg += `<line x1="${g}" y1="0" x2="${g}" y2="${dh}" stroke="#c8b998" stroke-width="0.3"/>`;
+  for (let g = 12; g < dh; g += 12) svg += `<line x1="0" y1="${g}" x2="${dw}" y2="${g}" stroke="#c8b998" stroke-width="0.3"/>`;
+  items.forEach((it, i) => { (it.sp <= PATCH_SP ? [0] : it.src.layout.map((_, j) => j)).forEach(j => { svg += layoutGroup(it, i, j, bad.has(i + "-" + j)); }); });
+  svg += `</g><rect x="0" y="0" width="${dw}" height="${dh}" fill="none" stroke="#8a7a4a" stroke-width="0.8" rx="2" pointer-events="none"/></svg>`;
+  const nOver = new Set([...bad].map(k => k.split("-")[0])).size;
+  const legend = items.map(it => {
+    const c = getCropByKey(it.crop);
+    return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span>${c.emoji||"🌱"} ${esc(it.label)} <span style="color:var(--muted)">×${it.qty} · ${it.sp}″${it.kind === "tracked" ? " · in Plant Tracker" : ""}</span></span>
+      ${it.kind === "plan" ? `<button class="chip" style="font-size:10px;padding:1px 8px" onclick="closeBedLayout();openPlantingModal('${jsq(it.src.id)}')">Edit</button>`
+        : `<span><button class="chip" style="font-size:10px;padding:1px 6px" onclick="markPlantGone('${jsq(String(it.src.id))}','died');renderBedLayout()">Died</button> <button class="chip" style="font-size:10px;padding:1px 6px" onclick="markPlantGone('${jsq(String(it.src.id))}','removed');renderBedLayout()">Removed</button></span>`}</div>`;
+  }).join("");
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);background:#fff">
+      <div><div style="font-size:17px;color:var(--green)">${esc(layoutBed.name)}</div><div style="font-size:11px;color:var(--muted)">${layoutBed.w}×${layoutBed.l} ft · 1 square = 1 ft · drag to arrange</div></div>
+      <button onclick="closeBedLayout()" style="background:none;border:none;font-size:26px;cursor:pointer;color:#7a6e58">×</button></div>
+    <div style="padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fff;border-bottom:1px solid var(--border)">
+      <input type="date" value="${layoutDate}" onchange="layoutDate=this.value||todayStr();renderBedLayout()" style="font-size:13px;padding:4px">
+      <button class="chip" onclick="layoutDate=todayStr();renderBedLayout()">Today</button>
+      ${marks.map(m => `<button class="chip" style="${m===layoutDate?"background:var(--green);color:#fff":""}" onclick="layoutDate='${m}';renderBedLayout()">${fmtShortDate(m)}</button>`).join("")}
+    </div>
+    <div style="flex:1;overflow:auto;padding:12px 14px">
+      <div style="max-width:${Math.max(200, Math.min(560, dw * 6))}px;margin:0 auto">${svg}</div>
+      ${nOver ? `<div style="font-size:12px;color:#d0302a;margin-top:8px">Black dashed outlines are closer together than their spacing allows.</div>` : ""}
+      <div class="card" style="margin-top:12px"><div class="card-title">In this bed on ${fmtShortDate(layoutDate)}</div>
+        ${legend || '<div style="font-size:13px;color:var(--muted)">Nothing planned or growing here on this date.</div>'}
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" style="flex:1" onclick="closeBedLayout();setPlanTab('plantings');openPlantingModal(null,null,'${jsq(layoutBed.name)}')">+ Add a planting here</button>
+          ${items.length ? `<button class="btn btn-secondary" onclick="autoArrangeBed()">Auto-arrange</button>` : ""}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Circles are sized to each crop's spacing. Dense crops (carrots, beans, greens) are patches — drag the corner square to resize. Dashed = already in your Plant Tracker.</div></div>
+    </div>`;
+  bindLayoutDrag(items);
+}
+function bindLayoutDrag(items) {
+  const svg = document.getElementById("bl-svg"); if (!svg) return;
+  const toSvg = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
+  const W = layoutBed.w * 12, L = layoutBed.l * 12;
+  svg.onpointerdown = e => {
+    const g = e.target.closest("g[data-i]"); if (!g) return;
+    const it = items[+g.dataset.i], j = +g.dataset.j, p = toSvg(e), [bx, by] = fromDisp(p.x, p.y), cur = it.src.layout[j];
+    layoutDrag = { it, j, resize: !!e.target.dataset.resize, ox: bx - cur.x, oy: by - cur.y };
+    svg.setPointerCapture(e.pointerId); e.preventDefault();
+  };
+  svg.onpointermove = e => {
+    if (!layoutDrag) return;
+    const { it, j } = layoutDrag, p = toSvg(e), [bx, by] = fromDisp(p.x, p.y), cur = it.src.layout[j];
+    if (layoutDrag.resize) { cur.w = Math.max(it.sp, Math.min(W - cur.x, bx - cur.x)); cur.h = Math.max(it.sp, Math.min(L - cur.y, by - cur.y)); }
+    else if (cur.w != null) { cur.x = Math.max(0, Math.min(W - cur.w, bx - layoutDrag.ox)); cur.y = Math.max(0, Math.min(L - cur.h, by - layoutDrag.oy)); }
+    else { const r = it.sp / 2; cur.x = Math.max(Math.min(r, W/2), Math.min(W - Math.min(r, W/2), bx - layoutDrag.ox)); cur.y = Math.max(Math.min(r, L/2), Math.min(L - Math.min(r, L/2), by - layoutDrag.oy)); }
+    ["x","y","w","h"].forEach(k => { if (cur[k] != null) cur[k] = Math.round(cur[k] * 2) / 2; });   // snap to half inches
+    const g = svg.querySelector(`g[data-i="${items.indexOf(it)}"][data-j="${j}"]`); if (g) g.outerHTML = layoutGroup(it, items.indexOf(it), j, false);
+  };
+  svg.onpointerup = svg.onpointercancel = () => { if (!layoutDrag) return; layoutDrag = null; savePlantings(); savePlants(); renderBedLayout(); };
 }
 
 // ===================== CARE =====================
