@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self' https://api.open-meteo.com https://archive-api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; img-src 'self' data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self' https://api.open-meteo.com https://archive-api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; img-src 'self' data: blob: https://server.arcgisonline.com;">
 <title>Garden Log</title>
 <style>
   :root {
@@ -571,6 +571,7 @@
     <div class="map-wrap">
       <!-- Zoom controls: plain row above canvas, never clipped -->
       <div style="display:flex;justify-content:flex-end;gap:6px;padding:6px 14px 4px">
+        <button onclick="openLotTrace(false)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--muted2);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:Georgia,serif" title="Measure your lot on a satellite map">🛰 LOT</button>
         <button onclick="fitCanvasToBeds()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--muted2);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:Georgia,serif;letter-spacing:0.5px">FIT</button>
         <button onclick="adjustZoom(-0.1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:20px;cursor:pointer">−</button>
         <button onclick="adjustZoom(0.1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--green);border-radius:6px;width:32px;height:32px;font-size:20px;cursor:pointer">+</button>
@@ -1067,7 +1068,8 @@
         <div class="field"><label>Lot width (ft)</label><input type="number" id="setup-lot-w" placeholder="e.g. 60" style="font-size:16px"></div>
         <div class="field"><label>Lot depth (ft)</label><input type="number" id="setup-lot-d" placeholder="e.g. 120" style="font-size:16px"></div>
       </div>
-      <div style="font-size:12px;color:#7a6e58;text-align:center;margin-bottom:16px">Not sure? Check qpublic.net or your county assessor's website</div>
+      <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="setupData.address=document.getElementById('setup-address').value.trim()||setupData.address;openLotTrace(true)">🛰 Trace my lot on a satellite map</button>
+      <div style="font-size:12px;color:#7a6e58;text-align:center;margin-bottom:16px">Or look it up on your county assessor's website</div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
         <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
@@ -4312,7 +4314,7 @@ function settingGaps() {
   const st = getSettings(), out = [];
   if (st.lat == null) out.push({ k:"loc", t:"Garden location isn't set — weather, frost dates and planting windows need it.", btn:`<button class="chip" onclick="closeModal('missing-modal');openSetup(true)">Set location</button>` });
   else if (getFrostDates().rough) out.push({ k:"frost", t:"Frost dates are a rough zone estimate.", btn:`<button class="chip" onclick="recalcFrostDates().then(()=>openMissingModal())">Use local weather</button>` });
-  if (!(lotWidth > 0)) out.push({ k:"lot", t:"Lot size isn't set (optional) — it adds a property outline on the map.", btn:"" });
+  if (!(lotWidth > 0)) out.push({ k:"lot", t:"Lot size isn't set (optional) — it adds a property outline on the map.", btn:`<button class="chip" onclick="closeModal('missing-modal');openLotTrace(false)">Trace on satellite</button>` });
   return out;
 }
 function missingCount() { return plantLog.filter(p => plantGaps(p).length).length + settingGaps().filter(g => g.k !== "lot").length; }
@@ -4555,6 +4557,129 @@ function bindLayoutDrag(items) {
     const g = svg.querySelector(`g[data-i="${items.indexOf(it)}"][data-j="${j}"]`); if (g) g.outerHTML = layoutGroup(it, items.indexOf(it), j, false);
   };
   svg.onpointerup = svg.onpointercancel = () => { if (!layoutDrag) return; layoutDrag = null; savePlantings(); savePlants(); renderBedLayout(); };
+}
+
+// ===================== TRACE LOT ON SATELLITE =====================
+// Shows satellite imagery around your address; drag the four corners onto your lot lines and the app measures it.
+// Imagery: Esri World Imagery tiles (attribution shown on the map).
+const TRACE_TILE = (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+let lotTrace = null;
+function traceProject(lat, lon, z) {   // lat/lon → world pixel at zoom z (Web Mercator, 256-px tiles)
+  const n = 256 * Math.pow(2, z), r = lat * Math.PI / 180;
+  return { x: (lon + 180) / 360 * n, y: (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n };
+}
+function traceUnproject(x, y, z) {
+  const n = 256 * Math.pow(2, z), lon = x / n * 360 - 180, m = Math.PI - 2 * Math.PI * y / n;
+  return { lat: 180 / Math.PI * Math.atan(0.5 * (Math.exp(m) - Math.exp(-m))), lon };
+}
+function traceFtPerPx() { return 156543.03392 * Math.cos(lotTrace.lat * Math.PI / 180) / Math.pow(2, lotTrace.z) * 3.28084; }
+function openLotTrace(fromSetup) {
+  const st = getSettings();
+  const lat = fromSetup && setupData.lat != null ? setupData.lat : st.lat, lon = fromSetup && setupData.lat != null ? setupData.lon : st.lon;
+  lotTrace = { fromSetup: !!fromSetup, z: 19, lat: lat != null ? lat : 39.5, lon: lon != null ? lon : -98.35, pts: [], noLoc: lat == null };
+  if (lotTrace.noLoc) lotTrace.z = 4;
+  let el = document.getElementById("lot-trace");
+  if (!el) { el = document.createElement("div"); el.id = "lot-trace"; el.style.cssText = "position:fixed;inset:0;z-index:400;background:#faf8f3;display:flex;flex-direction:column"; document.body.appendChild(el); }
+  el.style.display = "flex";
+  const addr = (fromSetup ? setupData.address : st.address) || "";
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#fff;border-bottom:1px solid var(--border)">
+      <div><div style="font-size:17px;color:var(--green)">Trace your lot</div><div style="font-size:11px;color:var(--muted)">Drag the 4 white corners onto your property lines</div></div>
+      <button onclick="closeLotTrace()" style="background:none;border:none;font-size:26px;cursor:pointer;color:#7a6e58">×</button></div>
+    <div style="display:flex;gap:6px;padding:8px 14px;background:#fff;border-bottom:1px solid var(--border)">
+      <input id="lt-addr" value="${esc(addr)}" placeholder="Street address, city, state" style="flex:1;font-size:14px;padding:7px">
+      <button class="chip" onclick="lotTraceFind()">Find</button></div>
+    <div id="lt-map" style="flex:1;overflow:auto;position:relative;background:#222;touch-action:pan-x pan-y"></div>
+    <div style="padding:10px 14px;background:#fff;border-top:1px solid var(--border)">
+      <div id="lt-info" style="font-size:13px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="chip" onclick="lotTraceZoom(1)">＋ Zoom</button><button class="chip" onclick="lotTraceZoom(-1)">－ Zoom</button>
+        <button class="chip" onclick="lotTrace.pts=[];renderLotTrace(true)">Reset corners</button>
+        <button class="btn btn-primary" style="flex:1;min-width:150px" onclick="lotTraceUse()">Use these dimensions</button></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">Imagery © Esri, Maxar, Earthstar Geographics. Satellite photos can be offset by a few feet — treat the result as close, not survey-exact.</div>
+    </div>`;
+  renderLotTrace(true);
+  if (lotTrace.noLoc) document.getElementById("lt-info").textContent = "Type your address above and tap Find.";
+}
+function closeLotTrace() { const el = document.getElementById("lot-trace"); if (el) el.style.display = "none"; }
+async function lotTraceFind() {
+  const q = document.getElementById("lt-addr").value.trim(); if (!q) return;
+  document.getElementById("lt-info").textContent = "Looking up address…";
+  const g = await geocodePlace(q);
+  if (!g) { document.getElementById("lt-info").textContent = "Couldn't find that address — try adding the city and state."; return; }
+  Object.assign(lotTrace, { lat: g.lat, lon: g.lon, z: 19, pts: [], noLoc: false });
+  renderLotTrace(true);
+}
+function lotTraceZoom(d) {
+  const z = Math.max(16, Math.min(20, lotTrace.z + d)); if (z === lotTrace.z) return;
+  lotTrace.z = z; renderLotTrace(true);
+}
+function renderLotTrace(recenter) {
+  const map = document.getElementById("lt-map"); if (!map) return;
+  const z = lotTrace.z, c = traceProject(lotTrace.lat, lotTrace.lon, z), N = 5;   // 5×5 tiles around the center
+  const tx0 = Math.floor(c.x / 256) - 2, ty0 = Math.floor(c.y / 256) - 2, ox = tx0 * 256, oy = ty0 * 256;
+  lotTrace.ox = ox; lotTrace.oy = oy;
+  if (!lotTrace.pts.length && !lotTrace.noLoc) {   // start with a 50 × 100 ft rectangle on the address
+    const fpp = traceFtPerPx(), hw = 25 / fpp, hd = 50 / fpp;
+    lotTrace.pts = [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([dx, dy]) => traceUnproject(c.x + dx, c.y + dy, z));
+  }
+  let html = `<div id="lt-canvas" style="position:relative;width:${N*256}px;height:${N*256}px">`;
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++)
+    html += `<img src="${TRACE_TILE(z, tx0 + i, ty0 + j)}" style="position:absolute;left:${i*256}px;top:${j*256}px;width:256px;height:256px" draggable="false" alt="">`;
+  html += `<svg id="lt-svg" style="position:absolute;left:0;top:0;width:${N*256}px;height:${N*256}px;pointer-events:none"></svg></div>`;
+  map.innerHTML = html;
+  drawLotTrace();
+  if (recenter) { map.scrollLeft = c.x - ox - map.clientWidth / 2; map.scrollTop = c.y - oy - map.clientHeight / 2; }
+  bindLotTraceDrag();
+}
+function lotTracePx(p) { const w = traceProject(p.lat, p.lon, lotTrace.z); return [w.x - lotTrace.ox, w.y - lotTrace.oy]; }
+function lotTraceSides() {
+  const fpp = traceFtPerPx(), P = lotTrace.pts.map(lotTracePx);
+  return P.map((a, i) => { const b = P[(i + 1) % 4]; return Math.hypot(b[0] - a[0], b[1] - a[1]) * fpp; });
+}
+function drawLotTrace() {
+  const svg = document.getElementById("lt-svg"); if (!svg || lotTrace.pts.length !== 4) return;
+  const P = lotTrace.pts.map(lotTracePx), S = lotTraceSides();
+  let h = `<polygon points="${P.map(p => p.join(",")).join(" ")}" fill="rgba(255,235,120,.18)" stroke="#ffe066" stroke-width="2.5"/>`;
+  P.forEach((a, i) => { const b = P[(i + 1) % 4], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    h += `<text x="${mx}" y="${my}" fill="#fff" stroke="#000" stroke-width="3" paint-order="stroke" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${Math.round(S[i])} ft${i === 0 ? " (front)" : ""}</text>`; });
+  P.forEach((p, i) => { h += `<circle data-k="${i}" cx="${p[0]}" cy="${p[1]}" r="13" fill="#fff" fill-opacity=".9" stroke="#2f7a2a" stroke-width="3" style="cursor:move;pointer-events:auto;touch-action:none"/>`; });
+  svg.innerHTML = h;
+  const w = (S[0] + S[2]) / 2, d = (S[1] + S[3]) / 2, area = lotTraceArea();
+  const info = document.getElementById("lt-info");
+  if (info) info.innerHTML = `Lot about <b>${Math.round(w)} × ${Math.round(d)} ft</b> (width × depth) · ${Math.round(area).toLocaleString()} sq ft${area > 43560 * 0.1 ? ` · ${(area / 43560).toFixed(2)} acres` : ""}. Put the first edge (labeled front) along the street.`;
+}
+function lotTraceArea() {   // shoelace formula in feet
+  const fpp = traceFtPerPx(), P = lotTrace.pts.map(lotTracePx).map(([x, y]) => [x * fpp, y * fpp]);
+  let a = 0; P.forEach((p, i) => { const q = P[(i + 1) % 4]; a += p[0] * q[1] - q[0] * p[1]; }); return Math.abs(a) / 2;
+}
+function bindLotTraceDrag() {
+  const map = document.getElementById("lt-map"); if (!map || map._bound) return; map._bound = true;
+  let k = -1;
+  const move = e => {
+    if (k < 0) return;
+    const r = document.getElementById("lt-svg").getBoundingClientRect(), x = e.clientX - r.left + lotTrace.ox, y = e.clientY - r.top + lotTrace.oy;
+    lotTrace.pts[k] = traceUnproject(x, y, lotTrace.z); drawLotTrace(); e.preventDefault();
+  };
+  const up = () => { k = -1; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
+  map.addEventListener("pointerdown", e => {
+    if (!e.target.dataset || e.target.dataset.k == null) return;
+    k = +e.target.dataset.k; e.preventDefault();
+    window.addEventListener("pointermove", move, { passive: false }); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+  });
+}
+function lotTraceUse() {
+  if (lotTrace.pts.length !== 4) { toast("Find your address first"); return; }
+  const S = lotTraceSides(), w = Math.round((S[0] + S[2]) / 2), d = Math.round((S[1] + S[3]) / 2);
+  if (lotTrace.fromSetup) {
+    document.getElementById("setup-lot-w").value = w; document.getElementById("setup-lot-d").value = d;
+  } else {
+    lotWidth = w; lotDepth = d;
+    try { localStorage.setItem(LS+"lot-width", w); localStorage.setItem(LS+"lot-depth", d); } catch(e) {}
+    if (document.getElementById("missing-modal")?.classList.contains("open")) openMissingModal();
+    renderMap(); renderDashboard();
+  }
+  closeLotTrace(); toast(`✓ Lot set to ${w} × ${d} ft`);
 }
 
 // ===================== CARE =====================
