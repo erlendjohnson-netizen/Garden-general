@@ -385,40 +385,63 @@
       <div class="field"><label>Date</label><input type="date" id="c-date"></div>
       <div class="field"><label>Care Type</label>
         <select id="c-type" onchange="updateCareTimer(true)">
-          <optgroup label="── Insecticides ──">
-            <option value="spray-spinosad">Spray — Spinosad (7-day)</option>
-            <option value="spray-bt">Spray — BT Thuracide (7-day)</option>
-            <option value="spray-pyrethrin">Spray — Pyrethrin (7-day)</option>
-            <option value="spray-insecticidal">Spray — Insecticidal Soap (7-day)</option>
-            <option value="spray-neem">Spray — Neem Oil (14-day)</option>
-            <option value="spray-hort-oil">Spray — Horticultural Oil (14-day)</option>
+          <optgroup label="── Insect sprays & dusts ──">
+            <option value="spray-insecticidal">Insecticidal soap (7-day)</option>
+            <option value="spray-neem">Neem oil (14-day)</option>
+            <option value="spray-hort-oil">Horticultural oil (14-day)</option>
+            <option value="spray-pyrethrin">Pyrethrin (7-day)</option>
+            <option value="spray-spinosad">Spinosad (7-day)</option>
+            <option value="spray-bt">Bt (Bacillus thuringiensis) (7-day)</option>
+            <option value="spray-kaolin">Kaolin clay (Surround) (10-day)</option>
+            <option value="spray-carbaryl">Carbaryl spray (Sevin) (7-day)</option>
+            <option value="spray-sevin-dust">Sevin dust (7-day)</option>
+            <option value="spray-de">Diatomaceous earth (7-day)</option>
+            <option value="spray-slug-bait">Slug & snail bait (iron phosphate) (14-day)</option>
           </optgroup>
-          <optgroup label="── Fungicides ──">
-            <option value="spray-copper">Spray — Copper (Peyton 35) (30-day)</option>
-            <option value="spray-sulfur">Spray — Sulfur (7-day)</option>
-            <option value="spray-other">Spray — Other</option>
+          <optgroup label="── Disease sprays ──">
+            <option value="spray-copper">Copper fungicide (10-day)</option>
+            <option value="spray-chlorothalonil">Chlorothalonil (Daconil) (7-day)</option>
+            <option value="spray-sulfur">Sulfur (7-day)</option>
+            <option value="spray-bicarb">Potassium bicarbonate (7-day)</option>
+            <option value="spray-bsubtilis">Bacillus subtilis (Serenade, Cease) (7-day)</option>
+            <option value="spray-other">Other spray (7-day)</option>
           </optgroup>
-          <optgroup label="── Soluble Fertilizers ──">
-            <option value="fert-20-20-20">Fertilizer — 20-20-20 All-Purpose (14-day)</option>
-            <option value="fert-bloom">Fertilizer — 10-15-35 Bloom Booster (14-day)</option>
-            <option value="fert-fish">Fertilizer — Fish Emulsion (14-day)</option>
-            <option value="fert-kelp">Fertilizer — Kelp / Seaweed (14-day)</option>
-            <option value="fert-calcium">Spray — Calcium (14-day)</option>
-            <option value="fert-epsom">Fertilizer — Epsom Salt (30-day)</option>
-            <option value="fert-soluble">Fertilizer — Soluble Other (14-day)</option>
+          <optgroup label="── Organic fertilizers (slow-acting) ──">
+            <option value="fert-organic-granular">Organic granular (Tomato-tone, Garden-tone) (30-day)</option>
+            <option value="fert-compost">Compost / top-dress (90-day)</option>
+            <option value="fert-manure">Composted manure (90-day)</option>
+            <option value="fert-castings">Worm castings (60-day)</option>
+            <option value="fert-bone-meal">Bone meal (60-day)</option>
+            <option value="fert-blood-meal">Blood meal (45-day)</option>
+            <option value="fert-crab-meal">Crab meal (60-day)</option>
           </optgroup>
-          <optgroup label="── Granular / Amendments ──">
-            <option value="fert-ammonium-sulfate">Fertilizer — Ammonium Sulfate (30-day)</option>
-            <option value="fert-potassium-sulfate">Fertilizer — Potassium Sulfate (30-day)</option>
-            <option value="fert-bone-meal">Fertilizer — Bone Meal (60-day)</option>
-            <option value="fert-slow-release">Fertilizer — Slow Release Granular (90-day)</option>
-            <option value="fert-compost">Compost / Top Dress (90-day)</option>
-            <option value="fert-granular">Fertilizer — Granular Other (30-day)</option>
+          <optgroup label="── Organic liquid feeds ──">
+            <option value="fert-fish">Fish emulsion (14-day)</option>
+            <option value="fert-kelp">Kelp / seaweed (14-day)</option>
           </optgroup>
-          <optgroup label="── General ──">
-            <option value="water">Watering / Irrigation check</option>
-            <option value="prune">Pruning / Training</option>
+          <optgroup label="── Synthetic fertilizers ──">
+            <option value="fert-20-20-20">All-purpose water-soluble (20-20-20) (14-day)</option>
+            <option value="fert-bloom">Bloom booster (high P-K) (14-day)</option>
+            <option value="fert-granular">Synthetic granular (10-10-10) (30-day)</option>
+            <option value="fert-slow-release">Slow-release coated (Osmocote) (90-day)</option>
+            <option value="fert-soluble">Other liquid fertilizer (14-day)</option>
+            <option value="fert-ammonium-sulfate">Ammonium sulfate (30-day)</option>
+            <option value="fert-potassium-sulfate">Potassium sulfate (30-day)</option>
+          </optgroup>
+          <optgroup label="── Supplements & soil ──">
+            <option value="fert-calcium">Calcium (Cal-Mag, foliar) (14-day)</option>
+            <option value="fert-epsom">Epsom salt (magnesium) (30-day)</option>
+            <option value="fert-lime">Garden lime (raise pH)</option>
+            <option value="fert-soil-sulfur">Soil sulfur (lower pH)</option>
+          </optgroup>
+          <optgroup label="── Garden work ──">
+            <option value="water">Watering / irrigation check</option>
+            <option value="mulch">Mulching</option>
+            <option value="weed">Weeding</option>
+            <option value="prune">Pruning / training</option>
             <option value="transplant">Transplanting</option>
+            <option value="frost-cover">Frost cover / row cover</option>
+            <option value="soil-test">Soil test</option>
             <option value="harvest-care">Harvest prep / cleanup</option>
             <option value="other">Other</option>
           </optgroup>
@@ -1302,40 +1325,10 @@ const MONTH_TASKS = {
   12:["Start pepper seeds indoors for spring","Plan next season","Mulch perennials","Rest & reflection 🌿"],
 };
 
-const CARE_INTERVALS = {
-  "spray-spinosad":7,"spray-bt":7,"spray-pyrethrin":7,"spray-insecticidal":7,"spray-other":7,
-  "spray-neem":14,"spray-hort-oil":14,"spray-sulfur":7,
-  "spray-copper":30,
-  "fert-20-20-20":14,"fert-bloom":14,"fert-fish":14,"fert-kelp":14,"fert-calcium":14,
-  "fert-epsom":30,"fert-soluble":14,
-  "fert-ammonium-sulfate":30,"fert-potassium-sulfate":30,"fert-granular":30,
-  "fert-bone-meal":60,"fert-slow-release":90,"fert-compost":90
-};
+const CARE_INTERVALS = {"spray-insecticidal": 7, "spray-neem": 14, "spray-hort-oil": 14, "spray-pyrethrin": 7, "spray-spinosad": 7, "spray-bt": 7, "spray-kaolin": 10, "spray-carbaryl": 7, "spray-sevin-dust": 7, "spray-de": 7, "spray-slug-bait": 14, "spray-copper": 10, "spray-chlorothalonil": 7, "spray-sulfur": 7, "spray-bicarb": 7, "spray-bsubtilis": 7, "spray-other": 7, "fert-organic-granular": 30, "fert-compost": 90, "fert-manure": 90, "fert-castings": 60, "fert-bone-meal": 60, "fert-blood-meal": 45, "fert-crab-meal": 60, "fert-fish": 14, "fert-kelp": 14, "fert-20-20-20": 14, "fert-bloom": 14, "fert-granular": 30, "fert-slow-release": 90, "fert-soluble": 14, "fert-ammonium-sulfate": 30, "fert-potassium-sulfate": 30, "fert-calcium": 14, "fert-epsom": 30};
 // chronic = always set reminder by default; as-needed = no reminder by default; none = never remind
-const CARE_MODE = {
-  "spray-spinosad":"as-needed","spray-bt":"as-needed","spray-pyrethrin":"as-needed",
-  "spray-insecticidal":"as-needed","spray-neem":"as-needed","spray-hort-oil":"as-needed",
-  "spray-sulfur":"as-needed","spray-other":"as-needed",
-  "spray-copper":"chronic",
-  "fert-20-20-20":"chronic","fert-bloom":"chronic","fert-fish":"chronic","fert-kelp":"chronic",
-  "fert-calcium":"chronic","fert-epsom":"chronic","fert-soluble":"chronic",
-  "fert-ammonium-sulfate":"chronic","fert-potassium-sulfate":"chronic","fert-granular":"chronic",
-  "fert-bone-meal":"chronic","fert-slow-release":"chronic","fert-compost":"chronic",
-  "water":"none","prune":"none","transplant":"none","harvest-care":"none","other":"none"
-};
-const CARE_LABELS = {
-  "spray-spinosad":"Spinosad","spray-bt":"BT Thuracide","spray-pyrethrin":"Pyrethrin",
-  "spray-insecticidal":"Insecticidal Soap","spray-neem":"Neem Oil","spray-hort-oil":"Horticultural Oil",
-  "spray-sulfur":"Sulfur Spray","spray-copper":"Copper Spray","spray-other":"Spray",
-  "fert-20-20-20":"20-20-20 Fertilizer","fert-bloom":"Bloom Booster 10-15-35",
-  "fert-fish":"Fish Emulsion","fert-kelp":"Kelp/Seaweed","fert-calcium":"Calcium Spray",
-  "fert-epsom":"Epsom Salt","fert-soluble":"Soluble Fertilizer",
-  "fert-ammonium-sulfate":"Ammonium Sulfate","fert-potassium-sulfate":"Potassium Sulfate",
-  "fert-bone-meal":"Bone Meal","fert-slow-release":"Slow Release Granular",
-  "fert-compost":"Compost","fert-granular":"Granular Fertilizer",
-  "water":"Watering","prune":"Pruning","transplant":"Transplanting",
-  "harvest-care":"Harvest Prep","other":"Care"
-};
+const CARE_MODE = {"spray-insecticidal": "as-needed", "spray-neem": "as-needed", "spray-hort-oil": "as-needed", "spray-pyrethrin": "as-needed", "spray-spinosad": "as-needed", "spray-bt": "as-needed", "spray-kaolin": "as-needed", "spray-carbaryl": "as-needed", "spray-sevin-dust": "as-needed", "spray-de": "as-needed", "spray-slug-bait": "as-needed", "spray-copper": "chronic", "spray-chlorothalonil": "chronic", "spray-sulfur": "as-needed", "spray-bicarb": "as-needed", "spray-bsubtilis": "as-needed", "spray-other": "as-needed", "fert-organic-granular": "chronic", "fert-compost": "chronic", "fert-manure": "chronic", "fert-castings": "chronic", "fert-bone-meal": "chronic", "fert-blood-meal": "chronic", "fert-crab-meal": "chronic", "fert-fish": "chronic", "fert-kelp": "chronic", "fert-20-20-20": "chronic", "fert-bloom": "chronic", "fert-granular": "chronic", "fert-slow-release": "chronic", "fert-soluble": "chronic", "fert-ammonium-sulfate": "chronic", "fert-potassium-sulfate": "chronic", "fert-calcium": "chronic", "fert-epsom": "chronic", "fert-lime": "none", "fert-soil-sulfur": "none", "water": "none", "mulch": "none", "weed": "none", "prune": "none", "transplant": "none", "frost-cover": "none", "soil-test": "none", "harvest-care": "none", "other": "none"};
+const CARE_LABELS = {"spray-insecticidal": "Insecticidal soap", "spray-neem": "Neem oil", "spray-hort-oil": "Horticultural oil", "spray-pyrethrin": "Pyrethrin", "spray-spinosad": "Spinosad", "spray-bt": "Bt (Bacillus thuringiensis)", "spray-kaolin": "Kaolin clay (Surround)", "spray-carbaryl": "Carbaryl spray (Sevin)", "spray-sevin-dust": "Sevin dust", "spray-de": "Diatomaceous earth", "spray-slug-bait": "Slug & snail bait (iron phosphate)", "spray-copper": "Copper fungicide", "spray-chlorothalonil": "Chlorothalonil (Daconil)", "spray-sulfur": "Sulfur", "spray-bicarb": "Potassium bicarbonate", "spray-bsubtilis": "Bacillus subtilis (Serenade, Cease)", "spray-other": "Other spray", "fert-organic-granular": "Organic granular (Tomato-tone, Garden-tone)", "fert-compost": "Compost / top-dress", "fert-manure": "Composted manure", "fert-castings": "Worm castings", "fert-bone-meal": "Bone meal", "fert-blood-meal": "Blood meal", "fert-crab-meal": "Crab meal", "fert-fish": "Fish emulsion", "fert-kelp": "Kelp / seaweed", "fert-20-20-20": "All-purpose water-soluble (20-20-20)", "fert-bloom": "Bloom booster (high P-K)", "fert-granular": "Synthetic granular (10-10-10)", "fert-slow-release": "Slow-release coated (Osmocote)", "fert-soluble": "Other liquid fertilizer", "fert-ammonium-sulfate": "Ammonium sulfate", "fert-potassium-sulfate": "Potassium sulfate", "fert-calcium": "Calcium (Cal-Mag, foliar)", "fert-epsom": "Epsom salt (magnesium)", "fert-lime": "Garden lime (raise pH)", "fert-soil-sulfur": "Soil sulfur (lower pH)", "water": "Watering / irrigation check", "mulch": "Mulching", "weed": "Weeding", "prune": "Pruning / training", "transplant": "Transplanting", "frost-cover": "Frost cover / row cover", "soil-test": "Soil test", "harvest-care": "Harvest prep / cleanup", "other": "Other"};
 
 // Bed definitions for map
 const BEDS_DEF = [
@@ -3182,7 +3175,7 @@ function getAgenda(horizonDays) {
   return items.sort((a,b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 
-function careIcon(type) { type = type||""; return type.startsWith("spray") ? "💧" : type.startsWith("fert") ? "🌿" : type === "water" ? "🚿" : "🔧"; }
+function careIcon(type) { type = type||""; return type.startsWith("spray") ? "💧" : type.startsWith("fert") ? "🌿" : type === "water" ? "🚿" : type === "mulch" || type === "weed" ? "🍂" : "🔧"; }
 
 // The ordered steps of a planned planting, each with its date and state
 function planSteps(p) {
@@ -3373,13 +3366,15 @@ function renderPlantings() {
 }
 
 const PROGRAM_PRESETS = [
-  { label:"Fertigation · weekly", name:"Fertigation", type:"fert-soluble", every:7 },
-  { label:"Kelp foliar · 2 wks", name:"Kelp foliar feed", type:"fert-kelp", every:14 },
-  { label:"Copper · monthly", name:"Copper fungicide", type:"spray-copper", every:30 },
-  { label:"Spinosad · 3× weekly", name:"Spinosad course", type:"spray-spinosad", every:7, times:3 },
+  { label:"Liquid feed · 2 wks", name:"Liquid feed", type:"fert-20-20-20", every:14 },
+  { label:"Fish & kelp · 2 wks", name:"Fish & kelp feed", type:"fert-fish", every:14 },
+  { label:"Organic granular · monthly", name:"Organic side-dress", type:"fert-organic-granular", every:30 },
+  { label:"Copper · 10 days (wet spells)", name:"Copper fungicide", type:"spray-copper", every:10 },
+  { label:"Daconil · weekly (wet spells)", name:"Chlorothalonil", type:"spray-chlorothalonil", every:7 },
   { label:"Bt · 3× weekly", name:"Bt course", type:"spray-bt", every:7, times:3 },
-  { label:"Slow-release · 90 days", name:"Slow-release top-up", type:"fert-slow-release", every:90 },
-  { label:"Irrigation check · weekly", name:"Check drip lines", type:"water", every:7 },
+  { label:"Spinosad · 3× weekly", name:"Spinosad course", type:"spray-spinosad", every:7, times:3 },
+  { label:"Compost top-dress · 3 months", name:"Compost top-dress", type:"fert-compost", every:90 },
+  { label:"Drip line check · weekly", name:"Check drip lines", type:"water", every:7 },
 ];
 
 function renderPrograms() {
