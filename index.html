@@ -346,14 +346,14 @@
     <div id="form-harvest">
       <div class="field"><label>Date</label><input type="date" id="h-date"></div>
       <div class="field"><label>Crop</label>
-        <select id="h-crop" onchange="updateVarieties()"></select>
+        <select id="h-crop" onchange="if(!editId)hBedTouched=false;updateVarieties()"></select>
       </div>
       <div class="field"><label>Variety</label><select id="h-variety" onchange="varietySelectChanged(this,'h-crop')"></select></div>
       <div class="field"><label>Bed / Location</label>
-        <select id="h-bed"></select>
+        <select id="h-bed" onchange="hBedTouched=true"></select>
       </div>
       <div class="field-row">
-        <div class="field"><label>Weight (<span class="unit-name">g</span>) <span style="text-transform:none;letter-spacing:0">· optional</span></label><input type="number" inputmode="decimal" step="any" min="0" id="h-weight" placeholder="skip if not weighed" oninput="updateEstimateHint()"></div>
+        <div class="field"><label>Weight <span style="text-transform:none;letter-spacing:0">· optional</span></label><div style="display:flex;gap:4px"><input type="number" inputmode="decimal" step="any" min="0" id="h-weight" placeholder="skip if not weighed" oninput="updateEstimateHint()" style="flex:1;min-width:0"><select id="h-wunit" onchange="changeEntryUnit(this.value)" style="width:64px;flex:none" aria-label="Weigh-in unit"><option value="g">g</option><option value="kg">kg</option><option value="oz">oz</option><option value="lb">lb</option></select></div></div>
         <div class="field"><label>Count</label>
           <div style="display:flex;gap:4px">
             <button type="button" class="btn btn-secondary" style="padding:8px 12px" onclick="bumpCount(-1)">−</button>
@@ -1727,7 +1727,7 @@ function quickLog(crop, variety, bed) {
   document.getElementById("h-crop").value = crop;
   updateVarieties();
   setSelectValue("h-variety", variety);
-  setSelectValue("h-bed", bed);
+  if (bed) { hBedTouched = true; setSelectValue("h-bed", bed); } else refreshBedSuggest();
   updateEstimateHint();
   document.getElementById("h-count").focus();
 }
@@ -1837,6 +1837,8 @@ function resetAddForm() {
   const lastH = harvests.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id)[0];
   const hc = document.getElementById("h-crop");
   hc.value = lastH && getCropKeys().includes(lastH.crop) ? lastH.crop : (hc.options[0]||{}).value || "";
+  hBedTouched = false;
+  document.getElementById("h-wunit").value = getEntryUnit();
   document.getElementById("h-weight").value="";
   document.getElementById("h-count").value="";
   document.getElementById("h-notes").value="";
@@ -1855,7 +1857,7 @@ function resetAddForm() {
   document.getElementById("p-status").value="planned";
   document.getElementById("p-notes").value="";
   updateVarieties(); updatePlantVarieties(); updateCareTimer(true);
-  if (lastH) { setSelectValue("h-variety", lastH.variety); setSelectValue("h-bed", lastH.bed); }
+  if (lastH) { setSelectValue("h-variety", lastH.variety); refreshBedSuggest(); if (!suggestHarvestBeds(lastH.crop, lastH.variety, today.slice(0,4)).length) setSelectValue("h-bed", lastH.bed); }
   updateEstimateHint();
   setAddType("harvest");
 }
@@ -1865,6 +1867,7 @@ function cancelAdd() { showView("log", document.querySelectorAll(".nav-btn")[1])
 function updateVarieties() {
   const crop = document.getElementById("h-crop").value;
   fillVarietySelect("h-variety", crop);
+  refreshBedSuggest();
   updateEstimateHint();
 }
 
@@ -1896,7 +1899,7 @@ function updateEstimateHint() {
   const c = parseInt(document.getElementById("h-count").value)||0;
   const w = parseFloat(document.getElementById("h-weight").value);
   const avg = avgItemWeight(crop, variety);
-  if (w > 0) { el.textContent = c ? `${fmtItem(toGrams(w)/c)} per item` : ""; return; }
+  if (w > 0) { const conv = getEntryUnit() !== displayUnit ? `= ${fmt(toGrams(w))}` : ""; el.textContent = [conv, c ? `${fmtItem(toGrams(w)/c)} per item` : ""].filter(Boolean).join(" · "); return; }
   if (avg == null) { el.textContent = "No weight? That's fine — counts still go in the log."; return; }
   el.textContent = `Your average: ${fmtItem(avg)} per item` + (c ? ` · ${c} ≈ ${fmt(avg*c)}` : "");
 }
@@ -1958,9 +1961,40 @@ async function handlePhoto(prefix) {
   } catch(e) { toast("⚠️ Couldn't read that photo"); }
 }
 
-// Weight inputs are in the display unit; storage is always grams
-function toGrams(v) { return v / UNIT_FACTORS[displayUnit]; }
-function fromGrams(g) { return +(g * UNIT_FACTORS[displayUnit]).toFixed(displayUnit==="g"?0:3); }
+// Weight inputs are in the weigh-in unit (e.g. grams on the scale); storage is always grams; totals show the display unit
+let entryUnit = null;
+function getEntryUnit() { return entryUnit || localStorage.getItem(LS+"entry-unit") || displayUnit; }
+function toGrams(v) { return v / UNIT_FACTORS[getEntryUnit()]; }
+function fromGrams(g) { const u = getEntryUnit(); return +(g * UNIT_FACTORS[u]).toFixed(u==="g"?0:3); }
+function changeEntryUnit(u) {
+  const el = document.getElementById("h-weight"), w = parseFloat(el.value), g = isFinite(w) && w > 0 ? toGrams(w) : null;
+  entryUnit = u; try { localStorage.setItem(LS+"entry-unit", u); } catch(e) {}
+  if (g != null) el.value = fromGrams(g);
+  updateEstimateHint();
+}
+
+// Beds most likely to hold a crop, best first: living plants, then this season's planned plantings, then recent harvests
+let hBedTouched = false;
+function suggestHarvestBeds(crop, variety, year) {
+  const names = beds.map(b => b.name), score = {};
+  const add = (bed, pts, v) => { if (!bed || !names.includes(bed)) return; score[bed] = (score[bed]||0) + pts + (variety && v === variety ? pts/2 : 0); };
+  let pl = plantings; if (!pl.length) { try { pl = JSON.parse(localStorage.getItem(LS+"plantings") || "[]"); } catch(e) { pl = []; } }
+  plantLog.forEach(p => { if (p.crop === crop && p.status !== "died" && p.status !== "removed") add(p.bed, 100, p.variety); });
+  pl.forEach(p => { if (p.crop !== crop) return; const y = String(p.transplantDate || p.sowDate || "").slice(0,4); add(p.bed, !y || y === year ? 50 : 5, p.variety); });
+  harvests.forEach(h => { if (h.crop === crop) add(h.bed, String(h.date).slice(0,4) === year ? 10 : 1, h.variety); });
+  return Object.keys(score).sort((a,b) => score[b] - score[a]);
+}
+// Put suggested beds first (top two marked 🌱) and pick the best one unless the bed was chosen by hand
+function refreshBedSuggest() {
+  const el = document.getElementById("h-bed"); if (!el) return;
+  const crop = document.getElementById("h-crop").value, variety = document.getElementById("h-variety").value;
+  const year = (document.getElementById("h-date").value || todayStr()).slice(0,4);
+  const sug = suggestHarvestBeds(crop, variety, year), cur = el.value;
+  const rest = beds.map(b => b.name).filter(n => !sug.includes(n));
+  el.innerHTML = sug.map((n,i) => `<option value="${esc(n)}">${i < 2 ? "🌱 " : ""}${esc(n)}</option>`).join("")
+    + rest.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("") + "<option value='Other'>Other</option>";
+  if (!hBedTouched && sug.length) el.value = sug[0]; else setSelectValue("h-bed", cur);
+}
 
 function submitHarvest() {
   const wIn = parseFloat(document.getElementById("h-weight").value);
@@ -2073,6 +2107,7 @@ function startEdit(id, type) {
     setSelectValue("h-crop", e.crop);
     updateVarieties();
     setSelectValue("h-variety", e.variety);
+    hBedTouched = true;
     setSelectValue("h-bed", e.bed);
     document.getElementById("h-weight").value = isWeighed(e) ? fromGrams(e.weight) : "";
     document.getElementById("h-count").value = e.count || "";
@@ -3728,7 +3763,7 @@ function fillVarietySelect(id, crop) {
 }
 // When "+ Add a new variety…" is picked, ask for the name and add it to that crop
 function varietySelectChanged(sel, cropSelId) {
-  if (sel.value !== NEW_VARIETY) { if (sel.id === "h-variety") updateEstimateHint(); return; }
+  if (sel.value !== NEW_VARIETY) { if (sel.id === "h-variety") { refreshBedSuggest(); updateEstimateHint(); } return; }
   const crop = document.getElementById(cropSelId).value;
   const name = (prompt("New " + (getCropByKey(crop).label||"crop").toLowerCase() + " variety name:") || "").trim();
   if (name) {
