@@ -1075,6 +1075,36 @@
     </div>
 
     <div id="setup-step-6" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">🪴</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Your beds</h2>
+      <p style="font-size:13px;color:#7a6e58;text-align:center;margin-bottom:14px">Raised beds, in-ground plots and big containers. Sizes let the app tell you how many plants fit. You can skip this and add them on the Map later.</p>
+      <div id="setup-existing-beds" style="font-size:12px;color:#7a6e58;margin-bottom:8px"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <button class="chip" onclick="setupAddBed('Raised bed',4,8,'rect')">+ 4×8 raised bed</button>
+        <button class="chip" onclick="setupAddBed('Raised bed',3,6,'rect')">+ 3×6 raised bed</button>
+        <button class="chip" onclick="setupAddBed('In-ground plot',10,10,'rect')">+ In-ground plot</button>
+        <button class="chip" onclick="setupAddBed('Container',2,2,'container')">+ Container</button>
+      </div>
+      <div id="setup-beds"></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-7" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">🌳</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Trees, bushes &amp; perennials</h2>
+      <p style="font-size:13px;color:#7a6e58;text-align:center;margin-bottom:14px">Fruit trees, berry bushes, vines and perennial herbs that are already in the ground. When they were planted and how big they were lets yields account for age. Skip anything you're unsure of.</p>
+      <div id="setup-perennials"></div>
+      <button class="chip" style="margin-top:6px" onclick="setupAddPerennial()">+ Add a tree or bush</button>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-8" style="display:none">
       <div style="font-size:32px;text-align:center;margin-bottom:12px">⚖️</div>
       <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">Preferred weight unit</h2>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0">
@@ -1101,7 +1131,7 @@
       </div>
     </div>
 
-    <div id="setup-step-7" style="display:none">
+    <div id="setup-step-9" style="display:none">
       <div style="font-size:40px;text-align:center;margin-bottom:16px">✅</div>
       <h2 style="font-size:22px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">You're all set!</h2>
       <div id="setup-summary" style="background:#f0ede4;border-radius:10px;padding:16px;margin:20px 0;font-size:13px;line-height:2;color:#5a5040"></div>
@@ -4597,7 +4627,7 @@ function markCareScheduledDone(id) {
 
 // ===================== SETUP WIZARD =====================
 let setupStep = 0;
-const SETUP_STEPS = 8;
+const SETUP_STEPS = 10;
 let setupData = { name:"", gardenName:"", address:"", lat:null, lon:null, zone:"", unit:"g" };
 let setupEditMode = false;
 
@@ -4642,6 +4672,7 @@ function showSetupStep(n) {
     if(el) el.style.display = i===n?"block":"none";
   }
   renderSetupDots();
+  setupStepShown(n);
   if(n===SETUP_STEPS-1) renderSetupSummary();
   document.getElementById("setup-overlay").scrollTop = 0;
 }
@@ -4669,6 +4700,7 @@ async function nextSetupStep() {
     setupData.address = typed;
   }
   if(setupStep===4) setupData.zone = document.getElementById("setup-zone").value;
+  if(setupStep===6 || setupStep===7) setupRowsRead();
   if(setupStep===5) { setupData.lotW = parseFloat(document.getElementById("setup-lot-w").value)||0; setupData.lotD = parseFloat(document.getElementById("setup-lot-d").value)||0; }
   showSetupStep(Math.min(setupStep+1, SETUP_STEPS-1));
 }
@@ -4730,6 +4762,78 @@ async function detectSetupLocation() {
   }
 }
 
+// ── Setup: beds and perennials ──
+const SETUP_BED_COLORS = ["#5a7a32", "#8a6a3a", "#3a6a5a", "#7a5a2a", "#4a7a32", "#6a5a3a"];
+function setupRowsRead() {
+  setupData.newBeds = [...document.querySelectorAll("#setup-beds .sb-row")].map(r => ({
+    name: r.querySelector(".sb-name").value.trim(), w: parseFloat(r.querySelector(".sb-w").value) || 0,
+    l: parseFloat(r.querySelector(".sb-l").value) || 0, shape: r.querySelector(".sb-shape").value })).filter(b => b.name && b.w && b.l);
+  setupData.newPerennials = [...document.querySelectorAll("#setup-perennials .sp-row")].map(r => ({
+    crop: r.querySelector(".sp-crop").value, variety: r.querySelector(".sp-var").value.trim(), count: parseInt(r.querySelector(".sp-count").value) || 1,
+    date: r.querySelector(".sp-date").value, age: r.querySelector(".sp-age").value, bed: r.querySelector(".sp-bed").value })).filter(t => t.crop);
+}
+function setupBedRow(b) {
+  return `<div class="sb-row" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+    <input class="sb-name" value="${esc(b.name)}" placeholder="Bed name" style="flex:1 1 140px;font-size:14px;padding:6px">
+    <input class="sb-w" type="number" inputmode="decimal" value="${b.w || ""}" placeholder="W" style="width:54px;font-size:14px;padding:6px"> ×
+    <input class="sb-l" type="number" inputmode="decimal" value="${b.l || ""}" placeholder="L" style="width:54px;font-size:14px;padding:6px"> ft
+    <select class="sb-shape" style="font-size:13px;padding:5px"><option value="rect"${b.shape==="rect"?" selected":""}>Rectangle</option><option value="oval"${b.shape==="oval"?" selected":""}>Round/oval</option><option value="container"${b.shape==="container"?" selected":""}>Container</option></select>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--red);font-size:18px;cursor:pointer">×</button></div>`;
+}
+function setupAddBed(name, w, l, shape) {
+  setupRowsRead();
+  const n = (setupData.newBeds || []).filter(b => b.name.startsWith(name)).length + beds.filter(b => b.name.startsWith(name)).length;
+  document.getElementById("setup-beds").insertAdjacentHTML("beforeend", setupBedRow({ name: n ? name + " " + (n + 1) : name, w, l, shape }));
+}
+function setupBedNames() { setupRowsRead(); return [...beds.filter(b => b.shape !== "house").map(b => b.name), ...(setupData.newBeds || []).map(b => b.name)]; }
+function setupPerennialRow(t) {
+  const per = cropRegistry.filter(c => isPerennialCrop(c.key));
+  const bedNames = setupBedNames();
+  return `<div class="sp-row" style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <select class="sp-crop" style="font-size:14px;padding:5px;flex:1 1 130px" onchange="this.parentElement.querySelector('datalist').innerHTML=getVarieties(this.value).map(v=>'<option value=&quot;'+esc(v)+'&quot;>').join('')">
+      ${per.map(c => `<option value="${esc(c.key)}"${t.crop===c.key?" selected":""}>${c.emoji||"🌱"} ${esc(c.label)}</option>`).join("")}</select>
+    <input class="sp-var" list="spv-${t.id}" value="${esc(t.variety||"")}" placeholder="Variety" style="flex:1 1 110px;font-size:14px;padding:6px">
+    <datalist id="spv-${t.id}">${getVarieties(t.crop || (per[0]||{}).key).map(v => `<option value="${esc(v)}">`).join("")}</datalist>
+    <label style="font-size:12px;display:flex;align-items:center;gap:4px">How many <input class="sp-count" type="number" min="1" value="${t.count||1}" style="width:48px;font-size:14px;padding:5px"></label>
+    <label style="font-size:12px;display:flex;align-items:center;gap:4px">Planted <input class="sp-date" type="date" value="${t.date||""}" style="font-size:13px;padding:4px"></label>
+    <select class="sp-age" style="font-size:12px;padding:5px"><option value="">Size when planted?</option><option value="ns">Not sure</option><option value="0">Seed, cutting or bare-root</option><option value="1">1 gal or smaller</option><option value="2">3–5 gal</option><option value="3">7 gal or larger</option></select>
+    <select class="sp-bed" style="font-size:12px;padding:5px"><option value="Yard">In the yard</option>${bedNames.map(n => `<option value="${esc(n)}"${t.bed===n?" selected":""}>${esc(n)}</option>`).join("")}</select>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--red);font-size:18px;cursor:pointer">×</button></div>`;
+}
+function setupAddPerennial() {
+  document.getElementById("setup-perennials").insertAdjacentHTML("beforeend", setupPerennialRow({ id: Date.now(), crop: "fig", count: 1 }));
+}
+function setupStepShown(n) {
+  if (n === 6) {
+    loadBedsIfNeeded();
+    const real = beds.filter(b => b.shape !== "house");
+    document.getElementById("setup-existing-beds").textContent = real.length ? `Already on your map: ${real.map(b => b.name).join(", ")}. Add more below.` : "";
+    if (!document.querySelector("#setup-beds .sb-row") && !real.length) setupAddBed("Raised bed", 4, 8, "rect");
+  }
+  if (n === 7 && !document.querySelector("#setup-perennials .sp-row")) document.getElementById("setup-perennials").innerHTML = "";
+}
+// Add the beds and perennials from setup to the map and Plant Tracker
+function setupSaveGarden() {
+  setupRowsRead(); loadBedsIfNeeded();
+  const FT = 18;
+  (setupData.newBeds || []).forEach((b, i) => {
+    if (beds.some(x => x.name === b.name)) return;
+    const k = beds.length;
+    beds.push({ id: "bed-" + Date.now() + "-" + i, name: b.name, w: b.w, l: b.l, shape: b.shape, color: SETUP_BED_COLORS[k % SETUP_BED_COLORS.length], notes: "",
+      x: 20 + (k % 3) * 9 * FT, y: 20 + Math.floor(k / 3) * 11 * FT });
+  });
+  if ((setupData.newBeds || []).length) saveBeds();
+  (setupData.newPerennials || []).forEach((t, i) => {
+    const p = { id: "sp" + Date.now() + "-" + i, crop: t.crop, variety: t.variety || "", bed: t.bed || "Yard", count: t.count || 1,
+      seedDate: "", transplantDate: t.date || "", status: "transplanted", notes: "", photo: null };
+    if (t.age !== "") p.plantedAge = t.age === "ns" ? null : +t.age;
+    if (p.variety && !getVarieties(p.crop).includes(p.variety)) { const c = cropRegistry.find(c => c.key === p.crop); if (c) { c.varieties.push(p.variety); saveCropRegistry(); } }
+    plantLog.push(p);
+  });
+  if ((setupData.newPerennials || []).length) savePlants();
+  setupData.newBeds = []; setupData.newPerennials = [];
+  document.getElementById("setup-beds").innerHTML = ""; document.getElementById("setup-perennials").innerHTML = "";
+}
 function renderSetupSummary() {
   const el = document.getElementById("setup-summary");
   const u = setupData.unit||"g";
@@ -4739,6 +4843,8 @@ function renderSetupSummary() {
     <div>📍 <b>${esc(setupData.address||"Location not set")}</b></div>
     <div>🌡 <b>Zone ${esc(setupData.zone||"not set")}</b></div>
     <div>📏 <b>${setupData.lotW?setupData.lotW+" × "+(setupData.lotD||setupData.lotW)+" ft":"Lot size not set"}</b></div>
+    <div>🪴 <b>${(setupData.newBeds||[]).length ? (setupData.newBeds.length + " bed" + (setupData.newBeds.length > 1 ? "s" : "") + " to add") : "No new beds"}</b></div>
+    <div>🌳 <b>${(setupData.newPerennials||[]).length ? (setupData.newPerennials.reduce((s,t)=>s+(t.count||1),0) + " trees/bushes to add") : "No trees or bushes added"}</b></div>
     <div>⚖️ <b>${u}</b></div>
   `;
 }
@@ -4760,6 +4866,7 @@ function finishSetup() {
   }
   displayUnit = unit;
   weatherData = null;
+  setupSaveGarden();
   document.getElementById("setup-overlay").style.display = "none";
   renderAll();
   toast(setupEditMode ? "✓ Settings saved" : "Welcome" + (name ? ", " + name : "") + "! 🌱");
