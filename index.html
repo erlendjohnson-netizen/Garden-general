@@ -316,6 +316,7 @@
     <div id="settings-summary" style="font-size:12px;color:var(--muted2);line-height:1.8;margin-bottom:10px"></div>
     <button class="btn btn-secondary btn-full" style="font-size:13px" onclick="openSetup(true)">Edit name, location, zone &amp; units</button>
     <button class="btn btn-secondary btn-full" style="font-size:13px;margin-top:8px" onclick="openCropModal()">🌱 Crops &amp; varieties</button>
+    <button class="btn btn-secondary btn-full" style="font-size:13px;margin-top:8px;color:#b03a2e;border-color:#e3b5ae" onclick="startOver()">↺ Start over (erase everything)</button>
   </div>
 </div>
 
@@ -5670,6 +5671,17 @@ function importAppData(input) {
     setTimeout(function() { location.reload(); }, 1200);
   };
   reader.readAsText(file);
+}
+
+// ── START OVER ──
+// Erases only this edition's keys (gl-demo-…); the personal app shares this website's storage and is left alone.
+function startOver() {
+  if (!confirm("Erase all harvests, plants, beds and settings in this app and start setup from scratch? This can't be undone — export a backup first if you want to keep anything.")) return;
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(LS)) keys.push(k); }
+  keys.forEach(k => localStorage.removeItem(k));
+  toast("Erased — starting over…");
+  setTimeout(() => location.reload(), 800);
 }
 
 // ── CSV EXPORT ──
