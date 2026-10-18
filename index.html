@@ -5235,11 +5235,10 @@ async function geocodePlace(q) {
 function prefillZone(lat) {
   const zone = getHardinessZone(lat);
   const zsel = document.getElementById("setup-zone");
-  if (!zsel.value) {
-    const zkey = zone.split("-")[0];
-    for (let i=0;i<zsel.options.length;i++) if (zsel.options[i].value===zkey) { zsel.selectedIndex=i; break; }
-  }
-  document.getElementById("setup-zone-hint").textContent = "Rough guess from latitude: Zone " + zone + " — confirm at planthardiness.ars.usda.gov";
+  const zkey = zone.split("-")[0];
+  for (let i=0;i<zsel.options.length;i++) if (zsel.options[i].value===zkey) { zsel.selectedIndex=i; break; }
+  setupData.zone = zsel.value;
+  document.getElementById("setup-zone-hint").textContent = "Set from latitude: Zone " + zone + " — pick another if yours differs (planthardiness.ars.usda.gov)";
 }
 
 async function detectSetupLocation() {
