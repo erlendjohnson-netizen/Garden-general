@@ -1172,6 +1172,17 @@
     </div>
 
     <div id="setup-step-9" style="display:none">
+      <div style="font-size:32px;text-align:center;margin-bottom:12px">🎯</div>
+      <h2 style="font-size:20px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">What do you want most from your garden?</h2>
+      <p style="font-size:13px;color:#7a6e58;text-align:center;margin-bottom:14px">This shapes the season planner’s suggestions. You can change it for each year’s plan.</p>
+      <div id="setup-goals"></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn btn-secondary" onclick="prevSetupStep()">← Back</button>
+        <button class="btn btn-primary" style="flex:2" onclick="nextSetupStep()">Continue →</button>
+      </div>
+    </div>
+
+    <div id="setup-step-10" style="display:none">
       <div style="font-size:40px;text-align:center;margin-bottom:16px">✅</div>
       <h2 style="font-size:22px;font-weight:normal;color:#2a4a1a;text-align:center;margin-bottom:8px">You're all set!</h2>
       <div id="setup-summary" style="background:#f0ede4;border-radius:10px;padding:16px;margin:20px 0;font-size:13px;line-height:2;color:#5a5040"></div>
@@ -3345,7 +3356,7 @@ const HARVEST_WEEKS = { tomato:10, pepper:14, eggplant:12, cucumber:6, okra:14, 
 const SUCCESSION_WEEKS = { beans:3, lettuce:3, raddish:2, cilantro:3, "sweet corn":3, corn:3, cucumber:4, squash:5, carrot:3, beet:3,
   arugula:3, "bok choy":3, spinach:3, "southern peas":4, peas:3, turnip:4, "mustard greens":4, dill:4 };
 const SP_HERBS = ["basil","cilantro","dill","parsley","chives","mint","thyme","oregano","sage","rosemary","lemongrass"];
-let spYear = null, spStep = "crops", spChosen = null, spAdd = null;
+let spYear = null, spStep = "crops", spChosen = null, spAdd = null, spGoal = null;
 
 function spLoad(k, def) { try { return JSON.parse(localStorage.getItem(LS+k) || "null") || def; } catch(e) { return def; } }
 function spPlans() { return spLoad("season-plans", {}); }
@@ -3393,7 +3404,7 @@ function spOptions(k, y) {
   return out.sort((a, b) => a.win[0] - b.win[0]);
 }
 function spMake(crop, method, date, every, times) {
-  const dtm = (cropGuide(crop) || {}).dtm || null, ind = guideIndoorDays(cropGuide(crop)) || 42, n = Math.max(1, times), id0 = Date.now();
+  const dtm = (cropGuide(crop) || {}).dtm || null, ind = guideIndoorDays(cropGuide(crop)) || 42, n = Math.max(1, times), id0 = Math.max(Date.now(), (spMake.last || 0) + 1); spMake.last = id0 + n - 1;
   for (let i = 0; i < n; i++) {
     const d = addDays(date, i * every * 7);
     plantings.push({ id: id0 + i, crop, variety: "", bed: "", qty: null, seeds: null, spacing: (cropGuide(crop) || {}).sp || null, method,
@@ -3402,6 +3413,51 @@ function spMake(crop, method, date, every, times) {
   }
   savePlantings();
 }
+// Planning goals — what the gardener wants most from the season
+const SP_GOALS = [
+  { key: "steady", icon: "🔄", title: "Steady harvest", sub: "Something to pick all season — repeat sowings and crops that fill the gaps." },
+  { key: "max", icon: "📦", title: "Biggest harvest", sub: "The most food from your space — heavy producers and long-picking plants." },
+  { key: "focus", icon: "🎯", title: "A few favorites", sub: "Fewer crops, more of each — good for eating fresh in quantity or preserving." },
+  { key: "easy", icon: "😌", title: "Low effort", sub: "Forgiving, reliable crops that don’t need much fuss." },
+];
+const SP_HIGH_YIELD = ["tomato","pepper","cucumber","squash","okra","long bean","beans","swiss chard","kale","collards","sweet potato","potato","eggplant","southern peas","lettuce","basil"];
+const SP_EASY = ["okra","southern peas","sweet potato","beans","swiss chard","collards","kale","raddish","lettuce","arugula","mustard greens","basil","pepper","garlic","onion","parsley","dill"];
+function spGoalInfo(g) { return SP_GOALS.find(x => x.key === g) || SP_GOALS[0]; }
+function spDefaultGoal() { return localStorage.getItem(LS+"plan-goal") || "steady"; }
+function spGoalCrops(goal, keys, last) {
+  if (goal === "max") return keys.filter(k => SP_HIGH_YIELD.includes(k)).sort((a, b) => spHW(b) - spHW(a)).slice(0, 12);
+  if (goal === "easy") return keys.filter(k => SP_EASY.includes(k)).slice(0, 8);
+  if (goal === "focus") {
+    const top = [...last.entries()].filter(([k]) => keys.includes(k)).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+    return (top.length ? top : keys.filter(k => ["tomato","pepper","cucumber","beans"].includes(k))).slice(0, 4);
+  }
+  return keys.filter(k => spHW(k) >= 8 || SUCCESSION_WEEKS[k]).slice(0, 12);
+}
+function spGoalSuccession(goal, k) {
+  const sw = SUCCESSION_WEEKS[k]; if (!sw) return { every: 0, times: 3 };
+  return goal === "steady" ? { every: sw, times: 4 } : goal === "max" ? { every: sw, times: 3 } : goal === "focus" ? { every: 2, times: 2 } : { every: 0, times: 3 };
+}
+// A starting calendar: first spring planting per crop (plus fall for cool crops), repeat sowings kept inside the window
+function spAutoPlan(keys, goal, y) {
+  keys.forEach(k => {
+    const opts = spOptions(k, y); if (!opts.length) return;
+    const pickOne = l => l.find(o => o.method === "direct") || l[0];
+    const spring = opts.filter(o => o.win[0].getMonth() < 6), fall = opts.filter(o => o.win[0].getMonth() >= 6);
+    const chosen = [pickOne(spring), (cropGuide(k) || {}).frost !== "tender" || goal === "steady" ? pickOne(fall) : null].filter(Boolean);
+    if (!chosen.length) chosen.push(opts[0]);
+    chosen.forEach(o => {
+      const span = (o.win[1] - o.win[0]) / 864e5, start = new Date(+o.win[0] + Math.min(7, span / 3) * 864e5);
+      const s = spGoalSuccession(goal, k);
+      const fit = s.every ? Math.max(1, Math.min(s.times, Math.floor((o.win[1] - start) / 864e5 / (s.every * 7)) + 1)) : 1;
+      spMake(k, o.method, localDateStr(start), s.every, fit);
+    });
+  });
+}
+function spSetGoal(g) { spGoal = g; localStorage.setItem(LS+"plan-goal", g); spPersist(); renderSeason(); }
+function spPickForGoal() { spChosen = new Set(spGoalCrops(spGoal, spPlannerCrops().map(o => o.key), spLastYear(spYear))); spPersist(); renderSeason(); }
+function spBuildCalendar(keys) { spAutoPlan(keys, spGoal, spYear); toast("✓ Calendar filled in — adjust any row"); renderSeason(); }
+function spNewPlan() { const t = new Date(); openSeasonPlanner(t.getMonth() >= 7 ? t.getFullYear() + 1 : t.getFullYear()); }
+
 function spSuggest(gap, keys, y, prefer) {
   const gs = spCellStart(y, gap[0]), ge = gap[1] === 23 ? new Date(y, 11, 31) : new Date(spCellStart(y, gap[1] + 1) - 864e5), out = [];
   keys.forEach(k => {
@@ -3427,6 +3483,7 @@ function spOfferYear() { const t = new Date(), m = t.getMonth(), y = t.getFullYe
 function spInitChosen() {
   const sp = spPlans()[String(spYear)];
   spChosen = new Set(sp ? sp.crops : [...spLastYear(spYear).keys(), ...plantings.filter(p => spPlantingYear(p) === String(spYear)).map(p => p.crop)]);
+  spGoal = (sp && sp.goal) || spDefaultGoal();
 }
 function openSeasonPlanner(year) {
   spYear = year || spOfferYear() || new Date().getFullYear(); spStep = "crops"; spAdd = null; spInitChosen();
@@ -3434,11 +3491,12 @@ function openSeasonPlanner(year) {
 }
 function spSetYear(y) { spYear = y; spAdd = null; spInitChosen(); renderSeason(); }
 function spGo(step) { spPersist(); spStep = step; spAdd = null; renderSeason(); }
-function spPersist() { const sp = spPlans()[String(spYear)]; spSavePlan(spYear, { crops: [...spChosen], saved: sp && sp.saved }); }
+function spPersist() { const sp = spPlans()[String(spYear)]; spSavePlan(spYear, { crops: [...spChosen], saved: sp && sp.saved, goal: spGoal }); }
 function spToggle(k) { spChosen.has(k) ? spChosen.delete(k) : spChosen.add(k); renderSeason(); }
 function spOpenAdd(k) {
   const opts = spOptions(k, spYear), today = parseLocalDate(todayStr()); let i = opts.findIndex(o => o.win[1] >= today); if (i < 0) i = 0;
-  spAdd = { crop: k, opt: i, every: 0, times: 3, date: opts[i] ? localDateStr(opts[i].win[0] < today && opts[i].win[1] >= today ? today : opts[i].win[0]) : "" };
+  const gs = spGoalSuccession(spGoal, k);
+  spAdd = { crop: k, opt: i, every: gs.every, times: gs.times, date: opts[i] ? localDateStr(opts[i].win[0] < today && opts[i].win[1] >= today ? today : opts[i].win[0]) : "" };
   renderSeason();
 }
 function spPickOpt(i) { const o = spOptions(spAdd.crop, spYear)[i], today = parseLocalDate(todayStr()); spAdd.opt = i; spAdd.date = localDateStr(o.win[0] < today && o.win[1] >= today ? today : o.win[0]); renderSeason(); }
@@ -3453,7 +3511,7 @@ function spRemove(id) {
   plantings = plantings.filter(x => x !== p); savePlantings(); renderSeason();
 }
 function spAddSuggestion(k, method, date) { spMake(k, method, date, 0, 1); if (!spChosen.has(k)) { spChosen.add(k); spPersist(); } toast("✓ Added"); renderSeason(); }
-function spFinish() { spSavePlan(spYear, { crops: [...spChosen], saved: todayStr() }); toast("✓ Season plan saved"); setPlanTab("agenda"); renderDashboard(); }
+function spFinish() { spSavePlan(spYear, { crops: [...spChosen], saved: todayStr(), goal: spGoal }); toast("✓ Season plan saved"); setPlanTab("agenda"); renderDashboard(); }
 
 function spStrip(counts, gapCells) {
   const shade = n => n <= 0 ? "#f6d9cc" : n === 1 ? "#cfe3bd" : n <= 3 ? "#9cc57c" : "#5f9a3e";
@@ -3508,24 +3566,37 @@ function renderSeason() {
   const counts = spCoverage(yearPl, spYear), gaps = spGaps(counts, spPossible(options.map(o => o.key), spYear));
   const gapCells = new Set(gaps.flatMap(([a, b]) => Array.from({ length: b - a + 1 }, (_, i) => a + i)));
   const fd = getFrostDates();
-  let h = `<div style="display:flex;gap:6px;margin-bottom:8px">${[y0, y0+1].map(y=>`<span class="chip ${spYear===y?"active":""}" onclick="spSetYear(${y})">${y}</span>`).join("")}</div>
+  const plans = spPlans(), gi = spGoalInfo(spGoal);
+  let h = `<div class="card" style="margin:0 0 10px;background:#e8f0df;border-color:#c5dcb0"><div class="card-title">📅 Season plans</div>
+    ${Object.keys(plans).sort().reverse().map(y => { const p = plans[y], g = spGoalInfo(p.goal); return `<div onclick="openSeasonPlanner(${y})" style="cursor:pointer;display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #c5dcb0;font-size:13px"><span><b>${y}</b> ${g.icon} ${g.title} · ${p.crops.length} crop${p.crops.length===1?"":"s"}${p.saved?"":" · draft"}${String(spYear)===y?" · <i>open</i>":""}</span><b style="color:var(--green)">›</b></div>`; }).join("")}
+    <button class="btn btn-primary btn-full" style="margin-top:8px" onclick="spNewPlan()">＋ New plan for ${new Date().getMonth() >= 7 ? y0 + 1 : y0}</button></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">${[y0, y0+1].map(y=>`<span class="chip ${spYear===y?"active":""}" onclick="spSetYear(${y})">${y}</span>`).join("")}</div>
     <div class="type-tabs" style="margin-bottom:6px">${[["crops","1 · Crops"],["calendar","2 · Calendar"],["gaps","3 · Gaps"]].map(([v,l])=>`<button class="type-tab ${spStep===v?"active":""}" onclick="spGo('${v}')">${l}</button>`).join("")}</div>`;
   if (spStep === "crops") {
-    h += `<div class="card" style="margin:10px 0">Choose what you want to grow in ${spYear}. ${last.size ? "Last year’s crops are already ticked." : ""} Windows come from your frost dates (${fmtShortDate(spYear+"-"+fd.last)} / ${fmtShortDate(spYear+"-"+fd.first)}).</div>`;
+    const suggested = spGoalCrops(spGoal, options.map(o => o.key), last);
+    h += `<div class="card" style="margin:10px 0"><div class="card-title">What matters most this year?</div>
+      ${SP_GOALS.map(x => `<div onclick="spSetGoal('${x.key}')" style="cursor:pointer;padding:8px 12px;margin-bottom:6px;border-radius:12px;border:${spGoal===x.key?"2px solid var(--green);background:#e8f0df":"1px solid var(--border)"}"><b>${x.icon} ${x.title}</b>${spGoal===x.key?`<div style="font-size:12px;color:var(--muted)">${x.sub}</div>`:""}</div>`).join("")}
+      ${suggested.length ? `<button class="btn btn-secondary btn-full" style="margin-top:4px" onclick="spPickForGoal()">✨ Pick ${suggested.length} crops for “${gi.title}”</button>` : ""}
+      ${spGoal === "focus" && planned.length > 5 ? `<div style="font-size:12px;color:#b8741a;margin-top:8px">You’ve picked ${planned.length} — for “A few favorites”, 3–5 crops works best.</div>` : ""}</div>`;
+    h += `<div class="card" style="margin:10px 0">Choose what you want to grow in ${spYear}. ★ = suits your goal. ${last.size ? "Last year’s crops are already ticked." : ""} Windows come from your frost dates (${fmtShortDate(spYear+"-"+fd.last)} / ${fmtShortDate(spYear+"-"+fd.first)}).</div>`;
     [["warm","☀️ Warm season","Planted after the last frost; most stop at the first fall frost."],["cool","❄️ Cool season","Spring before the heat, and again in fall."],["herb","🌿 Herbs",""]].forEach(([g,t,s]) => {
       h += `<div class="card" style="margin:10px 0"><div class="card-title">${t}</div>${s?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${s}</div>`:""}
-        <div style="display:flex;flex-wrap:wrap;gap:6px">${options.filter(o=>o.group===g).map(o=>{ const lw = last.get(o.key); return `<span class="chip ${spChosen.has(o.key)?"active":""}" onclick="spToggle('${jsq(o.key)}')">${o.emoji} ${esc(o.label)}${lw ? " · " + fmt(lw) : last.has(o.key) ? " · last yr" : ""}</span>`; }).join("")}</div></div>`;
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${options.filter(o=>o.group===g).map(o=>{ const lw = last.get(o.key); return `<span class="chip ${spChosen.has(o.key)?"active":""}" onclick="spToggle('${jsq(o.key)}')">${suggested.includes(o.key) ? "★ " : ""}${o.emoji} ${esc(o.label)}${lw ? " · " + fmt(lw) : last.has(o.key) ? " · last yr" : ""}</span>`; }).join("")}</div></div>`;
     });
     h += `<button class="btn btn-primary btn-full" ${planned.length?"":"disabled"} onclick="spGo('calendar')">Next: place ${planned.length} crop${planned.length===1?"":"s"} on the calendar →</button>`;
   } else if (spStep === "calendar") {
     const keys = cropRegistry.map(c => c.key).filter(k => planned.includes(k) || yearPl.some(p => p.crop === k));
+    const unplaced = planned.filter(k => !yearPl.some(p => p.crop === k));
     h += `<div class="card" style="margin:10px 0"><div class="card-title">Harvest coverage</div>${spStrip(counts, gapCells)}</div>
+      ${unplaced.length ? `<div class="card" style="margin:10px 0;background:#e8f0df;border-color:#c5dcb0">${unplaced.length} crop${unplaced.length>1?"s have":" has"} no plantings yet. Fill in a starting calendar for “${gi.title}”${spGoal==="steady"||spGoal==="max"?", with repeat sowings where they help":""} — then adjust any row.
+        <button class="btn btn-primary btn-full" style="margin-top:10px" onclick='spBuildCalendar(${JSON.stringify(unplaced).replace(/'/g,"&#39;")})'>✨ Build my calendar</button></div>` : ""}
       <div class="card" style="margin:10px 0"><div class="card-title">Your crops</div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--muted);margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:8px;background:#f2dfa8"></i> Can plant</span><span><i style="display:inline-block;width:12px;height:6px;border-radius:2px;background:#4a7a32"></i> Picking</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:3px;background:#8a5a1a"></i> Plant date</span></div>
       ${spAxis()}${keys.length ? keys.map(k => spCropRow(k, yearPl.filter(p => p.crop === k))).join("") : `<div style="font-size:12px;color:var(--muted)">Pick crops in step 1 first.</div>`}</div>
       <button class="btn btn-primary btn-full" onclick="spGo('gaps')">${gaps.length ? `Next: fill ${gaps.length} gap${gaps.length>1?"s":""} →` : "Next: check for gaps →"}</button>`;
   } else {
     h += `<div class="card" style="margin:10px 0"><div class="card-title">Harvest coverage</div>${spStrip(counts, gapCells)}</div>`;
+    if (yearPl.length && gaps.length && (spGoal === "focus" || spGoal === "easy")) h += `<div class="card" style="margin:10px 0">Gaps are fine for “${gi.title}” — fill them only if you want something to pick then.</div>`;
     if (!yearPl.length) h += `<div class="card" style="margin:10px 0">Add plantings on the calendar first, then come back to find the gaps.</div>`;
     else if (!gaps.length) h += `<div class="card" style="margin:10px 0">🎉 Something to pick in every half-month of your growing season.</div>`;
     else gaps.forEach(g => {
@@ -3588,6 +3659,10 @@ function renderAgenda() {
     Add a <b>planting</b> (what, where, when) or a <b>program</b> (a repeating spray or feeding), and the steps show up here when they're due.</div>
     <div class="btn-row" style="margin-top:12px"><button class="btn btn-secondary" style="flex:1" onclick="setPlanTab('plantings');openPlantingModal()">+ Planting</button>
     <button class="btn btn-secondary" style="flex:1" onclick="setPlanTab('programs');openProgramModal()">+ Program</button></div></div>`;
+  const ny = new Date().getMonth() >= 7 ? new Date().getFullYear() + 1 : new Date().getFullYear(), hasPlan = spPlans()[String(ny)];
+  html = `<div class="card" style="margin:10px 0;background:#e8f0df;border-color:#c5dcb0;display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div style="font-size:13px">📅 ${hasPlan ? `Your ${ny} season plan` : `Plan your ${ny} season — crops, calendar, harvest gaps`}</div>
+    <button class="btn btn-primary" style="padding:8px 12px;white-space:nowrap" onclick="${hasPlan ? `openSeasonPlanner(${ny})` : "spNewPlan()"}">${hasPlan ? "Open ›" : "＋ New plan"}</button></div>` + html;
   el.innerHTML = html;
 }
 
@@ -5123,7 +5198,7 @@ function markCareScheduledDone(id) {
 
 // ===================== SETUP WIZARD =====================
 let setupStep = 0;
-const SETUP_STEPS = 10;
+const SETUP_STEPS = 11;
 let setupData = { name:"", gardenName:"", address:"", lat:null, lon:null, zone:"", unit:"g" };
 let setupEditMode = false;
 
@@ -5170,6 +5245,7 @@ function showSetupStep(n) {
   renderSetupDots();
   setupStepShown(n);
   if(n===SETUP_STEPS-1) renderSetupSummary();
+  if(n===9) renderSetupGoals();
   document.getElementById("setup-overlay").scrollTop = 0;
 }
 
@@ -5361,6 +5437,10 @@ function setupSaveGarden() {
   setupData.newBeds = []; setupData.newPerennials = [];
   document.getElementById("setup-beds").innerHTML = ""; document.getElementById("setup-perennials").innerHTML = "";
 }
+function renderSetupGoals() {
+  if (!setupData.goal) setupData.goal = spDefaultGoal();
+  document.getElementById("setup-goals").innerHTML = SP_GOALS.map(x => `<div onclick="setupData.goal='${x.key}';renderSetupGoals()" style="cursor:pointer;padding:12px 14px;margin-bottom:8px;border-radius:12px;background:${setupData.goal===x.key?"#e8f0df":"#fff"};border:${setupData.goal===x.key?"2px solid var(--green)":"1px solid var(--border2)"}"><b>${x.icon} ${x.title}</b><div style="font-size:12px;color:#7a6e58;margin-top:2px">${x.sub}</div></div>`).join("");
+}
 function renderSetupSummary() {
   const el = document.getElementById("setup-summary");
   const u = setupData.unit||"g";
@@ -5373,6 +5453,7 @@ function renderSetupSummary() {
     <div>🪴 <b>${(setupData.newBeds||[]).length ? (setupData.newBeds.length + " bed" + (setupData.newBeds.length > 1 ? "s" : "") + " to add") : "No new beds"}</b></div>
     <div>🌳 <b>${(setupData.newPerennials||[]).length ? (setupData.newPerennials.reduce((s,t)=>s+(t.count||1),0) + " trees/bushes to add") : "No trees or bushes added"}</b></div>
     <div>⚖️ <b>${u}</b></div>
+    <div>${spGoalInfo(setupData.goal).icon} <b>${spGoalInfo(setupData.goal).title}</b></div>
   `;
 }
 
@@ -5384,6 +5465,7 @@ function finishSetup() {
   localStorage.setItem(LS+"garden-name", gardenName);
   localStorage.setItem(LS+"user-name", name);
   localStorage.setItem(LS+"unit", unit);
+  if (setupData.goal) localStorage.setItem(LS+"plan-goal", setupData.goal);
   localStorage.setItem(LS+"setup-zone", setupData.zone||"");
   localStorage.setItem(LS+"garden-address", setupData.address||"");
   if(setupData.lat != null) { localStorage.setItem(LS+"garden-lat", setupData.lat); localStorage.setItem(LS+"garden-lon", setupData.lon); }
