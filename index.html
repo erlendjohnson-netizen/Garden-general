@@ -811,16 +811,20 @@
     </div>
     <div class="field-row">
       <div class="field"><label>Days to first harvest</label><input type="number" inputmode="numeric" id="pl-dtm" min="1" onchange="plDatesChanged()"></div>
-      <div class="field"><label>Repeat (succession)</label>
-        <select id="pl-repeat">
-          <option value="0">No repeat</option>
-          <option value="2">Every 2 weeks ×3</option>
-          <option value="3">Every 3 weeks ×3</option>
-          <option value="4">Every 4 weeks ×3</option>
-        </select>
-      </div>
     </div>
     <div id="pl-harvest-hint" style="font-size:12px;color:var(--green);margin:-6px 0 12px"></div>
+    <div class="field" id="pl-succ-wrap"><label>🔁 Succession planting</label>
+      <div id="pl-succ-tip" style="font-size:12px;color:var(--muted2);line-height:1.5;margin-bottom:6px"></div>
+      <div class="field-row" style="margin-bottom:0">
+        <select id="pl-repeat" onchange="plSuccUpdate()"></select>
+        <select id="pl-rounds" onchange="plSuccUpdate()">
+          <option value="window">Until the season ends</option>
+          <option value="2">2 rounds</option><option value="3">3 rounds</option><option value="4">4 rounds</option><option value="6">6 rounds</option><option value="8">8 rounds</option>
+        </select>
+      </div>
+      <div id="pl-succ-preview" style="font-size:12px;line-height:1.6;margin-top:6px"></div>
+    </div>
+    <div id="pl-next-round" style="display:none;background:#e8f0df;border-radius:10px;padding:10px;margin-bottom:12px"></div>
     <div class="field"><label>Notes</label><input type="text" id="pl-notes" placeholder="Seed source, spacing, interplant with…"></div>
     <input type="hidden" id="pl-edit-id">
     <div class="btn-row">
@@ -3843,8 +3847,10 @@ function openPlantingModal(editId, cropKey, bedName) {
   document.getElementById("pl-sow").value = p ? (p.sowDate||"") : "";
   document.getElementById("pl-tp").value = p ? (p.transplantDate||"") : "";
   document.getElementById("pl-dtm").value = p ? (p.dtm||"") : guideDtm(document.getElementById("pl-crop").value);
-  document.getElementById("pl-repeat").value = "0";
-  document.getElementById("pl-repeat").parentElement.style.display = p ? "none" : "";
+  document.getElementById("pl-succ-wrap").style.display = p ? "none" : "";
+  document.getElementById("pl-rounds").value = "window";
+  plSuccOptions(p ? 0 : null);
+  plNextRoundBox(p);
   document.getElementById("pl-notes").value = p ? (p.notes||"") : "";
   plMethodChanged();
   document.getElementById("planting-modal").classList.add("open");
@@ -3867,7 +3873,91 @@ function plCropChanged() {
   document.getElementById("pl-dtm").value = guideDtm(crop);
   document.getElementById("pl-spacing").value = (cropGuide(crop)||{}).sp || "";
   document.getElementById("pl-method").value = plDefaultMethod(crop);
+  if (!document.getElementById("pl-edit-id").value) { document.getElementById("pl-rounds").value = "window"; plSuccOptions(null); }
   plMethodChanged();
+}
+
+// ── Succession sowing: repeat a planting every N weeks, through the end of the season ──
+const SUCC_TIPS = {
+  raddish: "Radishes are ready in under a month and go woody fast — small sowings every 1–2 weeks keep them coming.",
+  cucumber: "Cucumber vines slow down after 4–6 weeks of picking; a new sowing every 3–4 weeks keeps fresh vines producing.",
+  beans: "Bush beans give one big flush — sow again every 2–3 weeks for a steady supply.",
+  lettuce: "Lettuce bolts in heat; sow a little every 2–3 weeks while the weather is cool.",
+  squash: "Squash bugs and vine borers wear out plants — a fresh sowing every 4–6 weeks keeps you picking.",
+  "sweet corn": "Corn ripens all at once — sow blocks every 2–3 weeks to spread the harvest.",
+  corn: "Corn ripens all at once — sow blocks every 2–3 weeks to spread the harvest.",
+  cilantro: "Cilantro bolts quickly; sow every 2–3 weeks in cool weather.",
+};
+function succTip(k) { return SUCC_TIPS[k] || (SUCCESSION_WEEKS[k] ? `Usually sown again every ${SUCCESSION_WEEKS[k]} weeks for a steady supply.` : ""); }
+// The sowing season holding a date: the planting window, stretched to the last date a planting can still pick before that season's harvest ends
+function succWindow(crop, method, date) {
+  if (!date) return null;
+  const d = parseLocalDate(date), y = d.getFullYear(), dtm = (cropGuide(crop) || {}).dtm || 0;
+  for (const yr of [y - 1, y]) {
+    const w = cropWindows(crop, yr); if (!w) continue;
+    for (const x of method === "direct" ? w.direct : w.tp) {
+      const hw = (w.harvest || []).find(h => h[1] >= x[0]);
+      const late = hw && dtm ? new Date(+hw[1] - dtm * 864e5) : x[1], end = late > x[1] ? late : x[1];
+      if (d >= new Date(+x[0] - 10 * 864e5) && d <= end) return [x[0], end];
+    }
+  }
+  return null;
+}
+function succDates(crop, method, first, every, count) {
+  if (!first || !every) return { dates: first ? [first] : [], end: null };
+  const win = succWindow(crop, method, first), end = win ? localDateStr(win[1]) : null;
+  const max = count === "window" ? (end ? 12 : 3) : Math.max(1, Math.min(12, count)), dates = [];
+  for (let i = 0; i < max; i++) { const d = addDays(first, i * every * 7); if (count === "window" && end && i > 0 && d > end) break; dates.push(d); }
+  return { dates, end };
+}
+function plSuccOptions(force) {
+  const crop = document.getElementById("pl-crop").value, rec = SUCCESSION_WEEKS[crop] || 0, sel = document.getElementById("pl-repeat");
+  sel.innerHTML = `<option value="0">Just once</option>` + [1,2,3,4,6].map(n => `<option value="${n}">Every ${n} wk${n>1?"s":""}${rec===n?" ★":""}</option>`).join("");
+  sel.value = String(force != null ? force : rec);
+  document.getElementById("pl-succ-tip").textContent = succTip(crop);
+  plSuccUpdate();
+}
+function plSucc() {
+  const m = document.getElementById("pl-method").value, crop = document.getElementById("pl-crop").value;
+  const base = m === "direct" ? document.getElementById("pl-sow").value : document.getElementById("pl-tp").value;
+  const every = parseInt(document.getElementById("pl-repeat").value) || 0, rv = document.getElementById("pl-rounds").value;
+  return { base, every, rounds: rv, r: every && base ? succDates(crop, m, base, every, rv === "window" ? "window" : parseInt(rv)) : null };
+}
+function plSuccUpdate() {
+  const el = document.getElementById("pl-succ-preview"); if (!el) return;
+  const { every, rounds, r } = plSucc(), m = document.getElementById("pl-method").value;
+  document.getElementById("pl-rounds").style.display = every ? "" : "none";
+  if (!every) { el.innerHTML = ""; return; }
+  if (!r) { el.innerHTML = `<span style="color:var(--muted)">Set the ${m === "direct" ? "sow" : "plant-out"} date to see the rounds.</span>`; return; }
+  el.innerHTML = `<div style="background:#e8f0df;border-radius:10px;padding:8px 10px"><b>${r.dates.length} round${r.dates.length>1?"s":""}:</b> ${r.dates.map(fmtShortDate).join(" · ")}
+    ${rounds === "window" && r.end ? `<div style="color:var(--muted)">Last sowing that still has time to produce: about ${fmtShortDate(r.end)}</div>` : ""}
+    ${rounds === "window" && !r.end ? `<div style="color:var(--muted)">That date is outside the usual window, so 3 rounds — pick a number to change it.</div>` : ""}
+    <div style="color:var(--muted)">Each round gets its own reminders on the agenda.</div></div>`;
+}
+// On an existing planting of a succession crop: offer the next round(s) if none is planned yet
+function plNextRoundBox(p) {
+  const box = document.getElementById("pl-next-round");
+  if (!p || !SUCCESSION_WEEKS[p.crop]) { box.style.display = "none"; return; }
+  const every = SUCCESSION_WEEKS[p.crop], pBase = (p.method === "direct" ? p.sowDate : p.transplantDate) || "";
+  const bOf = x => (x.method === "direct" ? x.sowDate : x.transplantDate) || "";
+  const later = pBase ? succDates(p.crop, p.method, pBase, every, "window").dates.slice(1) : [];
+  const hasLater = plantings.some(x => x !== p && x.crop === p.crop && bOf(x) > pBase && bOf(x) <= addDays(pBase, every * 7 + 3));
+  if (!later.length || hasLater) { box.style.display = "none"; return; }
+  box.style.display = "";
+  box.innerHTML = `<div style="font-size:12px;line-height:1.5;margin-bottom:8px">🔁 ${esc(succTip(p.crop))}</div>
+    <button class="btn btn-secondary btn-full" onclick="plAddRounds('${jsq(p.id)}',1)">+ Next round ${fmtShortDate(later[0])}</button>
+    ${later.length > 1 ? `<button class="btn btn-secondary btn-full" style="margin-top:6px" onclick="plAddRounds('${jsq(p.id)}',${later.length})">+ ${later.length} rounds, every ${every} wks to ${fmtShortDate(later[later.length-1])}</button>` : ""}`;
+}
+function plAddRounds(id, n) {
+  const p = plantings.find(x => String(x.id) === String(id)); if (!p) return;
+  const every = SUCCESSION_WEEKS[p.crop], pBase = (p.method === "direct" ? p.sowDate : p.transplantDate) || "";
+  const dates = succDates(p.crop, p.method, pBase, every, "window").dates.slice(1, 1 + n), id0 = Date.now();
+  dates.forEach((d, i) => {
+    const off = daysBetween(pBase, d), { done, skipped, snooze, plantId, ...rest } = p;
+    plantings.push(Object.assign({}, rest, { id: id0 + i, sowDate: p.sowDate ? addDays(p.sowDate, off) : "", transplantDate: p.transplantDate ? addDays(p.transplantDate, off) : "",
+      notes: [String(p.notes || "").replace(/\s*·?\s*(Succession|Round) \d+ of \d+/, ""), "Next round"].filter(Boolean).join(" · ") }));
+  });
+  savePlantings(); closeModal("planting-modal"); toast(`✓ Added ${dates.length} round${dates.length > 1 ? "s" : ""}`); refreshPlanViews();
 }
 
 function plMethodChanged() {
@@ -3906,7 +3996,7 @@ function plDatesChanged() {
   const base = m === "direct" ? sow : tpEl.value;
   const dtm = parseInt(document.getElementById("pl-dtm").value);
   document.getElementById("pl-harvest-hint").textContent = base && dtm ? "First harvest around " + fmtShortDate(addDays(base, dtm)) : "";
-  plFitUpdate();
+  plFitUpdate(); plSuccUpdate();
 }
 
 function savePlanting() {
@@ -3930,14 +4020,14 @@ function savePlanting() {
   };
   if (prev) { Object.assign(prev, base); }
   else {
-    const rep = parseInt(document.getElementById("pl-repeat").value) || 0;
-    const n = rep ? 3 : 1;
-    for (let i = 0; i < n; i++) {
-      const off = i * rep * 7;
-      plantings.push(Object.assign({}, base, { id: Date.now() + i,
+    const sc = plSucc(), b0 = m === "direct" ? base.sowDate : base.transplantDate;
+    const dates = sc.r && sc.r.dates.length ? sc.r.dates : [b0], n = dates.length, id0 = Date.now();
+    dates.forEach((d, i) => {
+      const off = daysBetween(b0, d);
+      plantings.push(Object.assign({}, base, { id: id0 + i,
         sowDate: base.sowDate ? addDays(base.sowDate, off) : "", transplantDate: base.transplantDate ? addDays(base.transplantDate, off) : "",
-        notes: n > 1 ? `${base.notes ? base.notes + " · " : ""}Succession ${i+1} of ${n}` : base.notes }));
-    }
+        notes: n > 1 ? `${base.notes ? base.notes + " · " : ""}Round ${i+1} of ${n}` : base.notes }));
+    });
   }
   savePlantings(); closeModal("planting-modal"); toast("✓ Planting saved"); refreshPlanViews();
 }
