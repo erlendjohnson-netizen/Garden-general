@@ -353,7 +353,7 @@
         <select id="h-bed" onchange="hBedTouched=true"></select>
       </div>
       <div class="field-row">
-        <div class="field"><label>Weight <span style="text-transform:none;letter-spacing:0">· optional</span></label><div style="display:flex;gap:4px"><input type="number" inputmode="decimal" step="any" min="0" id="h-weight" placeholder="skip if not weighed" oninput="updateEstimateHint()" style="flex:1;min-width:0"><select id="h-wunit" onchange="changeEntryUnit(this.value)" style="width:64px;flex:none" aria-label="Weigh-in unit"><option value="g">g</option><option value="kg">kg</option><option value="oz">oz</option><option value="lb">lb</option></select></div></div>
+        <div class="field"><label>Weight <span style="text-transform:none;letter-spacing:0">· optional</span></label><div style="display:flex;gap:4px"><input type="number" inputmode="decimal" step="any" min="0" id="h-weight" placeholder="skip if not weighed" oninput="updateEstimateHint();renderWunit()" style="flex:1;min-width:0"></div></div>
         <div class="field"><label>Count</label>
           <div style="display:flex;gap:4px">
             <button type="button" class="btn btn-secondary" style="padding:8px 12px" onclick="bumpCount(-1)">−</button>
@@ -362,7 +362,8 @@
           </div>
         </div>
       </div>
-      <div id="h-estimate-hint" style="font-size:12px;color:var(--muted2);margin:-6px 0 12px"></div>
+      <div id="h-wunit-row" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-6px 0 6px;font-size:12px;color:var(--muted2)"></div>
+      <div id="h-estimate-hint" style="font-size:12px;color:var(--muted2);margin:0 0 12px"></div>
       <div class="field"><label>Notes</label><input type="text" id="h-notes" placeholder="Anything notable..."></div>
       <div class="field">
         <label>Photo</label>
@@ -1863,7 +1864,7 @@ function resetAddForm() {
   const hc = document.getElementById("h-crop");
   hc.value = lastH && getCropKeys().includes(lastH.crop) ? lastH.crop : (hc.options[0]||{}).value || "";
   hBedTouched = false;
-  document.getElementById("h-wunit").value = getEntryUnit();
+  renderWunit();
   document.getElementById("h-weight").value="";
   document.getElementById("h-count").value="";
   document.getElementById("h-notes").value="";
@@ -1995,7 +1996,14 @@ function changeEntryUnit(u) {
   const el = document.getElementById("h-weight"), w = parseFloat(el.value), g = isFinite(w) && w > 0 ? toGrams(w) : null;
   entryUnit = u; try { localStorage.setItem(LS+"entry-unit", u); } catch(e) {}
   if (g != null) el.value = fromGrams(g);
-  updateEstimateHint();
+  updateEstimateHint(); renderWunit();
+}
+// Weigh in any unit (e.g. grams on the scale) while totals keep the display unit
+function renderWunit() {
+  const row = document.getElementById("h-wunit-row"); if (!row) return;
+  const u = getEntryUnit(), w = parseFloat(document.getElementById("h-weight").value);
+  row.innerHTML = `Weighing in ${["g","kg","oz","lb"].map(x => `<span class="chip ${x === u ? "active" : ""}" style="padding:3px 12px" onclick="changeEntryUnit('${x}')">${x}</span>`).join("")}
+    ${u !== displayUnit && !(isFinite(w) && w > 0) ? `<span>totals stay in ${displayUnit}</span>` : ""}`;
 }
 
 // Beds most likely to hold a crop, best first: living plants, then this season's planned plantings, then recent harvests
@@ -2134,7 +2142,7 @@ function startEdit(id, type) {
     setSelectValue("h-variety", e.variety);
     hBedTouched = true;
     setSelectValue("h-bed", e.bed);
-    document.getElementById("h-weight").value = isWeighed(e) ? fromGrams(e.weight) : "";
+    document.getElementById("h-weight").value = isWeighed(e) ? fromGrams(e.weight) : ""; renderWunit();
     document.getElementById("h-count").value = e.count || "";
     document.getElementById("h-notes").value=e.notes||"";
     showPhoto("h", e.photo);
@@ -6393,7 +6401,10 @@ showSetupIfNeeded();
 
 // Offline support / installable app (service worker only works over https)
 if ("serviceWorker" in navigator && location.protocol === "https:") {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  // Check for a newer version on every open, and reload once when it takes over so changes show up right away
+  const hadController = !!navigator.serviceWorker.controller;
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").then(r => r.update()).catch(() => {}));
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !window.__swReloaded) { window.__swReloaded = true; location.reload(); } });
 }
 
 // Plant delete handler (asks for confirmation; ids are compared as strings)
