@@ -683,13 +683,14 @@
     <div class="modal-sub">Define a growing space</div>
     <div class="field"><label>Nickname</label><input type="text" id="bed-name" placeholder="e.g. Oval Stock Tank"></div>
     <div class="field-row">
-      <div class="field"><label>Width (ft)</label><input type="number" id="bed-w" placeholder="4" step="0.5"></div>
-      <div class="field"><label>Length (ft)</label><input type="number" id="bed-l" placeholder="8" step="0.5"></div>
+      <div class="field"><label id="bed-w-label">Width (ft)</label><input type="number" id="bed-w" placeholder="4" step="0.5"></div>
+      <div class="field"><label id="bed-l-label">Length (ft)</label><input type="number" id="bed-l" placeholder="8" step="0.5"></div>
     </div>
     <div class="field"><label>Shape</label>
-      <select id="bed-shape">
+      <select id="bed-shape" onchange="bedShapeChanged()">
         <option value="rect">Rectangle / Square</option>
         <option value="oval">Oval / Round</option>
+        <option value="triangle">Triangle</option>
         <option value="container">Container / Pot</option>
         <option value="row">Row / In-ground</option>
       </select>
@@ -704,6 +705,8 @@
         <div class="color-swatch" data-color="#3a2a1a" style="background:#3a2a1a" onclick="selectBedColor(this)">🌻</div>
       </div>
     </div>
+    <div class="field" id="bed-apex-wrap" style="display:none"><label>On the map, the point faces</label>
+      <select id="bed-apex"><option value="up">↑ Up</option><option value="right">→ Right</option><option value="down">↓ Down</option><option value="left">← Left</option></select></div>
     <div class="field"><label>Notes</label><input type="text" id="bed-notes" placeholder="Soil mix, sun exposure..."></div>
     <input type="hidden" id="bed-edit-id">
     <div class="btn-row" style="margin-top:4px">
@@ -2234,7 +2237,11 @@ function drawLotCanvas() {
     const bhPx = b.l * SCALE;
     const isOval = b.shape === "oval" || b.shape === "container";
     ctx.fillStyle = b.color + "cc";
-    if (isOval) {
+    if (b.shape === "triangle") {
+      const tp = triPoints(triApex(b), bwPx, bhPx);
+      ctx.beginPath(); tp.forEach(([px, py], i) => i ? ctx.lineTo(bxPx + px, byPx + py) : ctx.moveTo(bxPx + px, byPx + py)); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else if (isOval) {
       ctx.beginPath();
       ctx.ellipse(bxPx + bwPx/2, byPx + bhPx/2, bwPx/2, bhPx/2, 0, 0, Math.PI*2);
       ctx.fill();
@@ -2378,8 +2385,10 @@ function showBedSetup(editId) {
     const b = beds.find(b=>b.id===editId);
     if (!b) return;
     document.getElementById("bed-name").value = b.name;
-    document.getElementById("bed-w").value = b.w;
-    document.getElementById("bed-l").value = b.l;
+    const bd = b.shape === "triangle" ? triBaseDepth(b) : null;   // triangles edit as base × depth
+    document.getElementById("bed-w").value = bd ? bd.base : b.w;
+    document.getElementById("bed-l").value = bd ? bd.depth : b.l;
+    document.getElementById("bed-apex").value = triApex(b);
     document.getElementById("bed-shape").value = b.shape||"rect";
     document.getElementById("bed-notes").value = b.notes||"";
     selectedBedColor = b.color||"#1e3a10";
@@ -2388,12 +2397,20 @@ function showBedSetup(editId) {
     document.getElementById("bed-w").value="";
     document.getElementById("bed-l").value="";
     document.getElementById("bed-shape").value="rect";
+    document.getElementById("bed-apex").value="up";
     document.getElementById("bed-notes").value="";
     selectedBedColor="#1e3a10";
   }
   document.querySelectorAll(".color-swatch").forEach(s=>{
     s.classList.toggle("selected", s.dataset.color===selectedBedColor);
   });
+  bedShapeChanged();
+}
+function bedShapeChanged() {
+  const tri = document.getElementById("bed-shape").value === "triangle";
+  document.getElementById("bed-w-label").textContent = tri ? "Base (ft)" : "Width (ft)";
+  document.getElementById("bed-l-label").textContent = tri ? "Base to point (ft)" : "Length (ft)";
+  document.getElementById("bed-apex-wrap").style.display = tri ? "" : "none";
 }
 
 function closeBedModal() { document.getElementById("bed-modal").classList.remove("open"); refreshBedsTab(); }
@@ -2423,6 +2440,10 @@ function saveBed() {
     x: editId ? beds.find(b=>b.id===editId)?.x||20 : (cw ? Math.round(cw/2-40) : 20),
     y: editId ? beds.find(b=>b.id===editId)?.y||20 : (ch ? Math.round(ch/2-40) : 20),
   };
+  if (entry.shape === "triangle") {   // base × depth → the box on the map, by which way the point faces
+    const apex = document.getElementById("bed-apex").value, base = entry.w, depth = entry.l, across = apex === "up" || apex === "down";
+    Object.assign(entry, { apex, w: across ? base : depth, l: across ? depth : base });
+  }
   if (editId) {
     // Harvests and plants reference beds by name — carry a rename through to them
     const old = beds.find(b=>b.id===editId);
@@ -2458,8 +2479,7 @@ window.rotBed = function(id) {
   if (idx < 0) { toast("Bed not found"); return; }
   var b = beds[idx];
   var newW = b.l, newL = b.w;
-  beds[idx] = { id:b.id, name:b.name, w:newW, l:newL, shape:b.shape,
-    color:b.color, x:b.x, y:b.y, notes:b.notes };
+  beds[idx] = Object.assign({}, b, { w:newW, l:newL }, b.shape === "triangle" ? { apex: APEX_NEXT[triApex(b)] } : {});
   saveBeds();
   renderMap();
   setTimeout(fitCanvasToBeds, 80);
@@ -2512,7 +2532,8 @@ function renderMap() {
     var weightDiv = total ? '<div class="map-bed-weight">'+fmt(total)+'</div>' : "";
     var div = '<div class="map-bed '+(isSel?"selected":"")+'" id="mapbed-'+b.id+'" data-id="'+b.id+'"';
     div += ' style="left:'+zx+'px;top:'+zy+'px;width:'+zpw+'px;height:'+zph+'px;';
-    div += 'background:'+b.color+';border-radius:'+br+';font-size:'+zfs+'px;'+selStyle+'"';
+    var triClip = b.shape==="triangle" ? 'clip-path:polygon('+triPoints(triApex(b),100,100).map(function(p){return p[0]+'% '+p[1]+'%';}).join(',')+');border:none;' : '';
+    div += 'background:'+b.color+';border-radius:'+br+';font-size:'+zfs+'px;'+selStyle+triClip+(isSel&&triClip?'filter:brightness(1.25);':'')+'"';
     div += '>';  // drag/tap handled by setupDrag (inline handlers caused double toggling)
     div += '<div class="map-bed-label">'+esc(b.name)+(zpw>70&&zph>40?'<div style="font-weight:normal;opacity:.8">'+b.w+'×'+b.l+' ft</div>':'')+'</div>';
     div += '<div class="map-bed-crops">'+plants+'</div>';
@@ -3078,17 +3099,51 @@ function cropWindows(key, year) {
 }
 function fmtWin(w) { return MONTH_SHORT[w[0].getMonth()] + " " + w[0].getDate() + "–" + (w[0].getMonth()===w[1].getMonth() ? "" : MONTH_SHORT[w[1].getMonth()] + " ") + w[1].getDate(); }
 
+// ── Bed shapes: triangles are drawn in their w × l box with the point facing up/right/down/left ──
+const APEX_NEXT = { up:"right", right:"down", down:"left", left:"up" };
+function triApex(b) { return ["up","right","down","left"].includes(b && b.apex) ? b.apex : "up"; }
+function triPoints(apex, w, h) {
+  if (apex === "down") return [[0,0],[w,0],[w/2,h]];
+  if (apex === "left") return [[w,0],[w,h],[0,h/2]];
+  if (apex === "right") return [[0,0],[0,h],[w,h/2]];
+  return [[0,h],[w,h],[w/2,0]];
+}
+function triBaseDepth(b) { const a = triApex(b); return a === "up" || a === "down" ? { base:b.w, depth:b.l } : { base:b.l, depth:b.w }; }
+// Is a circle of radius r (inches) at x, y (inches from the bed's top-left) inside the bed?
+function insideBed(b, x, y, r) {
+  const W = b.w * 12, L = b.l * 12, e = 0.01;
+  if (x - r < -e || y - r < -e || x + r > W + e || y + r > L + e) return false;
+  if (b.shape === "oval" || b.shape === "container") { const a = W/2 - r, c = L/2 - r; return a > 0 && c > 0 ? ((x - W/2)/a)**2 + ((y - L/2)/c)**2 <= 1 + e : Math.hypot(x - W/2, y - L/2) < 1; }
+  if (b.shape === "triangle") {
+    const pts = triPoints(triApex(b), W, L);
+    for (let i = 0; i < 3; i++) {
+      const [x1,y1] = pts[i], [x2,y2] = pts[(i+1)%3], [x3,y3] = pts[(i+2)%3], len = Math.hypot(x2-x1, y2-y1);
+      const cross = (px, py) => ((x2-x1)*(py-y1) - (y2-y1)*(px-x1)) / len, side = Math.sign(cross(x3,y3)) || 1;
+      if (cross(x, y) * side < r - e) return false;
+    }
+  }
+  return true;
+}
+// SVG outline of a bed in display space (P maps bed inches to display; dw × dh is the drawn box)
+function bedShapeSvg(b, P, dw, dh, attrs) {
+  if (b.shape === "triangle") return `<polygon points="${triPoints(triApex(b), b.w*12, b.l*12).map(([x,y]) => P(x,y).join(",")).join(" ")}" stroke-linejoin="round" ${attrs}/>`;
+  if (b.shape === "oval" || b.shape === "container") return `<ellipse cx="${dw/2}" cy="${dh/2}" rx="${dw/2}" ry="${dh/2}" ${attrs}/>`;
+  return `<rect width="${dw}" height="${dh}" rx="2" ${attrs}/>`;
+}
+const bedAreaSqIn = b => b.w * b.l * 144 * (b.shape === "oval" || b.shape === "container" ? Math.PI/4 : b.shape === "triangle" ? 0.5 : 1);
+
 // ── BED FIT (spacing) ──
 function bedCapacity(bed, sp) {
   if (!bed || !sp || bed.shape === "house") return null;
   const wIn = bed.w * 12, lIn = bed.l * 12;
+  if (bed.shape === "triangle") return Math.max(Math.min(wIn, lIn) >= sp ? 1 : 0, Math.floor(0.5 * wIn * lIn / (sp*sp) * 0.85));
   if (bed.shape === "oval" || bed.shape === "container") return Math.max(bed.shape === "container" ? 1 : 0, Math.floor(Math.PI/4 * wIn * lIn / (sp*sp)));
   return Math.floor(wIn / sp) * Math.floor(lIn / sp) || (Math.min(wIn, lIn) >= sp*0.75 ? 1 : 0);
 }
 // Share of the bed (0–1) used by other plantings/plants overlapping [from, to]
 function bedUsedShare(bedName, from, to, exceptId) {
   const bed = beds.find(b => b.name === bedName); if (!bed) return 0;
-  const area = bed.w * bed.l * 144 * (bed.shape === "oval" ? Math.PI/4 : 1);
+  const area = bedAreaSqIn(bed);
   let used = 0;
   const overlaps = (a1, a2) => !(a2 < from || a1 > to);
   plantings.forEach(p => {
@@ -4908,7 +4963,7 @@ function ensureLayout(items) {
   const W = layoutBed.w * 12, L = layoutBed.l * 12;
   const taken = [];
   items.forEach(it => (it.src.layout || []).forEach(pt => taken.push({ x:pt.x, y:pt.y, r:it.sp/2 })));
-  const free = (x, y, r) => x - r >= -0.01 && y - r >= -0.01 && x + r <= W + 0.01 && y + r <= L + 0.01 && taken.every(t => Math.hypot(t.x - x, t.y - y) >= (t.r + r) * 0.95);
+  const free = (x, y, r) => insideBed(layoutBed, x, y, r) && taken.every(t => Math.hypot(t.x - x, t.y - y) >= (t.r + r) * 0.95);
   let changed = false;
   items.forEach(it => {
     it.src.layout = it.src.layout || [];
@@ -4924,7 +4979,10 @@ function ensureLayout(items) {
     while (it.src.layout.length < it.qty) {
       let spot = null;
       for (let y = r; y <= L - r + 0.01 && !spot; y += Math.max(3, it.sp / 2)) for (let x = r; x <= W - r + 0.01; x += Math.max(3, it.sp / 2)) if (free(x, y, r)) { spot = { x, y }; break; }
-      if (!spot) spot = r * 2 > Math.min(W, L) ? { x: W/2, y: L/2 } : { x: r, y: r };   // wider than the bed: center it; otherwise no room left
+      if (!spot) {   // wider than the bed: center it; otherwise no room left
+        const c = layoutBed.shape === "triangle" ? triPoints(triApex(layoutBed), W, L).reduce((m, p) => ({ x: m.x + p[0]/3, y: m.y + p[1]/3 }), { x:0, y:0 }) : null;
+        spot = c || (r * 2 > Math.min(W, L) ? { x: W/2, y: L/2 } : { x: r, y: r });
+      }
       it.src.layout.push(spot); taken.push({ x:spot.x, y:spot.y, r }); changed = true;
     }
   });
@@ -4979,12 +5037,12 @@ function renderBedLayout() {
   for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) if (Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y) < (pts[a].r + pts[b].r) * 0.85) { bad.add(pts[a].i + "-" + pts[a].j); bad.add(pts[b].i + "-" + pts[b].j); }
   const pad = 2;
   let svg = `<svg id="bl-svg" viewBox="${-pad} ${-pad} ${dw + pad*2} ${dh + pad*2}" style="width:100%;height:auto;display:block;touch-action:none;user-select:none">
-    <defs><clipPath id="bl-clip"><rect x="0" y="0" width="${dw}" height="${dh}" rx="2"/></clipPath></defs>
-    <rect x="0" y="0" width="${dw}" height="${dh}" fill="#efe6d2" rx="2"/><g clip-path="url(#bl-clip)">`;
+    <defs><clipPath id="bl-clip">${bedShapeSvg(layoutBed, toDisp, dw, dh, "")}</clipPath></defs>
+    ${bedShapeSvg(layoutBed, toDisp, dw, dh, 'fill="#efe6d2"')}<g clip-path="url(#bl-clip)">`;
   for (let g = 12; g < dw; g += 12) svg += `<line x1="${g}" y1="0" x2="${g}" y2="${dh}" stroke="#c8b998" stroke-width="0.3"/>`;
   for (let g = 12; g < dh; g += 12) svg += `<line x1="0" y1="${g}" x2="${dw}" y2="${g}" stroke="#c8b998" stroke-width="0.3"/>`;
   items.forEach((it, i) => { (it.sp <= PATCH_SP ? [0] : it.src.layout.map((_, j) => j)).forEach(j => { svg += layoutGroup(it, i, j, bad.has(i + "-" + j)); }); });
-  svg += `</g><rect x="0" y="0" width="${dw}" height="${dh}" fill="none" stroke="#8a7a4a" stroke-width="0.8" rx="2" pointer-events="none"/></svg>`;
+  svg += `</g>${bedShapeSvg(layoutBed, toDisp, dw, dh, 'fill="none" stroke="#8a7a4a" stroke-width="0.8" pointer-events="none"')}</svg>`;
   const nOver = new Set([...bad].map(k => k.split("-")[0])).size;
   const legend = items.map(it => {
     const c = getCropByKey(it.crop);
@@ -4995,7 +5053,7 @@ function renderBedLayout() {
   }).join("");
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);background:#fff">
-      <div><div style="font-size:17px;color:var(--green)">${esc(layoutBed.name)}</div><div style="font-size:11px;color:var(--muted)">${layoutBed.w}×${layoutBed.l} ft · 1 square = 1 ft · drag to arrange</div></div>
+      <div><div style="font-size:17px;color:var(--green)">${esc(layoutBed.name)}</div><div style="font-size:11px;color:var(--muted)">${layoutBed.shape === "triangle" ? `Triangle, ${triBaseDepth(layoutBed).base} ft base × ${triBaseDepth(layoutBed).depth} ft` : `${layoutBed.w}×${layoutBed.l} ft`} · 1 square = 1 ft · drag to arrange</div></div>
       <button onclick="closeBedLayout()" style="background:none;border:none;font-size:26px;cursor:pointer;color:#7a6e58">×</button></div>
     <div style="padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fff;border-bottom:1px solid var(--border)">
       <input type="date" value="${layoutDate}" onchange="layoutDate=this.value||todayStr();renderBedLayout()" style="font-size:13px;padding:4px">
@@ -5048,8 +5106,8 @@ function bedPreview(bed) {
   const P = (x, y) => swap ? [y, x] : [x, y];
   const oval = bed.shape === "oval" || bed.shape === "container";
   let s = `<svg viewBox="-1 -1 ${dw + 2} ${dh + 2}" style="width:100%;max-height:120px;display:block" preserveAspectRatio="xMidYMid meet">
-    <defs><clipPath id="bp-${esc(bed.id)}">${oval ? `<ellipse cx="${dw/2}" cy="${dh/2}" rx="${dw/2}" ry="${dh/2}"/>` : `<rect width="${dw}" height="${dh}" rx="2"/>`}</clipPath></defs>
-    ${oval ? `<ellipse cx="${dw/2}" cy="${dh/2}" rx="${dw/2}" ry="${dh/2}" fill="#efe6d2"/>` : `<rect width="${dw}" height="${dh}" rx="2" fill="#efe6d2"/>`}
+    <defs><clipPath id="bp-${esc(bed.id)}">${bedShapeSvg(bed, P, dw, dh, "")}</clipPath></defs>
+    ${bedShapeSvg(bed, P, dw, dh, 'fill="#efe6d2"')}
     <g clip-path="url(#bp-${esc(bed.id)})">`;
   for (let g = 12; g < dw; g += 12) s += `<line x1="${g}" y1="0" x2="${g}" y2="${dh}" stroke="#d6c9aa" stroke-width="0.4"/>`;
   for (let g = 12; g < dh; g += 12) s += `<line x1="0" y1="${g}" x2="${dw}" y2="${g}" stroke="#d6c9aa" stroke-width="0.4"/>`;
@@ -5066,7 +5124,7 @@ function bedPreview(bed) {
         <text x="${x}" y="${y}" font-size="${Math.max(3, Math.min(14, it.sp / 2.6))}" text-anchor="middle" dominant-baseline="central">${c.emoji || "🌱"}</text>`;
     });
   });
-  s += `</g>${oval ? `<ellipse cx="${dw/2}" cy="${dh/2}" rx="${dw/2}" ry="${dh/2}" fill="none" stroke="#8a7a4a" stroke-width="0.8"/>` : `<rect width="${dw}" height="${dh}" rx="2" fill="none" stroke="#8a7a4a" stroke-width="0.8"/>`}</svg>`;
+  s += `</g>${bedShapeSvg(bed, P, dw, dh, 'fill="none" stroke="#8a7a4a" stroke-width="0.8"')}</svg>`;
   return { svg: s, items };
 }
 // A "tree spot" is a bed holding a single perennial and no plantings — kept in its own group so veg beds stay easy to scan
@@ -5483,7 +5541,7 @@ function setupBedRow(b) {
       <label style="flex:1;display:flex;align-items:center;gap:4px">Width <input class="sb-w" type="number" inputmode="decimal" min="0" step="0.5" value="${b.w || ""}" style="width:100%;font-size:15px;padding:6px"> ft</label>
       <label style="flex:1;display:flex;align-items:center;gap:4px">Length <input class="sb-l" type="number" inputmode="decimal" min="0" step="0.5" value="${b.l || ""}" style="width:100%;font-size:15px;padding:6px"> ft</label></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <select class="sb-shape" style="font-size:13px;padding:5px"><option value="rect"${b.shape==="rect"?" selected":""}>Rectangle</option><option value="oval"${b.shape==="oval"?" selected":""}>Round/oval</option><option value="container"${b.shape==="container"?" selected":""}>Container</option><option value="row"${b.shape==="row"?" selected":""}>In-ground row</option></select>
+      <select class="sb-shape" style="font-size:13px;padding:5px"><option value="rect"${b.shape==="rect"?" selected":""}>Rectangle</option><option value="oval"${b.shape==="oval"?" selected":""}>Round/oval</option><option value="triangle"${b.shape==="triangle"?" selected":""}>Triangle (W = base)</option><option value="container"${b.shape==="container"?" selected":""}>Container</option><option value="row"${b.shape==="row"?" selected":""}>In-ground row</option></select>
       ${pre(4,8,"rect","4×8")}${pre(3,6,"rect","3×6")}${pre(4,4,"rect","4×4")}${pre(2,2,"container","pot")}</div>
     <div class="sb-warn" style="font-size:12px;color:var(--red);margin-top:4px"></div></div>`;
 }
