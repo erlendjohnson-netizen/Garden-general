@@ -749,7 +749,8 @@
 
   <!-- PLANTINGS -->
   <div id="plan-plantings" class="plan-pane" style="display:none;padding:0 14px">
-    <button class="btn btn-primary btn-full" style="margin-bottom:12px" onclick="openPlantingModal()">+ Plan a planting</button>
+    <button class="btn btn-primary btn-full" style="margin-bottom:8px" onclick="openPlantingModal()">+ Plan a planting</button>
+    <button class="btn btn-secondary btn-full" style="margin-bottom:12px" onclick="pasteSharedPlan()">＋ Add a shared plan (paste link)</button>
     <div id="plantings-list"></div>
   </div>
 
@@ -6413,6 +6414,10 @@ function parsePlanCode(text) {
     return [{ crop, variety: variety || "", bed: "", qty: null, seeds: null, spacing: (cropGuide(crop) || {}).sp || null, method: m2,
       sowDate: m2 === "buy" ? "" : sow, transplantDate: m2 === "direct" ? "" : tp, dtm: dtm || null, notes: notes || "" }];
   });
+}
+function pasteSharedPlan() {
+  const t = prompt("Paste the shared plan link or code:");
+  if (t && t.trim()) importSharedPlan(t);
 }
 function importSharedPlan(text) {
   const rows = parsePlanCode(text); if (!rows.length) { toast("That isn't a plan link"); return; }
