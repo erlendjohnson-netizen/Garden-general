@@ -1486,31 +1486,15 @@ async function loadData() {
     const p  = localStorage.getItem("gl-demo-plants");
     const pv = localStorage.getItem("gl-demo-plant-version");
 
-    // Harvests — re-seed if version outdated
-    if (h && hv === "v2") {
-      harvests = JSON.parse(h); loadHarvestPhotos();
-    } else {
-      seedHarvests();
-      try { localStorage.setItem("gl-demo-harvest-version", "v2"); } catch(e) {}
-    }
-
-    // Care — re-seed if version outdated (bumping forces fresh Apr 8 data)
-    if (c && cv === "v2") {
-      careLog = JSON.parse(c);
-    } else {
-      seedCare();
-      try { localStorage.setItem("gl-demo-care-version", "v2"); } catch(e) {}
-    }
-
-    // Plants — re-seed if version outdated
-    if (p && pv === "v2") {
-      plantLog = JSON.parse(p);
-    } else {
-      seedPlants();
-      try { localStorage.setItem("gl-demo-plant-version", "v2"); } catch(e) {}
-    }
-
-  } catch(e) { seedHarvests(); seedCare(); seedPlants(); }
+    // Never wipe saved data: use whatever is stored (and mark it current); start empty only when nothing is saved
+    const keep = (raw, verKey, ver, apply) => {
+      if (!raw) return false;
+      try { apply(JSON.parse(raw)); try { localStorage.setItem(verKey, ver); } catch(e) {} return true; } catch(e) { return false; }
+    };
+    if (!keep(h, "gl-demo-harvest-version", "v2", v => { harvests = Array.isArray(v) ? v : []; loadHarvestPhotos(); })) harvests = [];
+    if (!keep(c, "gl-demo-care-version", "v2", v => { careLog = Array.isArray(v) ? v : []; })) careLog = [];
+    if (!keep(p, "gl-demo-plant-version", "v2", v => { plantLog = Array.isArray(v) ? v : []; })) plantLog = [];
+  } catch(e) { harvests = harvests || []; careLog = careLog || []; plantLog = plantLog || []; }
   renderAll();
 }
 
@@ -2352,14 +2336,11 @@ function seedBeds() {
 }
 
 function loadBeds() {
+  // Never wipe saved beds: use what's stored; only a garden with no beds saved gets the starter beds
   try {
     var b = localStorage.getItem("gl-demo-beds");
-    var bv = localStorage.getItem("gl-demo-bed-version");
-    if (b && bv === "v5") {
-      beds = JSON.parse(b);
-      return;
-    }
-  } catch(e) {}
+    if (b) { var list = JSON.parse(b); if (Array.isArray(list)) { beds = list; try { localStorage.setItem("gl-demo-bed-version", "v5"); } catch(e) {} return; } }
+  } catch(e) { beds = []; return; }
   seedBeds();
   try { localStorage.setItem("gl-demo-bed-version", "v5"); } catch(e) {}
 }
