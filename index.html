@@ -3857,15 +3857,48 @@ function renderWindows() {
     }
   });
   rows.forEach(r => r.active = r.cells[(calMonth-1)*2] !== "transparent" || r.cells[(calMonth-1)*2+1] !== "transparent");
-  rows.sort((a,b) => (b.active?1:0) - (a.active?1:0));
-  let html = '<div class="card-title">Planting windows</div>';
+  // What you've planted or planned for the coming year (plantings from ~4 months back to a year ahead, plus living plants)
+  const today = todayStr(), from = addDays(today, -120), to = addDays(today, 365);
+  const cyc = (a, b) => { const out = []; let i = cell(parseLocalDate(a)); const e = cell(parseLocalDate(b)); const n = Math.min(24, Math.ceil((parseLocalDate(b) - parseLocalDate(a)) / 864e5 / 15) + 1); for (let k = 0; k < n; k++) { out.push(i); if (i === e) break; i = (i + 1) % 24; } return out; };
+  const mine = {};   // crop → { plantings, living, pick:Set(cells), plantCells:Set }
+  const entry = k => mine[k] || (mine[k] = { list: [], living: 0, pick: new Set(), plant: new Set() });
+  plantings.forEach(p => {
+    const st = plantingStart(p) || p.sowDate; if (!st || st < from || st > to) return;
+    const e = entry(p.crop); e.list.push(p); e.plant.add(cell(parseLocalDate(st)));
+    const sp = spSpan(p); if (sp && sp[1] >= today) cyc(sp[0] < today ? today : sp[0], sp[1]).forEach(i => e.pick.add(i));
+  });
+  plantLog.forEach(p => {
+    if (isGone(p)) return; const g = cropGuide(p.crop) || {};
+    if (!g.perennial && !["harvesting","transplanted","seedling","seeds-started"].includes(p.status)) return;
+    const e = entry(p.crop); e.living += p.count || 1;
+    if (g.perennial) { const w = cropWindows(p.crop, new Date().getFullYear()); if (w) w.harvest.forEach(h => cyc(localDateStr(h[0]), localDateStr(h[1])).forEach(i => e.pick.add(i))); }
+  });
+  rows.forEach(r => r.mine = mine[r.key] && (mine[r.key].list.length || mine[r.key].living) ? mine[r.key] : null);
+  rows.sort((a,b) => (b.mine?2:0) + (b.active?1:0) - (a.mine?2:0) - (a.active?1:0));
+  // Coverage: how many of your crops are picking in each half-month; pink = nothing to pick though something could be
+  const counts = Array(24).fill(0), possible = new Set();
+  Object.values(mine).forEach(e => e.pick.forEach(i => counts[i]++));
+  rows.forEach(r => r.cells.forEach((bg, i) => { if (bg === "#e85d7588") possible.add(i); }));
+  const shade = n => n >= 4 ? "#3d6b28" : n >= 2 ? "#6a9a4a" : n === 1 ? "#a9cc8c" : "transparent";
+  const curCell = cell(new Date());
+  let html = `<div class="card-title">Your harvest, next 12 months</div>
+    <div style="display:flex;height:22px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">${counts.map((n,i) => `<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;color:${n>=2?"#fff":"#2a4a1a"};background:${n ? shade(n) : possible.has(i) ? "#f6d9cc" : "#f0ede4"};${i===curCell?"box-shadow:inset 0 0 0 1.5px #2a4a1a":""}">${n||""}</div>`).join("")}</div>
+    <div style="display:flex;font-size:9px;color:var(--muted);margin-top:2px">${"JFMAMJJASOND".split("").map(m=>`<div style="flex:1;text-align:center">${m}</div>`).join("")}</div>
+    <div style="font-size:11px;color:var(--muted);margin:4px 0 14px">Numbers = your crops picking in each half-month (from your plantings and plants). <span style="background:#f6d9cc;padding:0 4px;border-radius:3px">Pink</span> = a gap when something could be growing — look below for crops whose windows fill it.</div>
+    <div class="card-title">Planting windows</div>
+    <div style="font-size:11px;color:var(--muted);margin:-4px 0 8px">Your crops are first, in bold: ● = when you're planting, dark line = when you'll be picking.</div>`;
+  let shownOthers = false;
   rows.forEach(r => {
-    const planned = plantings.some(p=>p.crop===r.key) || plantLog.some(p=>p.crop===r.key);
-    const bar = r.cells.map((bg,i) => `<div style="flex:1;height:8px;background:${bg};${Math.floor(i/2)===calMonth-1?"box-shadow:0 0 0 1px var(--green)":""}"></div>`).join("");
-    html += `<div class="cal-crop-timeline" style="opacity:${r.active?1:0.45}">
-      <div class="cal-crop-label"><span>${r.emoji||"🌱"} ${esc(r.label)}${planned?` <span style="color:var(--green);font-size:10px">✓ in your plan</span>`:""}</span>
+    const m = r.mine;
+    if (!m && !shownOthers) { shownOthers = true; html += `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Other crops</div>`; }
+    const bar = r.cells.map((bg,i) => `<div style="flex:1;height:8px;background:${bg};position:relative;${Math.floor(i/2)===calMonth-1?"box-shadow:0 0 0 1px var(--green)":""}">${m && m.plant.has(i) ? `<span style="position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:#2a4a1a;border:1px solid #fff"></span>` : ""}</div>`).join("");
+    const pickBar = m ? `<div style="display:flex;height:4px;margin-top:2px">${r.cells.map((_,i) => `<div style="flex:1;background:${m.pick.has(i) ? "#2a4a1a" : "transparent"}"></div>`).join("")}</div>` : "";
+    const what = m ? [m.list.length ? `${m.list.length} planting${m.list.length > 1 ? "s" : ""}: ` + m.list.slice().sort((a,b) => (plantingStart(a)||"").localeCompare(plantingStart(b)||"")).slice(0, 4).map(p => `${p.variety ? esc(p.variety) + " " : ""}${fmtShortDate(plantingStart(p) || p.sowDate)}`).join(", ") + (m.list.length > 4 ? "…" : "") : "", m.living ? `${m.living} growing now` : ""].filter(Boolean).join(" · ") : "";
+    html += `<div class="cal-crop-timeline" style="opacity:${m || r.active ? 1 : 0.45};${m ? "background:#eef5e6;border-radius:8px;padding:6px 8px;margin-bottom:6px" : ""}">
+      <div class="cal-crop-label"><span style="${m ? "font-weight:bold;color:#2a4a1a" : ""}">${r.emoji||"🌱"} ${esc(r.label)}</span>
         <button class="chip" style="font-size:10px;padding:1px 8px" onclick="setPlanTab('plantings');openPlantingModal(null,'${jsq(r.key)}')">+ Plan</button></div>
-      <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">${bar}</div>
+      <div style="display:flex;height:8px;border-radius:4px;overflow:visible;border:1px solid var(--border)">${bar}</div>${pickBar}
+      ${what ? `<div style="font-size:11px;color:#2a4a1a;margin-top:3px">${what}</div>` : ""}
       <div style="font-size:10px;color:var(--muted);margin-top:3px">${esc(r.txt)}</div>
     </div>`;
   });
